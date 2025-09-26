@@ -1,2 +1,2 @@
 # AlertaYa
-yeraldo trabaja como esclavo
+Hola mundo
