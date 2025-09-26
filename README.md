@@ -1,2 +1,2 @@
 # AlertaYa
-Hola mundo
+
