@@ -41,6 +41,12 @@ android {
 
 dependencies {
 
+    // Supabase Kotlin
+    implementation("io.github.jan-tennert.supabase:supabase-kt:2.3.0")
+    // revisa la última versión
+    // Coroutines
+    implementation("org.jetbrains.kotlinx:kotlinx-coroutines-android:1.7.3")
+
     implementation(libs.androidx.core.ktx)
     implementation(libs.androidx.lifecycle.runtime.ktx)
     implementation(libs.androidx.activity.compose)
