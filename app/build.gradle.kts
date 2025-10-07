@@ -40,12 +40,25 @@ android {
 }
 
 dependencies {
-
     // Supabase Kotlin
-    implementation("io.github.jan-tennert.supabase:supabase-kt:2.3.0")
-    // revisa la última versión
+    implementation("io.github.jan-tennert.supabase:supabase-kt:2.5.4")
+    implementation("io.github.jan-tennert.supabase:postgrest-kt:2.5.4")
+
     // Coroutines
     implementation("org.jetbrains.kotlinx:kotlinx-coroutines-android:1.7.3")
+
+    // Ktor
+    implementation("io.ktor:ktor-client-core:2.0.0")
+    implementation("io.ktor:ktor-client-cio:2.0.0")
+
+    // Material básico
+    implementation("androidx.compose.material:material:1.5.0")
+    implementation("androidx.compose.material:material-icons-core:1.5.0")
+    implementation("androidx.compose.material:material-icons-extended:1.5.0")
+
+    implementation("androidx.compose.material:material:1.5.0")
+    implementation("androidx.compose.material:material-icons-core:1.5.0")
+    implementation("androidx.compose.material:material-icons-extended:1.5.0")
 
     implementation(libs.androidx.core.ktx)
     implementation(libs.androidx.lifecycle.runtime.ktx)
