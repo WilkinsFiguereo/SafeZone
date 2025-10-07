@@ -3,45 +3,39 @@ package com.wilkins.alertaya
 import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
-import androidx.activity.enableEdgeToEdge
-import androidx.compose.foundation.layout.fillMaxSize
-import androidx.compose.foundation.layout.padding
-import androidx.compose.material3.Scaffold
-import androidx.compose.material3.Text
-import androidx.compose.runtime.Composable
-import androidx.compose.ui.Modifier
-import androidx.compose.ui.tooling.preview.Preview
-import com.wilkins.alertaya.ui.theme.AlertaYaTheme
+import com.wilkins.alertaya.frontend.ui.screens.auth.RegisterScreen
+import com.wilkins.alertaya.frontend.ui.theme.AlertaYaTheme
+import com.wilkins.alertaya.backend.network.SupabaseService
+import io.github.jan.supabase.postgrest.postgrest
+import kotlinx.coroutines.*
 
 class MainActivity : ComponentActivity() {
+
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
-        enableEdgeToEdge()
+
+        // Cargar pantalla principal
         setContent {
             AlertaYaTheme {
-                Scaffold(modifier = Modifier.fillMaxSize()) { innerPadding ->
-                    Greeting(
-                        name = "Android",
-                        modifier = Modifier.padding(innerPadding)
-                    )
-                }
+                RegisterScreen()
             }
         }
+
+        // ✅ Probar conexión a Supabase
+        testSupabaseConnection()
     }
-}
 
-@Composable
-fun Greeting(name: String, modifier: Modifier = Modifier) {
-    Text(
-        text = "Hello $name!",
-        modifier = modifier
-    )
-}
+    // 🔍 Función para probar si la conexión funciona correctamente
+    private fun testSupabaseConnection() {
+        val supabase = SupabaseService.getInstance()
 
-@Preview(showBackground = true)
-@Composable
-fun GreetingPreview() {
-    AlertaYaTheme {
-        Greeting("Android")
+        CoroutineScope(Dispatchers.IO).launch {
+            try {
+                val response = supabase.postgrest["users"].select()
+                println("✅ Conexión exitosa con Supabase: ${response.data}")
+            } catch (e: Exception) {
+                println("❌ Error al conectar con Supabase: ${e.message}")
+            }
+        }
     }
 }
