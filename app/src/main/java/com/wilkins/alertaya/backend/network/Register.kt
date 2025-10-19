@@ -3,11 +3,7 @@ package com.wilkins.alertaya.backend.network
 import io.github.jan.supabase.postgrest.from
 import java.util.UUID
 
-suspend fun registerUser(
-    name: String,
-    email: String,
-    password: String
-) {
+suspend fun registerUser(name: String, email: String, password: String) {
     val supabase = SupabaseService.getInstance() // tu instancia
 
     try {

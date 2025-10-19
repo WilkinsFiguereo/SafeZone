@@ -16,6 +16,7 @@ class SupabaseService private constructor() {
                     supabaseKey = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InFrYWtucWF4ZXp6dHFudWdhd3JkIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTk1MTkwMzAsImV4cCI6MjA3NTA5NTAzMH0.fYVmKEWqojR4jSut48j1c3a3oaqqkeR48-D3cBn764s"
                 ) {
                     install(Postgrest)
+
                 }
             }
             return instance!!
