@@ -18,20 +18,20 @@ class MainActivity : ComponentActivity() {
 
         setContent {
             AlertaYaTheme {
-                RegisterScreen()
-//                val navController = rememberNavController()
-//
-//                NavHost(navController = navController, startDestination = "login") {
-//                    composable("login") {
-//                        LoginScreen { userId ->
-//                            navController.navigate("user/$userId")
-//                        }
-//                    }
-//                    composable("user/{userId}") { backStackEntry ->
-//                        val userId = backStackEntry.arguments?.getString("userId") ?: ""
-//                        UserScreen(userId)
-//                    }
-//                }
+//                RegisterScreen()
+                val navController = rememberNavController()
+
+                NavHost(navController = navController, startDestination = "login") {
+                    composable("login") {
+                        LoginScreen { userId ->
+                            navController.navigate("user/$userId")
+                        }
+                    }
+                    composable("user/{userId}") { backStackEntry ->
+                        val userId = backStackEntry.arguments?.getString("userId") ?: ""
+                        UserScreen(userId)
+                    }
+                }
             }
         }
     }

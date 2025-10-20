@@ -5,8 +5,7 @@ import kotlinx.serialization.Serializable
 @Serializable
 data class AppUser(
     val id: String,
-    val role: String,
-    val status: String,
-    // ¡AGREGA ESTE CAMPO para coincidir con la SELECT!
-    val name: String? = null // Usa nullable si no lo necesitas siempre
+    val name: String?,
+    val role_id: Int?,
+    val status_id: Int?
 )
