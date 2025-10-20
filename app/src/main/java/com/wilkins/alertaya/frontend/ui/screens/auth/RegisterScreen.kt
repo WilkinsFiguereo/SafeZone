@@ -16,6 +16,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.text.input.VisualTransformation
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.wilkins.alertaya.backend.network.registerUser
@@ -26,11 +27,11 @@ import androidx.compose.ui.tooling.preview.Preview
 
 @Composable
 fun RegisterScreen() {
-    // Estados para los inputs
-    val nameState = remember { mutableStateOf("") }
-    val emailState = remember { mutableStateOf("") }
-    val passwordState = remember { mutableStateOf("") }
-    val confirmPasswordState = remember { mutableStateOf("") }
+    // Estados para los inputs - versión simplificada
+    var name by remember { mutableStateOf("") }
+    var email by remember { mutableStateOf("") }
+    var password by remember { mutableStateOf("") }
+    var confirmPassword by remember { mutableStateOf("") }
 
     // Coroutine scope
     val scope = rememberCoroutineScope()
@@ -99,15 +100,15 @@ fun RegisterScreen() {
                     color = Color.Gray,
                     fontSize = 14.sp,
                     modifier = Modifier.fillMaxWidth(),
-                    textAlign = androidx.compose.ui.text.style.TextAlign.Center
+                    textAlign = TextAlign.Center
                 )
 
                 Spacer(modifier = Modifier.height(24.dp))
 
                 // Nombre completo
                 CustomTextField(
-                    value = nameState.value,
-                    onValueChange = { nameState.value = it },
+                    value = name,
+                    onValueChange = { name = it },
                     placeholder = "Ingresa tu nombre completo",
                     label = "Nombre completo",
                     leadingIcon = Icons.Default.Person,
@@ -118,8 +119,8 @@ fun RegisterScreen() {
 
                 // Correo electrónico
                 CustomTextField(
-                    value = emailState.value,
-                    onValueChange = { emailState.value = it },
+                    value = email,
+                    onValueChange = { email = it },
                     placeholder = "correo@ejemplo.com",
                     label = "Correo electrónico",
                     leadingIcon = Icons.Default.Email,
@@ -131,8 +132,8 @@ fun RegisterScreen() {
 
                 // Contraseña
                 CustomTextField(
-                    value = passwordState.value,
-                    onValueChange = { passwordState.value = it },
+                    value = password,
+                    onValueChange = { password = it },
                     placeholder = "********",
                     label = "Contraseña",
                     leadingIcon = Icons.Default.Lock,
@@ -144,8 +145,8 @@ fun RegisterScreen() {
 
                 // Confirmar contraseña
                 CustomTextField(
-                    value = confirmPasswordState.value,
-                    onValueChange = { confirmPasswordState.value = it },
+                    value = confirmPassword,
+                    onValueChange = { confirmPassword = it },
                     placeholder = "********",
                     label = "Confirmar contraseña",
                     leadingIcon = Icons.Default.VerifiedUser,
@@ -158,7 +159,7 @@ fun RegisterScreen() {
                 // Botón de registro
                 Button(
                     onClick = {
-                        if (passwordState.value != confirmPasswordState.value) {
+                        if (password != confirmPassword) {
                             scope.launch {
                                 snackbarHostState.showSnackbar("Las contraseñas no coinciden")
                             }
@@ -168,16 +169,16 @@ fun RegisterScreen() {
                         scope.launch {
                             try {
                                 registerUser(
-                                    name = nameState.value,
-                                    email = emailState.value,
-                                    password = passwordState.value
+                                    name = name,
+                                    email = email,
+                                    password = password
                                 )
                                 snackbarHostState.showSnackbar("Usuario registrado correctamente")
                                 // Limpiar inputs
-                                nameState.value = ""
-                                emailState.value = ""
-                                passwordState.value = ""
-                                confirmPasswordState.value = ""
+                                name = ""
+                                email = ""
+                                password = ""
+                                confirmPassword = ""
                             } catch (e: Exception) {
                                 snackbarHostState.showSnackbar("Error al registrar: ${e.message}")
                             }
@@ -205,13 +206,16 @@ fun RegisterScreen() {
     }
 }
 
+// Versión 2 - Diferentes parámetros (si la necesitas)
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun CustomTextField(
+fun CustomTextFieldWithTrailing(
     value: String,
     onValueChange: (String) -> Unit,
     placeholder: String,
     label: String,
     leadingIcon: ImageVector,
+    trailingIcon: ImageVector? = null, // Parámetro diferente
     modifier: Modifier = Modifier,
     keyboardType: KeyboardType = KeyboardType.Text,
     isPassword: Boolean = false

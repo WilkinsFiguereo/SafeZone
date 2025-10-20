@@ -1,4 +1,3 @@
 package com.wilkins.alertaya.ui.theme
 
-class String {
-}
+val NameApp = "AlertaYA"
