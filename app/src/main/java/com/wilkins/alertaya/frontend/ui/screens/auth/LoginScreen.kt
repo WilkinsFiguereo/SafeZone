@@ -27,6 +27,9 @@ import androidx.compose.ui.unit.sp
 import com.wilkins.alertaya.ui.theme.PrimaryColor
 import kotlinx.coroutines.launch
 import androidx.compose.ui.tooling.preview.Preview
+import com.wilkins.alertaya.backend.network.login
+import com.wilkins.alertaya.backend.network.HomeUserScreen
+import com.wilkins.alertaya.backend.network.HomeAdminScreen
 
 @Composable
 fun LoginScreen(
@@ -137,10 +140,27 @@ fun LoginScreen(
                     onClick = {
                         scope.launch {
                             if (email.isNotEmpty() && password.isNotEmpty()) {
-                                snackbarHostState.showSnackbar("Login exitoso")
-                                onLoginSuccess("user123")
+                                // Llamamos a la función login
+                                val user = login(email, password)
+
+                                if (user != null) {
+                                    // Mostramos snackbar de éxito
+                                    snackbarHostState.showSnackbar("Login exitoso")
+
+                                    // Redirigimos según rol
+                                    when (user.role_id) {
+                                        1 -> HomeUserScreen(user)   // Usuario normal
+                                        2 -> HomeAdminScreen(user)  // Admin
+                                        else -> snackbarHostState.showSnackbar("Rol desconocido")
+                                    }
+
+                                    // Llamada opcional a tu callback
+                                    onLoginSuccess(user.id)
+                                } else {
+                                    snackbarHostState.showSnackbar("Credenciales incorrectas o usuario no encontrado")
+                                }
                             } else {
-                                snackbarHostState.showSnackbar("Credenciales incorrectas")
+                                snackbarHostState.showSnackbar("Por favor ingresa email y contraseña")
                             }
                         }
                     },
@@ -150,10 +170,11 @@ fun LoginScreen(
                         .height(48.dp),
                     shape = RoundedCornerShape(10.dp)
                 ) {
-                    Icon(Icons.Default.Login, null, modifier = Modifier.size(18.dp))
+                    Icon(Icons.Default.Login, contentDescription = null, modifier = Modifier.size(18.dp))
                     Spacer(modifier = Modifier.width(8.dp))
                     Text("Iniciar sesión", fontSize = 15.sp)
                 }
+
 
                 Spacer(modifier = Modifier.height(12.dp))
 
