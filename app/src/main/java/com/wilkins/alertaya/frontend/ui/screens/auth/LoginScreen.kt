@@ -13,27 +13,25 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
-import androidx.compose.ui.text.SpanStyle
-import androidx.compose.ui.text.buildAnnotatedString
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.text.input.VisualTransformation
 import androidx.compose.ui.text.style.TextAlign
-import androidx.compose.ui.text.style.TextDecoration
-import androidx.compose.ui.text.withStyle
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.wilkins.alertaya.ui.theme.PrimaryColor
 import kotlinx.coroutines.launch
 import androidx.compose.ui.tooling.preview.Preview
-import com.wilkins.alertaya.backend.network.login
-import com.wilkins.alertaya.backend.network.HomeUserScreen
-import com.wilkins.alertaya.backend.network.HomeAdminScreen
+import androidx.navigation.NavController
+import androidx.navigation.compose.rememberNavController
+import com.wilkins.alertaya.backend.network.AppUser
+import com.wilkins.alertaya.bridge.LoginBridge
 
 @Composable
 fun LoginScreen(
-    onLoginSuccess: (userId: String) -> Unit = {},
+    navController: NavController,
+    onLoginSuccess: (user: AppUser) -> Unit = {},
     onNavigateToRegister: () -> Unit = {},
     onGoogleSignIn: () -> Unit = {},
     onTermsClicked: (url: String) -> Unit = {},
@@ -50,55 +48,62 @@ fun LoginScreen(
         Box(
             modifier = Modifier
                 .fillMaxSize()
-                .background(PrimaryColor)
+                .background(Color.White)
                 .padding(padding),
             contentAlignment = Alignment.Center
         ) {
             Column(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .padding(horizontal = 20.dp)
-                    .background(
-                        color = Color.White,
-                        shape = RoundedCornerShape(16.dp)
-                    )
-                    .padding(20.dp),
+                    .padding(32.dp),
                 horizontalAlignment = Alignment.CenterHorizontally
             ) {
-                // Logo y título compactos
-                Box(
-                    modifier = Modifier
-                        .size(60.dp)
-                        .background(PrimaryColor, shape = RoundedCornerShape(12.dp)),
-                    contentAlignment = Alignment.Center
+                // Header más grande
+                Column(
+                    horizontalAlignment = Alignment.CenterHorizontally,
+                    modifier = Modifier.padding(vertical = 40.dp)
                 ) {
-                    Icon(
-                        imageVector = Icons.Default.Security,
-                        contentDescription = "Logo",
-                        tint = Color.White,
-                        modifier = Modifier.size(28.dp)
+                    Box(
+                        modifier = Modifier
+                            .size(120.dp)
+                            .background(
+                                PrimaryColor.copy(alpha = 0.1f),
+                                shape = RoundedCornerShape(28.dp)
+                            ),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        Icon(
+                            imageVector = Icons.Default.Security,
+                            contentDescription = "Logo",
+                            tint = PrimaryColor,
+                            modifier = Modifier.size(48.dp)
+                        )
+                    }
+
+                    Spacer(modifier = Modifier.height(24.dp))
+
+                    Text(
+                        text = "AlertaYa",
+                        color = PrimaryColor,
+                        fontWeight = FontWeight.Bold,
+                        fontSize = 36.sp,
+                        letterSpacing = 0.5.sp
+                    )
+
+                    Spacer(modifier = Modifier.height(12.dp))
+
+                    Text(
+                        text = "Iniciar sesión en tu cuenta",
+                        color = Color.Gray,
+                        fontSize = 16.sp,
+                        textAlign = TextAlign.Center
                     )
                 }
 
-                Spacer(modifier = Modifier.height(12.dp))
+                Spacer(modifier = Modifier.height(32.dp))
 
-                Text(
-                    text = "AlertaYa",
-                    color = PrimaryColor,
-                    fontWeight = FontWeight.Bold,
-                    fontSize = 24.sp
-                )
-
-                Text(
-                    text = "Iniciar sesión",
-                    color = Color.Gray,
-                    fontSize = 14.sp
-                )
-
-                Spacer(modifier = Modifier.height(20.dp))
-
-                // Campos de texto
-                CustomTextField(
+                // Campos de texto más grandes
+                CustomTextFieldLogin(
                     value = email,
                     onValueChange = { email = it },
                     placeholder = "correo@ejemplo.com",
@@ -108,9 +113,9 @@ fun LoginScreen(
                     modifier = Modifier.fillMaxWidth()
                 )
 
-                Spacer(modifier = Modifier.height(12.dp))
+                Spacer(modifier = Modifier.height(24.dp))
 
-                CustomTextField(
+                CustomTextFieldLogin(
                     value = password,
                     onValueChange = { password = it },
                     placeholder = "********",
@@ -120,7 +125,7 @@ fun LoginScreen(
                     modifier = Modifier.fillMaxWidth()
                 )
 
-                Spacer(modifier = Modifier.height(8.dp))
+                Spacer(modifier = Modifier.height(16.dp))
 
                 TextButton(
                     onClick = { /* TODO */ },
@@ -128,101 +133,110 @@ fun LoginScreen(
                 ) {
                     Text(
                         text = "¿Olvidaste tu contraseña?",
-                        color = PrimaryColor.copy(alpha = 0.8f),
-                        fontSize = 12.sp
+                        color = PrimaryColor,
+                        fontSize = 14.sp,
+                        fontWeight = FontWeight.Medium
                     )
                 }
 
-                Spacer(modifier = Modifier.height(16.dp))
+                Spacer(modifier = Modifier.height(32.dp))
 
-                // Botón principal
+                // Botón principal más grande
                 Button(
                     onClick = {
                         scope.launch {
                             if (email.isNotEmpty() && password.isNotEmpty()) {
-                                // Llamamos a la función login
-                                val user = login(email, password)
-
-                                if (user != null) {
-                                    // Mostramos snackbar de éxito
-                                    snackbarHostState.showSnackbar("Login exitoso")
-
-                                    // Redirigimos según rol
-                                    when (user.role_id) {
-                                        1 -> HomeUserScreen(user)   // Usuario normal
-                                        2 -> HomeAdminScreen(user)  // Admin
-                                        else -> snackbarHostState.showSnackbar("Rol desconocido")
-                                    }
-
-                                    // Llamada opcional a tu callback
-                                    onLoginSuccess(user.id)
-                                } else {
-                                    snackbarHostState.showSnackbar("Credenciales incorrectas o usuario no encontrado")
+                                val result = LoginBridge.performLogin(email, password)
+                                result.onSuccess { user ->
+                                    onLoginSuccess(user)
+                                }.onFailure { e ->
+                                    snackbarHostState.showSnackbar(e.message ?: "Error en login")
                                 }
                             } else {
-                                snackbarHostState.showSnackbar("Por favor ingresa email y contraseña")
+                                snackbarHostState.showSnackbar("Credenciales vacías")
                             }
                         }
                     },
-                    colors = ButtonDefaults.buttonColors(containerColor = PrimaryColor),
+                    colors = ButtonDefaults.buttonColors(
+                        containerColor = PrimaryColor
+                    ),
                     modifier = Modifier
                         .fillMaxWidth()
-                        .height(48.dp),
-                    shape = RoundedCornerShape(10.dp)
+                        .height(58.dp),
+                    shape = RoundedCornerShape(16.dp)
                 ) {
-                    Icon(Icons.Default.Login, contentDescription = null, modifier = Modifier.size(18.dp))
-                    Spacer(modifier = Modifier.width(8.dp))
-                    Text("Iniciar sesión", fontSize = 15.sp)
+                    Icon(Icons.Default.Login, contentDescription = null, modifier = Modifier.size(24.dp))
+                    Spacer(modifier = Modifier.width(16.dp))
+                    Text("Iniciar sesión", fontSize = 18.sp, fontWeight = FontWeight.SemiBold)
                 }
 
+                Spacer(modifier = Modifier.height(32.dp))
 
-                Spacer(modifier = Modifier.height(12.dp))
-
-                // Separador
+                // Separador más grande
                 Row(
                     modifier = Modifier.fillMaxWidth(),
                     verticalAlignment = Alignment.CenterVertically
                 ) {
-                    Divider(color = Color.Gray.copy(alpha = 0.3f), modifier = Modifier.weight(1f))
-                    Text("o", color = Color.Gray, fontSize = 12.sp, modifier = Modifier.padding(horizontal = 8.dp))
-                    Divider(color = Color.Gray.copy(alpha = 0.3f), modifier = Modifier.weight(1f))
+                    Divider(
+                        color = Color.Gray.copy(alpha = 0.2f),
+                        modifier = Modifier.weight(1f),
+                        thickness = 1.dp
+                    )
+                    Text(
+                        "o continúa con",
+                        color = Color.Gray,
+                        fontSize = 14.sp,
+                        modifier = Modifier.padding(horizontal = 16.dp)
+                    )
+                    Divider(
+                        color = Color.Gray.copy(alpha = 0.2f),
+                        modifier = Modifier.weight(1f),
+                        thickness = 1.dp
+                    )
                 }
 
-                Spacer(modifier = Modifier.height(12.dp))
+                Spacer(modifier = Modifier.height(32.dp))
 
-                // Botón Google
-                OutlinedButton(
-                    onClick = onGoogleSignIn,
-                    colors = ButtonDefaults.outlinedButtonColors(contentColor = Color(0xFF757575)),
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .height(44.dp),
-                    shape = RoundedCornerShape(10.dp)
+                // Botones sociales más grandes
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.spacedBy(16.dp)
                 ) {
-                    Text("G", color = Color(0xFF4285F4), fontWeight = FontWeight.Bold, fontSize = 14.sp)
-                    Spacer(modifier = Modifier.width(8.dp))
-                    Text("Google", fontSize = 14.sp, color = Color(0xFF757575))
+                    // Botón Google más grande
+                    OutlinedButton(
+                        onClick = onGoogleSignIn,
+                        modifier = Modifier
+                            .weight(1f)
+                            .height(56.dp),
+                        shape = RoundedCornerShape(16.dp)
+                    ) {
+                        Box(
+                            modifier = Modifier.size(24.dp),
+                            contentAlignment = Alignment.Center
+                        ) {
+                            Text("G", color = Color(0xFF4285F4), fontWeight = FontWeight.Bold, fontSize = 16.sp)
+                        }
+                        Spacer(modifier = Modifier.width(12.dp))
+                        Text("Google", fontSize = 16.sp, fontWeight = FontWeight.Medium)
+                    }
+
+                    // Botón registro más grande
+                    OutlinedButton(
+                        onClick = onNavigateToRegister,
+                        modifier = Modifier
+                            .weight(1f)
+                            .height(56.dp),
+                        shape = RoundedCornerShape(16.dp)
+                    ) {
+                        Icon(Icons.Default.PersonAdd, null, modifier = Modifier.size(22.dp))
+                        Spacer(modifier = Modifier.width(12.dp))
+                        Text("Registro", fontSize = 16.sp, fontWeight = FontWeight.Medium)
+                    }
                 }
 
-                Spacer(modifier = Modifier.height(12.dp))
+                Spacer(modifier = Modifier.height(40.dp))
 
-                // Botón registro
-                OutlinedButton(
-                    onClick = onNavigateToRegister,
-                    colors = ButtonDefaults.outlinedButtonColors(contentColor = PrimaryColor),
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .height(44.dp),
-                    shape = RoundedCornerShape(10.dp)
-                ) {
-                    Icon(Icons.Default.PersonAdd, null, modifier = Modifier.size(18.dp))
-                    Spacer(modifier = Modifier.width(8.dp))
-                    Text("Crear cuenta", fontSize = 14.sp)
-                }
-
-                Spacer(modifier = Modifier.height(16.dp))
-
-                // Términos compactos
+                // Términos y condiciones más grandes
                 TermsAndConditionsSection(
                     onTermsClicked = onTermsClicked,
                     onPrivacyPolicyClicked = onPrivacyPolicyClicked
@@ -232,52 +246,9 @@ fun LoginScreen(
     }
 }
 
-@Composable
-fun TermsAndConditionsSection(
-    onTermsClicked: (String) -> Unit = {},
-    onPrivacyPolicyClicked: (String) -> Unit = {}
-) {
-    Column(horizontalAlignment = Alignment.CenterHorizontally) {
-
-        Row(horizontalArrangement = Arrangement.Center, verticalAlignment = Alignment.CenterVertically, modifier =  Modifier.padding(bottom = 10.dp)) {
-            Text(
-                buildAnnotatedString {
-                    withStyle(SpanStyle(color = PrimaryColor, textDecoration = TextDecoration.Underline, fontSize = 10.sp)) {
-                        append("Términos de Uso")
-                    }
-                },
-                modifier = Modifier.clickable { onTermsClicked("http://localhost:5000/static/Document/terminos_y_condiciones_gesde.pdf") }
-            )
-
-            Text(" | ", color = Color.Gray, fontSize = 10.sp, modifier = Modifier.padding(horizontal = 4.dp))
-
-            Text(
-                buildAnnotatedString {
-                    withStyle(SpanStyle(color = PrimaryColor, textDecoration = TextDecoration.Underline, fontSize = 10.sp)) {
-                        append("Política de Privacidad")
-                    }
-                },
-                modifier = Modifier.clickable { onPrivacyPolicyClicked("http://localhost:5000/static/Document/politica_privacidad_gesde_3_paginas.pdf") }
-            )
-        }
-
-        Text(
-            text = "© 2026 AlertaYA. Todos los derechos reservados. La información proporcionada será tratada de manera confidencial según nuestra Política de Privacidad..",
-            color = Color.Gray,
-            fontSize = 10.sp,
-            textAlign = TextAlign.Center,
-            lineHeight = 12.sp
-        )
-
-        Spacer(modifier = Modifier.height(4.dp))
-
-
-    }
-}
-
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun CustomTextField(
+fun CustomTextFieldLogin(
     value: String,
     onValueChange: (String) -> Unit,
     placeholder: String,
@@ -290,18 +261,44 @@ fun CustomTextField(
     var passwordVisible by remember { mutableStateOf(false) }
 
     Column(modifier = modifier) {
-        Text(text = label, color = PrimaryColor, fontWeight = FontWeight.Medium, fontSize = 13.sp)
+        Text(
+            text = label,
+            color = Color.Gray,
+            fontWeight = FontWeight.Medium,
+            fontSize = 16.sp,
+            modifier = Modifier.padding(bottom = 12.dp)
+        )
 
-        Spacer(modifier = Modifier.height(4.dp))
-
-        Box(modifier = Modifier.fillMaxWidth()) {
-            Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.fillMaxWidth()) {
-                Icon(leadingIcon, null, tint = PrimaryColor, modifier = Modifier.size(18.dp))
-                Spacer(modifier = Modifier.width(8.dp))
+        Box(
+            modifier = Modifier
+                .fillMaxWidth()
+                .background(
+                    color = Color(0xFFF8F9FA),
+                    shape = RoundedCornerShape(16.dp)
+                )
+                .padding(horizontal = 20.dp, vertical = 8.dp)
+        ) {
+            Row(
+                verticalAlignment = Alignment.CenterVertically,
+                modifier = Modifier.fillMaxWidth()
+            ) {
+                Icon(
+                    leadingIcon,
+                    null,
+                    tint = PrimaryColor.copy(alpha = 0.7f),
+                    modifier = Modifier.size(24.dp)
+                )
+                Spacer(modifier = Modifier.width(16.dp))
                 TextField(
                     value = value,
                     onValueChange = onValueChange,
-                    placeholder = { Text(placeholder, color = Color.Gray.copy(alpha = 0.7f)) },
+                    placeholder = {
+                        Text(
+                            placeholder,
+                            color = Color.Gray.copy(alpha = 0.6f),
+                            fontSize = 17.sp
+                        )
+                    },
                     keyboardOptions = KeyboardOptions(keyboardType = keyboardType),
                     visualTransformation = if (isPassword && !passwordVisible) PasswordVisualTransformation() else VisualTransformation.None,
                     colors = TextFieldDefaults.colors(
@@ -314,31 +311,34 @@ fun CustomTextField(
                         unfocusedTextColor = Color.Black
                     ),
                     modifier = Modifier.weight(1f),
-                    singleLine = true
+                    singleLine = true,
+                    textStyle = LocalTextStyle.current.copy(fontSize = 17.sp)
                 )
                 if (isPassword) {
-                    IconButton(onClick = { passwordVisible = !passwordVisible }, modifier = Modifier.size(20.dp)) {
+                    IconButton(
+                        onClick = { passwordVisible = !passwordVisible }
+                    ) {
                         Icon(
                             if (passwordVisible) Icons.Default.Visibility else Icons.Default.VisibilityOff,
                             null,
-                            tint = PrimaryColor.copy(alpha = 0.6f)
+                            tint = PrimaryColor.copy(alpha = 0.6f),
+                            modifier = Modifier.size(24.dp)
                         )
                     }
                 }
             }
-            Divider(
-                color = PrimaryColor.copy(alpha = 0.6f),
-                thickness = 1.dp,
-                modifier = Modifier.align(Alignment.BottomStart).fillMaxWidth()
-            )
         }
     }
 }
 
+
 @Preview(showBackground = true, showSystemUi = true)
 @Composable
 fun PreviewLoginScreen() {
+    val navController = rememberNavController()
+
     LoginScreen(
+        navController = navController,
         onLoginSuccess = { },
         onNavigateToRegister = { },
         onGoogleSignIn = { },
