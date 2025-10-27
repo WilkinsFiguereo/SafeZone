@@ -1,72 +1,220 @@
-import { useState } from 'react';
-import { User, Home, Bell, MapPin, AlertCircle, Eye, Settings, Menu, X } from 'lucide-react';
+package com.wilkins.alertaya.GenericUserUi
 
-export default function AlertaYaMenu() {
-    const [isOpen, setIsOpen] = useState(true);
+import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.core.tween
+import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
+import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.*
+import androidx.compose.material3.*
+import androidx.compose.runtime.*
+import androidx.compose.ui.Alignment
+import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 
-    const menuItems = [
-        { icon: User, label: 'Perfil', id: 'perfil' },
-        { icon: Home, label: 'Inicio', id: 'inicio' },
-        { icon: Bell, label: 'Noticias', id: 'noticias' },
-        { icon: MapPin, label: 'Reportes en tu zona', id: 'reportes' },
-        { icon: AlertCircle, label: 'Alerta une porquemotica', id: 'alerta' },
-        { icon: Eye, label: 'Mis alertas', id: 'mis-alertas' },
-        { icon: Bell, label: 'Notificaciones', id: 'notificaciones' },
-        { icon: Settings, label: 'Configuracion', id: 'config' },
-    ];
+@Composable
+fun AlertaYaMenu() {
+    var isOpen by remember { mutableStateOf(false) }
+    val primaryColor = Color(0xFF16A34A)
+    val menuItems = listOf(
+        MenuItem(Icons.Default.Person, "Perfil"),
+        MenuItem(Icons.Default.Home, "Inicio"),
+        MenuItem(Icons.Default.Notifications, "Noticias"),
+        MenuItem(Icons.Default.Place, "Reportes en tu zona"),
+        MenuItem(Icons.Default.Warning, "Alerta una emergencia"),
+        MenuItem(Icons.Default.Visibility, "Mis alertas"),
+        MenuItem(Icons.Default.Notifications, "Notificaciones"),
+        MenuItem(Icons.Default.Settings, "Configuración")
+    )
 
-    return (
-    <div className="flex h-screen bg-gray-100">
-    {/* Botón para móviles */}
-    <button
-    onClick={() => setIsOpen(!isOpen)}
-    className="fixed top-4 left-4 z-50 md:hidden bg-green-500 text-white p-2 rounded-lg"
-    >
-    {isOpen ? <X size={24} /> : <Menu size={24} />}
-    </button>
+    Box(modifier = Modifier.fillMaxSize()) {
+        Column(modifier = Modifier.fillMaxSize()) {
+            // Header Principal Verde
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .background(primaryColor)
+                    .padding(horizontal = 16.dp, vertical = 12.dp),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                // Botón de menú (3 líneas)
+                IconButton(onClick = { isOpen = !isOpen }) {
+                    Icon(
+                        imageVector = Icons.Default.Menu,
+                        contentDescription = "Menu",
+                        tint = Color.White,
+                        modifier = Modifier.size(28.dp)
+                    )
+                }
+                // Logo/Nombre AlertaYa
+                Text(
+                    text = "AlertaYa",
+                    color = Color.White,
+                    fontSize = 22.sp,
+                    fontWeight = FontWeight.Bold
+                )
+                // Botón de perfil
+                IconButton(onClick = { /* Acción de perfil */ }) {
+                    Box(
+                        modifier = Modifier
+                            .size(36.dp)
+                            .clip(CircleShape)
+                            .background(Color.White.copy(alpha = 0.3f)),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        Icon(
+                            imageVector = Icons.Default.Person,
+                            contentDescription = "Perfil",
+                            tint = Color.White,
+                            modifier = Modifier.size(24.dp)
+                        )
+                    }
+                }
+            }
 
-    {/* Menú Lateral */}
-    <div
-    className={`${
-        isOpen ? 'w-64' : 'w-0'
-    } transition-all duration-300 overflow-hidden bg-green-500 text-white flex flex-col`}
-    >
-    {/* Header del menú */}
-    <div className="p-6 border-b border-green-600">
-    <h2 className="text-2xl font-bold">AlertaYa</h2>
-    </div>
+            // Contenido principal
+            Box(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .background(Color(0xFFF1F5F9))
+            ) {
+                Column(modifier = Modifier.padding(24.dp)) {
+                    Card(
+                        modifier = Modifier.fillMaxWidth(),
+                        colors = CardDefaults.cardColors(containerColor = Color.White)
+                    ) {
+                        Column(modifier = Modifier.padding(16.dp)) {
+                            Text(
+                                text = "Contenido Principal",
+                                color = primaryColor,
+                                fontSize = 24.sp,
+                                fontWeight = FontWeight.Bold
+                            )
+                            Spacer(modifier = Modifier.height(8.dp))
+                            Text(
+                                text = "Aquí va el contenido de tu aplicación.",
+                                color = Color.Gray
+                            )
+                        }
+                    }
+                }
+            }
+        }
 
-    {/* Items del menú */}
-    <nav className="flex-1 py-6">
-    {menuItems.map((item) => {
-        const Icon = item.icon;
-        return (
-        <button
-        key={item.id}
-        className="w-full flex items-center gap-4 px-6 py-4 hover:bg-green-600 transition-colors text-left group"
-        >
-        <Icon size={24} className="group-hover:scale-110 transition-transform" />
-        <span className="text-lg font-medium">{item.label}</span>
-        </button>
-        );
-    })}
-    </nav>
+        // Menú lateral animado (overlay)
+        AnimatedVisibility(
+            visible = isOpen,
+            enter = androidx.compose.animation.slideInHorizontally(
+                initialOffsetX = { -it },
+                animationSpec = tween(300)
+            ),
+            exit = androidx.compose.animation.slideOutHorizontally(
+                targetOffsetX = { -it },
+                animationSpec = tween(300)
+            )
+        ) {
+            Row(modifier = Modifier.fillMaxSize()) {
+                Column(
+                    modifier = Modifier
+                        .width(280.dp)
+                        .fillMaxHeight()
+                        .background(primaryColor)
+                ) {
+                    // Header del menú lateral
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(20.dp),
+                        horizontalArrangement = Arrangement.Start,
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Icon(
+                            imageVector = Icons.Default.Menu,
+                            contentDescription = "Menu",
+                            tint = Color.White,
+                            modifier = Modifier.size(28.dp)
+                        )
+                        Spacer(modifier = Modifier.width(12.dp))
+                        Text(
+                            text = "AlertaYa",
+                            color = Color.White,
+                            fontSize = 22.sp,
+                            fontWeight = FontWeight.Bold
+                        )
+                    }
+                    Divider(
+                        color = Color.White.copy(alpha = 0.2f),
+                        thickness = 1.dp,
+                        modifier = Modifier.padding(horizontal = 16.dp)
+                    )
+                    Spacer(modifier = Modifier.height(8.dp))
 
-    {/* Footer del menú */}
-    <div className="p-6 border-t border-green-600 text-sm text-green-100">
-    <p>Versión 1.0</p>
-    </div>
-    </div>
+                    // Items del menú
+                    menuItems.forEach { item ->
+                        Row(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .clickable { isOpen = false /* Aquí puedes agregar navegación */ }
+                                .padding(horizontal = 20.dp, vertical = 14.dp),
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            Icon(
+                                imageVector = item.icon,
+                                contentDescription = item.label,
+                                tint = Color.White,
+                                modifier = Modifier.size(24.dp)
+                            )
+                            Spacer(modifier = Modifier.width(20.dp))
+                            Text(
+                                text = item.label,
+                                color = Color.White,
+                                fontSize = 16.sp
+                            )
+                        }
+                    }
 
-    {/* Contenido principal */}
-    <div className="flex-1 p-6 md:p-12 overflow-auto">
-    <div className="bg-white rounded-xl shadow-lg p-8">
-    <h1 className="text-3xl font-bold text-green-600 mb-4">Contenido Principal</h1>
-    <p className="text-gray-600">
-    El menú está listo para ser integrado con tu contenido. Haz clic en los elementos del menú para navegar.
-    </p>
-    </div>
-    </div>
-    </div>
-    );
+                    Spacer(modifier = Modifier.weight(1f))
+
+                    // Footer
+                    Column(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(16.dp)
+                    ) {
+                        Divider(
+                            color = Color.White.copy(alpha = 0.2f),
+                            thickness = 1.dp,
+                            modifier = Modifier.padding(bottom = 12.dp)
+                        )
+                        Text(
+                            text = "Versión 1.0",
+                            color = Color.White.copy(alpha = 0.7f),
+                            fontSize = 12.sp
+                        )
+                    }
+                }
+
+                // Área oscura al lado del menú (para cerrar al tocar)
+                Box(
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .background(Color.Black.copy(alpha = 0.5f))
+                        .clickable { isOpen = false }
+                )
+            }
+        }
+    }
 }
+
+data class MenuItem(
+    val icon: androidx.compose.ui.graphics.vector.ImageVector,
+    val label: String
+)
