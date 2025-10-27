@@ -1,0 +1,4 @@
+package GenericUserUi
+
+class SplashScreen {
+}
