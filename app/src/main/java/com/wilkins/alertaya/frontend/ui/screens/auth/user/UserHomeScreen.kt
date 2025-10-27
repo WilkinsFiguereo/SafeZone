@@ -6,9 +6,10 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
+import com.wilkins.alertaya.backend.network.AppUser
 
 @Composable
-fun UserScreen(userName: String) {
+fun UserHomeScreen(userId: String) {
     Column(
         modifier = Modifier
             .fillMaxSize()
@@ -17,7 +18,7 @@ fun UserScreen(userName: String) {
         verticalArrangement = Arrangement.Center
     ) {
         Text(
-            text = "👋 Hola, $userName",
+            text = "👋 Hola, usuario con ID: $userId",
             style = MaterialTheme.typography.headlineMedium
         )
 
