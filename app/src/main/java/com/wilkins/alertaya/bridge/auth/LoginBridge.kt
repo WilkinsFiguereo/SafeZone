@@ -1,7 +1,9 @@
-package com.wilkins.alertaya.bridge.network
+package com.wilkins.alertaya.bridge.auth
 
 import com.wilkins.alertaya.backend.network.AppUser
 import com.wilkins.alertaya.backend.network.login
+import android.content.Context
+
 
 /**
  * Esta clase actúa como un puente entre la UI (Compose)
@@ -13,9 +15,9 @@ object LoginBridge {
      * Llama al backend para autenticar al usuario.
      * Devuelve AppUser si el login fue exitoso, o null si falló.
      */
-    suspend fun performLogin(email: String, password: String): Result<AppUser> {
+    suspend fun performLogin(context: Context, email: String, password: String): Result<AppUser> {
         return try {
-            val user = login(email, password)
+            val user = login(context, email, password) // ✅ pasar context
             if (user != null) {
                 Result.success(user)
             } else {

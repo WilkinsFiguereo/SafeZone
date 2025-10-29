@@ -1,7 +1,6 @@
 package com.wilkins.alertaya.frontend.ui.screens.auth
 
 import androidx.compose.foundation.background
-import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -16,6 +15,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.platform.LocalConfiguration
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.input.PasswordVisualTransformation
@@ -24,49 +24,26 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import com.wilkins.alertaya.backend.network.registerUser
 import com.wilkins.alertaya.frontend.ui.theme.PrimaryColor
 import kotlinx.coroutines.launch
 import androidx.compose.ui.tooling.preview.Preview
-import com.wilkins.alertaya.bridge.network.RegisterBridge
+import com.wilkins.alertaya.bridge.auth.RegisterBridge
 
-@Composable
-fun getResponsiveSize(screenHeight: Dp, small: Dp, medium: Dp, large: Dp): Dp {
-    return when {
-        screenHeight < 600.dp -> small
-        screenHeight < 800.dp -> medium
-        else -> large
-    }
-}
 
-@Composable
-fun getResponsiveFontSize(screenHeight: Dp, small: androidx.compose.ui.unit.TextUnit, medium: androidx.compose.ui.unit.TextUnit, large: androidx.compose.ui.unit.TextUnit): androidx.compose.ui.unit.TextUnit {
-    return when {
-        screenHeight < 600.dp -> small
-        screenHeight < 800.dp -> medium
-        else -> large
-    }
-}
-
-@Composable
-fun getResponsivePadding(screenWidth: Dp, small: Dp, medium: Dp, large: Dp): Dp {
-    return when {
-        screenWidth < 360.dp -> small
-        screenWidth < 600.dp -> medium
-        else -> large
-    }
-}
 @Composable
 fun RegisterScreen(
     onNavigateToLogin: () -> Unit = {},
     onGoogleSignIn: () -> Unit = {},
     onTermsClicked: (url: String) -> Unit = {},
-    onPrivacyPolicyClicked: (url: String) -> Unit = {}
+    onPrivacyPolicyClicked: (url: String) -> Unit = {},
+    onNavigateToVerification: (email: String, password: String) -> Unit
+
 ) {
     var name by remember { mutableStateOf("") }
     var email by remember { mutableStateOf("") }
     var password by remember { mutableStateOf("") }
     var confirmPassword by remember { mutableStateOf("") }
+    var isLoading by remember { mutableStateOf(false) } // Estado para controlar la carga
 
     val scope = rememberCoroutineScope()
     val snackbarHostState = remember { SnackbarHostState() }
@@ -200,42 +177,63 @@ fun RegisterScreen(
 
                 Spacer(modifier = Modifier.height(verticalSpacing))
 
-                // Botón de registro responsivo
+                val context = LocalContext.current
+
+                // Botón de registro responsivo con indicador de carga
                 Button(
                     onClick = {
-                        scope.launch {
-                            val result = RegisterBridge.handleRegister(name, email, password, confirmPassword)
-
-                            result.onSuccess {
-                                snackbarHostState.showSnackbar("✅ Usuario registrado correctamente")
-                                name = ""
-                                email = ""
-                                password = ""
-                                confirmPassword = ""
-                            }.onFailure { e ->
-                                snackbarHostState.showSnackbar("❌ ${e.message}")
+                        if (!isLoading) { // Solo permitir click si no está cargando
+                            isLoading = true
+                            scope.launch {
+                                val result = RegisterBridge.handleRegister(context, name, email, password, confirmPassword)
+                                result.onSuccess {
+                                    // Limpiar campos
+                                    val savedEmail = email
+                                    val savedPassword = password
+                                    name = ""
+                                    email = ""
+                                    password = ""
+                                    confirmPassword = ""
+                                    isLoading = false
+                                    onNavigateToVerification(savedEmail, savedPassword)
+                                }.onFailure { e ->
+                                    snackbarHostState.showSnackbar("❌ ${e.message}")
+                                    isLoading = false
+                                }
                             }
                         }
                     },
                     colors = ButtonDefaults.buttonColors(
-                        containerColor = PrimaryColor
+                        containerColor = PrimaryColor,
+                        disabledContainerColor = PrimaryColor.copy(alpha = 0.5f)
                     ),
                     modifier = Modifier
                         .fillMaxWidth()
                         .height(getResponsiveSize(screenHeight, 48.dp, 58.dp, 64.dp)),
-                    shape = RoundedCornerShape(16.dp)
+                    shape = RoundedCornerShape(16.dp),
+                    enabled = !isLoading // Deshabilitar botón mientras carga
                 ) {
-                    Icon(
-                        Icons.Default.HowToReg,
-                        null,
-                        modifier = Modifier.size(getResponsiveSize(screenHeight, 20.dp, 24.dp, 28.dp))
-                    )
-                    Spacer(modifier = Modifier.width(verticalSpacing * 0.6f))
-                    Text(
-                        "Registrarse",
-                        fontSize = getResponsiveFontSize(screenHeight, 15.sp, 18.sp, 20.sp),
-                        fontWeight = FontWeight.SemiBold
-                    )
+                    if (isLoading) {
+                        // Mostrar círculo de carga
+                        CircularProgressIndicator(
+                            color = Color.White,
+                            strokeWidth = 2.dp,
+                            modifier = Modifier.size(getResponsiveSize(screenHeight, 20.dp, 24.dp, 28.dp))
+                        )
+                    } else {
+                        // Mostrar icono y texto normal
+                        Icon(
+                            Icons.Default.HowToReg,
+                            null,
+                            modifier = Modifier.size(getResponsiveSize(screenHeight, 20.dp, 24.dp, 28.dp))
+                        )
+                        Spacer(modifier = Modifier.width(verticalSpacing * 0.6f))
+                        Text(
+                            "Registrarse",
+                            fontSize = getResponsiveFontSize(screenHeight, 15.sp, 18.sp, 20.sp),
+                            fontWeight = FontWeight.SemiBold
+                        )
+                    }
                 }
 
                 Spacer(modifier = Modifier.height(verticalSpacing))
@@ -275,7 +273,8 @@ fun RegisterScreen(
                         modifier = Modifier
                             .fillMaxWidth()
                             .height(getResponsiveSize(screenHeight, 48.dp, 56.dp, 60.dp)),
-                        shape = RoundedCornerShape(16.dp)
+                        shape = RoundedCornerShape(16.dp),
+                        enabled = !isLoading // Deshabilitar mientras carga el registro
                     ) {
                         Box(
                             modifier = Modifier.size(getResponsiveSize(screenHeight, 20.dp, 24.dp, 26.dp)),
@@ -297,30 +296,36 @@ fun RegisterScreen(
                     }
 
                     OutlinedButton(
-                        onClick = onNavigateToLogin,
+                        onClick = {
+                            if (!isLoading) { // Solo permitir si no está cargando
+                                onNavigateToLogin()
+                            }
+                        },
                         modifier = Modifier
                             .fillMaxWidth()
                             .height(getResponsiveSize(screenHeight, 48.dp, 56.dp, 60.dp)),
-                        shape = RoundedCornerShape(16.dp)
+                        shape = RoundedCornerShape(16.dp),
+                        enabled = !isLoading // Deshabilitar mientras carga el registro
                     ) {
                         Icon(
                             Icons.Default.Login,
                             null,
                             modifier = Modifier.size(getResponsiveSize(screenHeight, 18.dp, 22.dp, 24.dp))
                         )
-                        Spacer(modifier = Modifier.width(verticalSpacing * 0.5f))
+                        Spacer(modifier = Modifier.width(8.dp))
                         Text(
                             "¿Ya tienes cuenta? Inicia sesión",
                             fontSize = getResponsiveFontSize(screenHeight, 14.sp, 16.sp, 18.sp),
                             fontWeight = FontWeight.Medium
                         )
                     }
+
                 }
 
                 Spacer(modifier = Modifier.height(verticalSpacing))
 
                 // Términos y condiciones responsivos
-                TermsAndConditionsSectionRegister(
+                TermsAndConditionsSection(
                     onTermsClicked = onTermsClicked,
                     onPrivacyPolicyClicked = onPrivacyPolicyClicked,
                     screenHeight = screenHeight
@@ -337,6 +342,7 @@ fun RegisterScreen(
     }
 }
 
+// El resto del código permanece igual...
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun CustomTextFieldRegister(
@@ -437,7 +443,8 @@ fun PreviewRegisterScreenSmall() {
         onNavigateToLogin = {},
         onGoogleSignIn = {},
         onTermsClicked = { println("Términos: $it") },
-        onPrivacyPolicyClicked = { println("Política: $it") }
+        onPrivacyPolicyClicked = { println("Política: $it") },
+        onNavigateToVerification = { _, _ -> }
     )
 }
 
@@ -448,7 +455,8 @@ fun PreviewRegisterScreenMedium() {
         onNavigateToLogin = {},
         onGoogleSignIn = {},
         onTermsClicked = { println("Términos: $it") },
-        onPrivacyPolicyClicked = { println("Política: $it") }
+        onPrivacyPolicyClicked = { println("Política: $it") },
+        onNavigateToVerification = { _, _ -> }
     )
 }
 
@@ -459,6 +467,7 @@ fun PreviewRegisterScreenTablet() {
         onNavigateToLogin = {},
         onGoogleSignIn = {},
         onTermsClicked = { println("Términos: $it") },
-        onPrivacyPolicyClicked = { println("Política: $it") }
+        onPrivacyPolicyClicked = { println("Política: $it") },
+        onNavigateToVerification = { _, _ -> }
     )
 }

@@ -1,11 +1,12 @@
-package com.wilkins.alertaya.bridge.network
+package com.wilkins.alertaya.bridge.auth
 
-
+import android.content.Context
 import com.wilkins.alertaya.backend.network.registerUser
 
 object RegisterBridge {
 
     suspend fun handleRegister(
+        context: Context,
         name: String,
         email: String,
         password: String,
@@ -21,7 +22,7 @@ object RegisterBridge {
         }
 
         return try {
-            val success = registerUser(name, email, password)
+            val success = registerUser(context, name, email, password)
             if (success) {
                 Result.success(true)
             } else {

@@ -30,7 +30,9 @@ import androidx.compose.ui.tooling.preview.Preview
 import androidx.navigation.NavController
 import androidx.navigation.compose.rememberNavController
 import com.wilkins.alertaya.backend.network.AppUser
-import com.wilkins.alertaya.bridge.LoginBridge
+import com.wilkins.alertaya.bridge.auth.LoginBridge
+import android.content.Context
+import androidx.compose.ui.platform.LocalContext
 
 @Composable
 fun LoginScreen(
@@ -164,12 +166,13 @@ fun LoginScreen(
 
                 Spacer(modifier = Modifier.height(verticalSpacing))
 
+                val context = LocalContext.current
                 // Botón principal responsivo
                 Button(
                     onClick = {
                         scope.launch {
                             if (email.isNotEmpty() && password.isNotEmpty()) {
-                                val result = LoginBridge.performLogin(email, password)
+                                val result = LoginBridge.performLogin(context,email, password)
                                 result.onSuccess { user ->
                                     onLoginSuccess(user)
                                 }.onFailure { e ->
@@ -262,24 +265,22 @@ fun LoginScreen(
                         }
 
                         OutlinedButton(
-                            onClick = onNavigateToRegister,
+                            onClick = {
+                                navController.navigate("register") {
+                                    launchSingleTop = true
+                                }
+                            },
+                            colors = ButtonDefaults.outlinedButtonColors(contentColor = PrimaryColor),
                             modifier = Modifier
                                 .fillMaxWidth()
-                                .height(getResponsiveSize(screenHeight, 48.dp, 56.dp, 60.dp)),
-                            shape = RoundedCornerShape(16.dp)
+                                .height(44.dp),
+                            shape = RoundedCornerShape(10.dp)
                         ) {
-                            Icon(
-                                Icons.Default.PersonAdd,
-                                null,
-                                modifier = Modifier.size(getResponsiveSize(screenHeight, 18.dp, 22.dp, 24.dp))
-                            )
-                            Spacer(modifier = Modifier.width(verticalSpacing * 0.5f))
-                            Text(
-                                "Crear cuenta",
-                                fontSize = getResponsiveFontSize(screenHeight, 14.sp, 16.sp, 18.sp),
-                                fontWeight = FontWeight.Medium
-                            )
+                            Icon(Icons.Default.PersonAdd, null, modifier = Modifier.size(18.dp))
+                            Spacer(modifier = Modifier.width(8.dp))
+                            Text("Crear cuenta", fontSize = 14.sp)
                         }
+
                     }
                 } else {
                     // Diseño horizontal para tablets
@@ -473,51 +474,6 @@ fun CustomTextFieldLogin(
                 }
             }
         }
-    }
-}
-
-@Composable
-fun TermsAndConditionsSection(
-    onTermsClicked: (url: String) -> Unit,
-    onPrivacyPolicyClicked: (url: String) -> Unit,
-    screenHeight: Dp
-) {
-    val fontSize = getResponsiveFontSize(screenHeight, 10.sp, 12.sp, 14.sp)
-
-    Row(
-        modifier = Modifier.fillMaxWidth(),
-        horizontalArrangement = Arrangement.Center,
-        verticalAlignment = Alignment.CenterVertically
-    ) {
-        Text(
-            text = "Al continuar, aceptas nuestros ",
-            fontSize = fontSize,
-            color = Color.Gray,
-            textAlign = TextAlign.Center
-        )
-
-        Text(
-            text = "Términos de servicio",
-            fontSize = fontSize,
-            color = PrimaryColor,
-            fontWeight = FontWeight.Medium,
-            modifier = Modifier.clickable { onTermsClicked("https://ejemplo.com/terminos") }
-        )
-
-        Text(
-            text = " y ",
-            fontSize = fontSize,
-            color = Color.Gray,
-            textAlign = TextAlign.Center
-        )
-
-        Text(
-            text = "Política de privacidad",
-            fontSize = fontSize,
-            color = PrimaryColor,
-            fontWeight = FontWeight.Medium,
-            modifier = Modifier.clickable { onPrivacyPolicyClicked("https://ejemplo.com/privacidad") }
-        )
     }
 }
 

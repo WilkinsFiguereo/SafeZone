@@ -1,14 +1,26 @@
 package com.wilkins.alertaya.backend.network
 
+import android.content.Context
 import android.util.Log
 import io.github.jan.supabase.gotrue.auth
 import io.github.jan.supabase.gotrue.providers.builtin.Email
-import io.github.jan.supabase.postgrest.from
-import io.github.jan.supabase.postgrest.postgrest
+import io.github.jan.supabase.gotrue.user.UserSession
+import kotlinx.serialization.Serializable
 import kotlinx.serialization.json.buildJsonObject
 import kotlinx.serialization.json.put
 
+@Serializable
+data class Profile(
+    val id: String,
+    val name: String,
+    val phone: String? = null,
+    val photo_profile: String? = null,
+    val role_id: Int = 1,
+    val status_id: Int = 1
+)
+
 suspend fun registerUser(
+    context: Context,
     name: String,
     email: String,
     password: String,
@@ -17,51 +29,29 @@ suspend fun registerUser(
 ): Boolean {
     val supabase = SupabaseService.getInstance()
 
-    try {
-        // --- PASO 1: Registrar el usuario en Auth ---
-        // Esta función no devuelve nada. Lanza una excepción si falla.
+    return try {
+        val metadata = buildJsonObject {
+            put("name", name)
+            phone?.let { put("phone", it) }
+            photoProfile?.let { put("photo_profile", it) }
+        }
+
+        // 🚀 Registro con email y password
         supabase.auth.signUpWith(Email) {
             this.email = email
             this.password = password
-            // Pasamos 'name' en los metadatos, que puede ser útil para un Trigger
-            this.data = buildJsonObject { put("name", name) }
+            this.data = metadata
         }
 
-        println("✅ Petición de registro en Auth enviada exitosamente.")
+        // 🔐 Persistir sesión automáticamente
+        supabase.auth.currentSessionOrNull()?.let { session ->
+            SessionManager.saveSession(context, session)
+            Log.i("SupabaseRegister", "✅ Sesión guardada correctamente")
+        } ?: Log.i("SupabaseRegister", "⚠️ No hay sesión activa (correo aún no confirmado)")
 
-        // --- PASO 2: Obtener el ID del usuario recién creado de la sesión ---
-        val newUser = supabase.auth.currentUserOrNull() ?: run {
-            // Este caso puede ocurrir si tienes "Confirm Email" activado.
-            // El registro se envió, pero el usuario no ha iniciado sesión.
-            // Para insertar el perfil, necesitaríamos el ID.
-            // En este escenario, la mejor práctica es usar un TRIGGER en la base de datos.
-            Log.w("SupabaseRegister", "Registro enviado, pero el usuario no está en la sesión (probablemente requiere confirmación de email). La inserción del perfil debe ser manejada por un Trigger de BD.")
-            // Consideramos el registro exitoso a nivel de la app, ya que el email fue enviado.
-            return true
-        }
-
-        println("Usuario en sesión con ID: ${newUser.id}")
-
-        // --- PASO 3: Crear el perfil en la tabla `profiles` (si el usuario ya está en sesión) ---
-        supabase.postgrest
-            .from("profiles") // Asegúrate de que tu tabla se llame "profiles"
-            .insert(
-                mapOf(
-                    "id" to newUser.id,          // El ID del usuario de auth.users
-                    "name" to name,
-                    "phone" to phone,
-                    "photo_profile" to photoProfile,
-                    "role_id" to 1,              // Asumiendo 1 = user
-                    "status_id" to 1             // Asumiendo 1 = active
-                )
-            )
-
-        println("✅ Perfil creado/insertado correctamente en la tabla 'profiles'.")
-        return true
-
+        true
     } catch (e: Exception) {
-        Log.e("SupabaseRegister", "❌ Error durante el proceso de registro: ${e.message}", e)
-        return false
+        Log.e("SupabaseRegister", "❌ Error durante el registro: ${e.message}", e)
+        false
     }
 }
-
