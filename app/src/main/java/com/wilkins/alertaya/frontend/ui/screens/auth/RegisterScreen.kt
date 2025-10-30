@@ -24,11 +24,12 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.compose.ui.unit.TextUnit
 import com.wilkins.alertaya.frontend.ui.theme.PrimaryColor
 import kotlinx.coroutines.launch
 import androidx.compose.ui.tooling.preview.Preview
 import com.wilkins.alertaya.bridge.auth.RegisterBridge
-
+import com.wilkins.alertaya.ui.theme.NameApp
 
 @Composable
 fun RegisterScreen(
@@ -37,13 +38,12 @@ fun RegisterScreen(
     onTermsClicked: (url: String) -> Unit = {},
     onPrivacyPolicyClicked: (url: String) -> Unit = {},
     onNavigateToVerification: (email: String, password: String) -> Unit
-
 ) {
     var name by remember { mutableStateOf("") }
     var email by remember { mutableStateOf("") }
     var password by remember { mutableStateOf("") }
     var confirmPassword by remember { mutableStateOf("") }
-    var isLoading by remember { mutableStateOf(false) } // Estado para controlar la carga
+    var isLoading by remember { mutableStateOf(false) }
 
     val scope = rememberCoroutineScope()
     val snackbarHostState = remember { SnackbarHostState() }
@@ -52,39 +52,35 @@ fun RegisterScreen(
     val screenHeight = configuration.screenHeightDp.dp
     val screenWidth = configuration.screenWidthDp.dp
 
-    // Tamaños responsivos
-    val logoSize = getResponsiveSize(screenHeight, 100.dp, 120.dp, 140.dp)
-    val iconSize = getResponsiveSize(screenHeight, 36.dp, 48.dp, 56.dp)
-    val titleFontSize = getResponsiveFontSize(screenHeight, 28.sp, 36.sp, 40.sp)
-    val horizontalPadding = getResponsivePadding(screenWidth, 20.dp, 32.dp, 48.dp)
-    val verticalSpacing = getResponsiveSize(screenHeight, 12.dp, 20.dp, 28.dp)
+    // Tamaños más compactos
+    val logoSize = getResponsiveSize(screenHeight, 70.dp, 80.dp, 90.dp)
+    val iconSize = getResponsiveSize(screenHeight, 24.dp, 28.dp, 32.dp)
+    val titleFontSize = getResponsiveFontSize(screenHeight, 20.sp, 24.sp, 28.sp)
+    val horizontalPadding = getResponsivePadding(screenWidth, 16.dp, 20.dp, 24.dp)
+    val verticalSpacing = getResponsiveSize(screenHeight, 6.dp, 8.dp, 12.dp)
 
     Scaffold(
         snackbarHost = { SnackbarHost(hostState = snackbarHostState) }
     ) { padding ->
-        Box(
+        Column(
             modifier = Modifier
                 .fillMaxSize()
                 .background(Color.White)
-                .padding(padding),
-            contentAlignment = Alignment.Center
+                .padding(padding)
+                .verticalScroll(rememberScrollState()),
+            horizontalAlignment = Alignment.CenterHorizontally,
+            verticalArrangement = Arrangement.Center
         ) {
             Column(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .padding(horizontal = horizontalPadding)
-                    .verticalScroll(rememberScrollState()),
+                    .padding(horizontal = horizontalPadding),
                 horizontalAlignment = Alignment.CenterHorizontally
             ) {
-                // Espacio flexible superior
-                if (screenHeight > 700.dp) {
-                    Spacer(modifier = Modifier.weight(0.1f))
-                }
-
-                // Header responsivo
+                // Header compacto
                 Column(
                     horizontalAlignment = Alignment.CenterHorizontally,
-                    modifier = Modifier.padding(vertical = verticalSpacing)
+                    modifier = Modifier.padding(vertical = verticalSpacing * 1.5f)
                 ) {
                     Box(
                         modifier = Modifier
@@ -103,30 +99,30 @@ fun RegisterScreen(
                         )
                     }
 
-                    Spacer(modifier = Modifier.height(verticalSpacing * 0.8f))
+                    Spacer(modifier = Modifier.height(verticalSpacing * 0.5f))
 
                     Text(
-                        text = "AlertaYa",
+                        text = NameApp,
                         color = PrimaryColor,
                         fontWeight = FontWeight.Bold,
                         fontSize = titleFontSize,
                         letterSpacing = 0.5.sp
                     )
 
-                    Spacer(modifier = Modifier.height(verticalSpacing * 0.4f))
+                    Spacer(modifier = Modifier.height(verticalSpacing * 0.3f))
 
                     Text(
                         text = "Crear nueva cuenta",
                         color = Color.Gray,
-                        fontSize = getResponsiveFontSize(screenHeight, 14.sp, 16.sp, 18.sp),
+                        fontSize = getResponsiveFontSize(screenHeight, 12.sp, 14.sp, 16.sp),
                         textAlign = TextAlign.Center
                     )
                 }
 
-                Spacer(modifier = Modifier.height(verticalSpacing))
+                Spacer(modifier = Modifier.height(verticalSpacing * 1.5f))
 
-                // Campos de registro responsivos
-                CustomTextFieldRegister(
+                // Campos de registro compactos
+                CompactTextFieldRegister(
                     value = name,
                     onValueChange = { name = it },
                     placeholder = "Nombre completo",
@@ -138,7 +134,7 @@ fun RegisterScreen(
 
                 Spacer(modifier = Modifier.height(verticalSpacing))
 
-                CustomTextFieldRegister(
+                CompactTextFieldRegister(
                     value = email,
                     onValueChange = { email = it },
                     placeholder = "correo@ejemplo.com",
@@ -151,7 +147,7 @@ fun RegisterScreen(
 
                 Spacer(modifier = Modifier.height(verticalSpacing))
 
-                CustomTextFieldRegister(
+                CompactTextFieldRegister(
                     value = password,
                     onValueChange = { password = it },
                     placeholder = "********",
@@ -164,7 +160,7 @@ fun RegisterScreen(
 
                 Spacer(modifier = Modifier.height(verticalSpacing))
 
-                CustomTextFieldRegister(
+                CompactTextFieldRegister(
                     value = confirmPassword,
                     onValueChange = { confirmPassword = it },
                     placeholder = "********",
@@ -175,19 +171,18 @@ fun RegisterScreen(
                     screenHeight = screenHeight
                 )
 
-                Spacer(modifier = Modifier.height(verticalSpacing))
+                Spacer(modifier = Modifier.height(verticalSpacing * 1.5f))
 
                 val context = LocalContext.current
 
-                // Botón de registro responsivo con indicador de carga
+                // Botón de registro compacto
                 Button(
                     onClick = {
-                        if (!isLoading) { // Solo permitir click si no está cargando
+                        if (!isLoading) {
                             isLoading = true
                             scope.launch {
                                 val result = RegisterBridge.handleRegister(context, name, email, password, confirmPassword)
                                 result.onSuccess {
-                                    // Limpiar campos
                                     val savedEmail = email
                                     val savedPassword = password
                                     name = ""
@@ -209,36 +204,34 @@ fun RegisterScreen(
                     ),
                     modifier = Modifier
                         .fillMaxWidth()
-                        .height(getResponsiveSize(screenHeight, 48.dp, 58.dp, 64.dp)),
-                    shape = RoundedCornerShape(16.dp),
-                    enabled = !isLoading // Deshabilitar botón mientras carga
+                        .height(getResponsiveSize(screenHeight, 40.dp, 44.dp, 48.dp)),
+                    shape = RoundedCornerShape(12.dp),
+                    enabled = !isLoading
                 ) {
                     if (isLoading) {
-                        // Mostrar círculo de carga
                         CircularProgressIndicator(
                             color = Color.White,
                             strokeWidth = 2.dp,
-                            modifier = Modifier.size(getResponsiveSize(screenHeight, 20.dp, 24.dp, 28.dp))
+                            modifier = Modifier.size(getResponsiveSize(screenHeight, 16.dp, 18.dp, 20.dp))
                         )
                     } else {
-                        // Mostrar icono y texto normal
                         Icon(
                             Icons.Default.HowToReg,
                             null,
-                            modifier = Modifier.size(getResponsiveSize(screenHeight, 20.dp, 24.dp, 28.dp))
+                            modifier = Modifier.size(getResponsiveSize(screenHeight, 16.dp, 18.dp, 20.dp))
                         )
-                        Spacer(modifier = Modifier.width(verticalSpacing * 0.6f))
+                        Spacer(modifier = Modifier.width(verticalSpacing * 0.5f))
                         Text(
                             "Registrarse",
-                            fontSize = getResponsiveFontSize(screenHeight, 15.sp, 18.sp, 20.sp),
+                            fontSize = getResponsiveFontSize(screenHeight, 13.sp, 15.sp, 17.sp),
                             fontWeight = FontWeight.SemiBold
                         )
                     }
                 }
 
-                Spacer(modifier = Modifier.height(verticalSpacing))
+                Spacer(modifier = Modifier.height(verticalSpacing * 1.5f))
 
-                // Separador responsivo
+                // Separador compacto
                 Row(
                     modifier = Modifier.fillMaxWidth(),
                     verticalAlignment = Alignment.CenterVertically
@@ -251,8 +244,8 @@ fun RegisterScreen(
                     Text(
                         "o continúa con",
                         color = Color.Gray,
-                        fontSize = getResponsiveFontSize(screenHeight, 12.sp, 14.sp, 16.sp),
-                        modifier = Modifier.padding(horizontal = verticalSpacing * 0.6f)
+                        fontSize = getResponsiveFontSize(screenHeight, 10.sp, 12.sp, 14.sp),
+                        modifier = Modifier.padding(horizontal = verticalSpacing * 0.5f)
                     )
                     Divider(
                         color = Color.Gray.copy(alpha = 0.2f),
@@ -261,9 +254,9 @@ fun RegisterScreen(
                     )
                 }
 
-                Spacer(modifier = Modifier.height(verticalSpacing))
+                Spacer(modifier = Modifier.height(verticalSpacing * 1.5f))
 
-                // Botones sociales responsivos
+                // Botones sociales compactos
                 Column(
                     modifier = Modifier.fillMaxWidth(),
                     verticalArrangement = Arrangement.spacedBy(verticalSpacing * 0.8f)
@@ -272,80 +265,74 @@ fun RegisterScreen(
                         onClick = onGoogleSignIn,
                         modifier = Modifier
                             .fillMaxWidth()
-                            .height(getResponsiveSize(screenHeight, 48.dp, 56.dp, 60.dp)),
-                        shape = RoundedCornerShape(16.dp),
-                        enabled = !isLoading // Deshabilitar mientras carga el registro
+                            .height(getResponsiveSize(screenHeight, 36.dp, 40.dp, 44.dp)),
+                        shape = RoundedCornerShape(10.dp),
+                        enabled = !isLoading
                     ) {
                         Box(
-                            modifier = Modifier.size(getResponsiveSize(screenHeight, 20.dp, 24.dp, 26.dp)),
+                            modifier = Modifier.size(getResponsiveSize(screenHeight, 16.dp, 18.dp, 20.dp)),
                             contentAlignment = Alignment.Center
                         ) {
                             Text(
                                 "G",
                                 color = Color(0xFF4285F4),
                                 fontWeight = FontWeight.Bold,
-                                fontSize = getResponsiveFontSize(screenHeight, 14.sp, 16.sp, 18.sp)
+                                fontSize = getResponsiveFontSize(screenHeight, 12.sp, 14.sp, 16.sp)
                             )
                         }
-                        Spacer(modifier = Modifier.width(verticalSpacing * 0.5f))
+                        Spacer(modifier = Modifier.width(verticalSpacing * 0.4f))
                         Text(
                             "Continuar con Google",
-                            fontSize = getResponsiveFontSize(screenHeight, 14.sp, 16.sp, 18.sp),
+                            fontSize = getResponsiveFontSize(screenHeight, 12.sp, 14.sp, 16.sp),
                             fontWeight = FontWeight.Medium
                         )
                     }
 
                     OutlinedButton(
                         onClick = {
-                            if (!isLoading) { // Solo permitir si no está cargando
+                            if (!isLoading) {
                                 onNavigateToLogin()
                             }
                         },
                         modifier = Modifier
                             .fillMaxWidth()
-                            .height(getResponsiveSize(screenHeight, 48.dp, 56.dp, 60.dp)),
-                        shape = RoundedCornerShape(16.dp),
-                        enabled = !isLoading // Deshabilitar mientras carga el registro
+                            .height(getResponsiveSize(screenHeight, 36.dp, 40.dp, 44.dp)),
+                        shape = RoundedCornerShape(10.dp),
+                        enabled = !isLoading
                     ) {
                         Icon(
                             Icons.Default.Login,
                             null,
-                            modifier = Modifier.size(getResponsiveSize(screenHeight, 18.dp, 22.dp, 24.dp))
+                            modifier = Modifier.size(getResponsiveSize(screenHeight, 14.dp, 16.dp, 18.dp))
                         )
-                        Spacer(modifier = Modifier.width(8.dp))
+                        Spacer(modifier = Modifier.width(6.dp))
                         Text(
                             "¿Ya tienes cuenta? Inicia sesión",
-                            fontSize = getResponsiveFontSize(screenHeight, 14.sp, 16.sp, 18.sp),
+                            fontSize = getResponsiveFontSize(screenHeight, 12.sp, 14.sp, 16.sp),
                             fontWeight = FontWeight.Medium
                         )
                     }
-
                 }
 
                 Spacer(modifier = Modifier.height(verticalSpacing))
 
-                // Términos y condiciones responsivos
+                // Términos y condiciones compactos
                 TermsAndConditionsSection(
                     onTermsClicked = onTermsClicked,
                     onPrivacyPolicyClicked = onPrivacyPolicyClicked,
                     screenHeight = screenHeight
                 )
 
-                // Espacio flexible inferior
-                if (screenHeight > 700.dp) {
-                    Spacer(modifier = Modifier.weight(0.1f))
-                } else {
-                    Spacer(modifier = Modifier.height(verticalSpacing))
-                }
+                Spacer(modifier = Modifier.height(verticalSpacing))
             }
         }
     }
 }
 
-// El resto del código permanece igual...
+// Campo de texto compacto
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun CustomTextFieldRegister(
+fun CompactTextFieldRegister(
     value: String,
     onValueChange: (String) -> Unit,
     placeholder: String,
@@ -358,10 +345,10 @@ fun CustomTextFieldRegister(
 ) {
     var passwordVisible by remember { mutableStateOf(false) }
 
-    val fieldHeight = getResponsiveSize(screenHeight, 48.dp, 56.dp, 64.dp)
-    val iconSize = getResponsiveSize(screenHeight, 20.dp, 24.dp, 28.dp)
-    val fontSize = getResponsiveFontSize(screenHeight, 14.sp, 16.sp, 18.sp)
-    val labelFontSize = getResponsiveFontSize(screenHeight, 14.sp, 16.sp, 18.sp)
+    val fieldHeight = getResponsiveSize(screenHeight, 39.dp, 40.dp, 50.dp)
+    val iconSize = getResponsiveSize(screenHeight, 16.dp, 18.dp, 20.dp)
+    val fontSize = getResponsiveFontSize(screenHeight, 12.sp, 14.sp, 16.sp)
+    val labelFontSize = getResponsiveFontSize(screenHeight, 12.sp, 14.sp, 16.sp)
 
     Column(modifier = modifier) {
         Text(
@@ -369,7 +356,7 @@ fun CustomTextFieldRegister(
             color = Color.Gray,
             fontWeight = FontWeight.Medium,
             fontSize = labelFontSize,
-            modifier = Modifier.padding(bottom = 8.dp)
+            modifier = Modifier.padding(bottom = 4.dp)
         )
 
         Box(
@@ -378,14 +365,14 @@ fun CustomTextFieldRegister(
                 .height(fieldHeight)
                 .background(
                     color = Color(0xFFF8F9FA),
-                    shape = RoundedCornerShape(16.dp)
+                    shape = RoundedCornerShape(10.dp)
                 )
         ) {
             Row(
                 verticalAlignment = Alignment.CenterVertically,
                 modifier = Modifier
                     .fillMaxSize()
-                    .padding(horizontal = 16.dp)
+                    .padding(horizontal = 12.dp)
             ) {
                 Icon(
                     leadingIcon,
@@ -393,7 +380,7 @@ fun CustomTextFieldRegister(
                     tint = PrimaryColor.copy(alpha = 0.7f),
                     modifier = Modifier.size(iconSize)
                 )
-                Spacer(modifier = Modifier.width(12.dp))
+                Spacer(modifier = Modifier.width(8.dp))
                 TextField(
                     value = value,
                     onValueChange = onValueChange,
@@ -421,13 +408,14 @@ fun CustomTextFieldRegister(
                 )
                 if (isPassword) {
                     IconButton(
-                        onClick = { passwordVisible = !passwordVisible }
+                        onClick = { passwordVisible = !passwordVisible },
+                        modifier = Modifier.size(iconSize)
                     ) {
                         Icon(
                             if (passwordVisible) Icons.Default.Visibility else Icons.Default.VisibilityOff,
                             null,
                             tint = PrimaryColor.copy(alpha = 0.6f),
-                            modifier = Modifier.size(iconSize)
+                            modifier = Modifier.size(iconSize * 0.8f)
                         )
                     }
                 }
@@ -435,6 +423,10 @@ fun CustomTextFieldRegister(
         }
     }
 }
+
+// ============================================================================
+// PREVIEWS
+// ============================================================================
 
 @Preview(showBackground = true, showSystemUi = true, widthDp = 360, heightDp = 640)
 @Composable

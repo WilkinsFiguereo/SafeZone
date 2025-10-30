@@ -1,2 +1,4 @@
-package com.wilkins.alertaya.frontend.ui.user.Homepage 
+package com.wilkins.alertaya.frontend.ui.user.Homepage
 
+class SliderHomepage {
+}

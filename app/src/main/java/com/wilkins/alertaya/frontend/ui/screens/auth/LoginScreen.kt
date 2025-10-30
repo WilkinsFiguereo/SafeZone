@@ -5,7 +5,6 @@ import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.*
@@ -32,7 +31,9 @@ import androidx.navigation.compose.rememberNavController
 import com.wilkins.alertaya.backend.network.AppUser
 import com.wilkins.alertaya.bridge.auth.LoginBridge
 import android.content.Context
+import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.ui.platform.LocalContext
+import com.wilkins.alertaya.ui.theme.NameApp
 
 @Composable
 fun LoginScreen(
@@ -52,36 +53,32 @@ fun LoginScreen(
     val screenHeight = configuration.screenHeightDp.dp
     val screenWidth = configuration.screenWidthDp.dp
 
-    // Tamaños responsivos basados en la pantalla
-    val logoSize = getResponsiveSize(screenHeight, 100.dp, 120.dp, 140.dp)
-    val iconSize = getResponsiveSize(screenHeight, 36.dp, 48.dp, 56.dp)
-    val titleFontSize = getResponsiveFontSize(screenHeight, 28.sp, 36.sp, 40.sp)
-    val horizontalPadding = getResponsivePadding(screenWidth, 24.dp, 32.dp, 48.dp)
-    val verticalSpacing = getResponsiveSize(screenHeight, 16.dp, 24.dp, 32.dp)
+    // Tamaños más compactos
+    val logoSize = getResponsiveSize(screenHeight, 80.dp, 90.dp, 100.dp)
+    val iconSize = getResponsiveSize(screenHeight, 24.dp, 28.dp, 32.dp)
+    val titleFontSize = getResponsiveFontSize(screenHeight, 20.sp, 24.sp, 28.sp)
+    val horizontalPadding = getResponsivePadding(screenWidth, 16.dp, 24.dp, 32.dp)
+    val verticalSpacing = getResponsiveSize(screenHeight, 8.dp, 12.dp, 16.dp)
 
     Scaffold(
         snackbarHost = { SnackbarHost(hostState = snackbarHostState) }
     ) { padding ->
-        Box(
+        Column(
             modifier = Modifier
                 .fillMaxSize()
                 .background(Color.White)
-                .padding(padding),
-            contentAlignment = Alignment.Center
+                .padding(padding)
+                .verticalScroll(rememberScrollState()),
+            horizontalAlignment = Alignment.CenterHorizontally,
+            verticalArrangement = Arrangement.Center
         ) {
             Column(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .padding(horizontal = horizontalPadding)
-                    .verticalScroll(rememberScrollState()),
+                    .padding(horizontal = horizontalPadding),
                 horizontalAlignment = Alignment.CenterHorizontally
             ) {
-                // Espacio flexible en la parte superior para centrar el contenido
-                if (screenHeight > 600.dp) {
-                    Spacer(modifier = Modifier.weight(0.2f))
-                }
-
-                // Header responsivo
+                // Header compacto
                 Column(
                     horizontalAlignment = Alignment.CenterHorizontally,
                     modifier = Modifier.padding(vertical = verticalSpacing)
@@ -103,30 +100,30 @@ fun LoginScreen(
                         )
                     }
 
-                    Spacer(modifier = Modifier.height(verticalSpacing * 0.8f))
+                    Spacer(modifier = Modifier.height(verticalSpacing * 0.5f))
 
                     Text(
-                        text = "AlertaYa",
+                        text = NameApp,
                         color = PrimaryColor,
                         fontWeight = FontWeight.Bold,
                         fontSize = titleFontSize,
                         letterSpacing = 0.5.sp
                     )
 
-                    Spacer(modifier = Modifier.height(verticalSpacing * 0.4f))
+                    Spacer(modifier = Modifier.height(verticalSpacing * 0.3f))
 
                     Text(
                         text = "Iniciar sesión en tu cuenta",
                         color = Color.Gray,
-                        fontSize = getResponsiveFontSize(screenHeight, 14.sp, 16.sp, 18.sp),
+                        fontSize = getResponsiveFontSize(screenHeight, 12.sp, 14.sp, 16.sp),
                         textAlign = TextAlign.Center
                     )
                 }
 
-                Spacer(modifier = Modifier.height(verticalSpacing))
+                Spacer(modifier = Modifier.height(verticalSpacing * 1.5f))
 
-                // Campos de texto responsivos
-                CustomTextFieldLogin(
+                // Campos de texto compactos
+                CompactTextField(
                     value = email,
                     onValueChange = { email = it },
                     placeholder = "correo@ejemplo.com",
@@ -139,7 +136,7 @@ fun LoginScreen(
 
                 Spacer(modifier = Modifier.height(verticalSpacing))
 
-                CustomTextFieldLogin(
+                CompactTextField(
                     value = password,
                     onValueChange = { password = it },
                     placeholder = "********",
@@ -150,7 +147,7 @@ fun LoginScreen(
                     screenHeight = screenHeight
                 )
 
-                Spacer(modifier = Modifier.height(verticalSpacing * 0.6f))
+                Spacer(modifier = Modifier.height(verticalSpacing * 0.5f))
 
                 TextButton(
                     onClick = { /* TODO */ },
@@ -159,15 +156,15 @@ fun LoginScreen(
                     Text(
                         text = "¿Olvidaste tu contraseña?",
                         color = PrimaryColor,
-                        fontSize = getResponsiveFontSize(screenHeight, 12.sp, 14.sp, 15.sp),
+                        fontSize = getResponsiveFontSize(screenHeight, 10.sp, 12.sp, 14.sp),
                         fontWeight = FontWeight.Medium
                     )
                 }
 
-                Spacer(modifier = Modifier.height(verticalSpacing))
+                Spacer(modifier = Modifier.height(verticalSpacing * 1.5f))
 
                 val context = LocalContext.current
-                // Botón principal responsivo
+                // Botón principal compacto
                 Button(
                     onClick = {
                         scope.launch {
@@ -188,25 +185,25 @@ fun LoginScreen(
                     ),
                     modifier = Modifier
                         .fillMaxWidth()
-                        .height(getResponsiveSize(screenHeight, 48.dp, 58.dp, 64.dp)),
-                    shape = RoundedCornerShape(16.dp)
+                        .height(getResponsiveSize(screenHeight, 40.dp, 48.dp, 52.dp)),
+                    shape = RoundedCornerShape(12.dp)
                 ) {
                     Icon(
                         Icons.Default.Login,
                         contentDescription = null,
-                        modifier = Modifier.size(getResponsiveSize(screenHeight, 20.dp, 24.dp, 28.dp))
+                        modifier = Modifier.size(getResponsiveSize(screenHeight, 16.dp, 18.dp, 20.dp))
                     )
-                    Spacer(modifier = Modifier.width(verticalSpacing * 0.6f))
+                    Spacer(modifier = Modifier.width(verticalSpacing * 0.5f))
                     Text(
                         "Iniciar sesión",
-                        fontSize = getResponsiveFontSize(screenHeight, 15.sp, 18.sp, 20.sp),
+                        fontSize = getResponsiveFontSize(screenHeight, 13.sp, 15.sp, 17.sp),
                         fontWeight = FontWeight.SemiBold
                     )
                 }
 
-                Spacer(modifier = Modifier.height(verticalSpacing))
+                Spacer(modifier = Modifier.height(verticalSpacing * 1.5f))
 
-                // Separador responsivo
+                // Separador compacto
                 Row(
                     modifier = Modifier.fillMaxWidth(),
                     verticalAlignment = Alignment.CenterVertically
@@ -219,8 +216,8 @@ fun LoginScreen(
                     Text(
                         "o continúa con",
                         color = Color.Gray,
-                        fontSize = getResponsiveFontSize(screenHeight, 12.sp, 14.sp, 16.sp),
-                        modifier = Modifier.padding(horizontal = verticalSpacing * 0.6f)
+                        fontSize = getResponsiveFontSize(screenHeight, 10.sp, 12.sp, 14.sp),
+                        modifier = Modifier.padding(horizontal = verticalSpacing * 0.5f)
                     )
                     Divider(
                         color = Color.Gray.copy(alpha = 0.2f),
@@ -229,164 +226,77 @@ fun LoginScreen(
                     )
                 }
 
-                Spacer(modifier = Modifier.height(verticalSpacing))
+                Spacer(modifier = Modifier.height(verticalSpacing * 1.5f))
 
-                // Botones sociales responsivos - en columna para pantallas pequeñas
-                if (screenWidth < 600.dp) {
-                    // Diseño vertical para pantallas pequeñas
-                    Column(
-                        modifier = Modifier.fillMaxWidth(),
-                        verticalArrangement = Arrangement.spacedBy(verticalSpacing * 0.8f)
+                // Botones sociales compactos
+                Column(
+                    modifier = Modifier.fillMaxWidth(),
+                    verticalArrangement = Arrangement.spacedBy(verticalSpacing * 0.8f)
+                ) {
+                    OutlinedButton(
+                        onClick = onGoogleSignIn,
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .height(getResponsiveSize(screenHeight, 36.dp, 40.dp, 44.dp)),
+                        shape = RoundedCornerShape(10.dp)
                     ) {
-                        OutlinedButton(
-                            onClick = onGoogleSignIn,
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .height(getResponsiveSize(screenHeight, 48.dp, 56.dp, 60.dp)),
-                            shape = RoundedCornerShape(16.dp)
+                        Box(
+                            modifier = Modifier.size(getResponsiveSize(screenHeight, 16.dp, 18.dp, 20.dp)),
+                            contentAlignment = Alignment.Center
                         ) {
-                            Box(
-                                modifier = Modifier.size(getResponsiveSize(screenHeight, 20.dp, 24.dp, 26.dp)),
-                                contentAlignment = Alignment.Center
-                            ) {
-                                Text(
-                                    "G",
-                                    color = Color(0xFF4285F4),
-                                    fontWeight = FontWeight.Bold,
-                                    fontSize = getResponsiveFontSize(screenHeight, 14.sp, 16.sp, 18.sp)
-                                )
-                            }
-                            Spacer(modifier = Modifier.width(verticalSpacing * 0.5f))
                             Text(
-                                "Google",
-                                fontSize = getResponsiveFontSize(screenHeight, 14.sp, 16.sp, 18.sp),
-                                fontWeight = FontWeight.Medium
+                                "G",
+                                color = Color(0xFF4285F4),
+                                fontWeight = FontWeight.Bold,
+                                fontSize = getResponsiveFontSize(screenHeight, 12.sp, 14.sp, 16.sp)
                             )
                         }
-
-                        OutlinedButton(
-                            onClick = {
-                                navController.navigate("register") {
-                                    launchSingleTop = true
-                                }
-                            },
-                            colors = ButtonDefaults.outlinedButtonColors(contentColor = PrimaryColor),
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .height(44.dp),
-                            shape = RoundedCornerShape(10.dp)
-                        ) {
-                            Icon(Icons.Default.PersonAdd, null, modifier = Modifier.size(18.dp))
-                            Spacer(modifier = Modifier.width(8.dp))
-                            Text("Crear cuenta", fontSize = 14.sp)
-                        }
-
+                        Spacer(modifier = Modifier.width(verticalSpacing * 0.4f))
+                        Text(
+                            "Google",
+                            fontSize = getResponsiveFontSize(screenHeight, 12.sp, 14.sp, 16.sp),
+                            fontWeight = FontWeight.Medium
+                        )
                     }
-                } else {
-                    // Diseño horizontal para tablets
-                    Row(
-                        modifier = Modifier.fillMaxWidth(),
-                        horizontalArrangement = Arrangement.spacedBy(verticalSpacing * 0.8f)
-                    ) {
-                        OutlinedButton(
-                            onClick = onGoogleSignIn,
-                            modifier = Modifier
-                                .weight(1f)
-                                .height(getResponsiveSize(screenHeight, 48.dp, 56.dp, 60.dp)),
-                            shape = RoundedCornerShape(16.dp)
-                        ) {
-                            Box(
-                                modifier = Modifier.size(getResponsiveSize(screenHeight, 20.dp, 24.dp, 26.dp)),
-                                contentAlignment = Alignment.Center
-                            ) {
-                                Text(
-                                    "G",
-                                    color = Color(0xFF4285F4),
-                                    fontWeight = FontWeight.Bold,
-                                    fontSize = getResponsiveFontSize(screenHeight, 14.sp, 16.sp, 18.sp)
-                                )
-                            }
-                            Spacer(modifier = Modifier.width(verticalSpacing * 0.5f))
-                            Text(
-                                "Google",
-                                fontSize = getResponsiveFontSize(screenHeight, 14.sp, 16.sp, 18.sp),
-                                fontWeight = FontWeight.Medium
-                            )
-                        }
 
-                        OutlinedButton(
-                            onClick = onNavigateToRegister,
-                            modifier = Modifier
-                                .weight(1f)
-                                .height(getResponsiveSize(screenHeight, 48.dp, 56.dp, 60.dp)),
-                            shape = RoundedCornerShape(16.dp)
-                        ) {
-                            Icon(
-                                Icons.Default.PersonAdd,
-                                null,
-                                modifier = Modifier.size(getResponsiveSize(screenHeight, 18.dp, 22.dp, 24.dp))
-                            )
-                            Spacer(modifier = Modifier.width(verticalSpacing * 0.5f))
-                            Text(
-                                "Crear cuenta",
-                                fontSize = getResponsiveFontSize(screenHeight, 14.sp, 16.sp, 18.sp),
-                                fontWeight = FontWeight.Medium
-                            )
-                        }
+                    OutlinedButton(
+                        onClick = onNavigateToRegister,
+                        colors = ButtonDefaults.outlinedButtonColors(contentColor = PrimaryColor),
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .height(getResponsiveSize(screenHeight, 36.dp, 40.dp, 44.dp)),
+                        shape = RoundedCornerShape(10.dp)
+                    ) {
+                        Icon(
+                            Icons.Default.PersonAdd,
+                            null,
+                            modifier = Modifier.size(getResponsiveSize(screenHeight, 14.dp, 16.dp, 18.dp))
+                        )
+                        Spacer(modifier = Modifier.width(verticalSpacing * 0.4f))
+                        Text(
+                            "Crear cuenta",
+                            fontSize = getResponsiveFontSize(screenHeight, 12.sp, 14.sp, 16.sp)
+                        )
                     }
                 }
 
                 Spacer(modifier = Modifier.height(verticalSpacing))
 
-                // Términos y condiciones responsivos
+                // Términos y condiciones compactos
                 TermsAndConditionsSection(
                     onTermsClicked = onTermsClicked,
                     onPrivacyPolicyClicked = onPrivacyPolicyClicked,
                     screenHeight = screenHeight
                 )
-
-                // Espacio flexible en la parte inferior
-                if (screenHeight > 600.dp) {
-                    Spacer(modifier = Modifier.weight(0.2f))
-                } else {
-                    Spacer(modifier = Modifier.height(verticalSpacing))
-                }
             }
         }
     }
 }
 
-// Funciones auxiliares para responsive design
-@Composable
-fun getResponsiveSize(screenHeight: Dp, small: Dp, medium: Dp, large: Dp): Dp {
-    return when {
-        screenHeight < 600.dp -> small
-        screenHeight < 800.dp -> medium
-        else -> large
-    }
-}
-
-@Composable
-fun getResponsiveFontSize(screenHeight: Dp, small: androidx.compose.ui.unit.TextUnit, medium: androidx.compose.ui.unit.TextUnit, large: androidx.compose.ui.unit.TextUnit): androidx.compose.ui.unit.TextUnit {
-    return when {
-        screenHeight < 600.dp -> small
-        screenHeight < 800.dp -> medium
-        else -> large
-    }
-}
-
-@Composable
-fun getResponsivePadding(screenWidth: Dp, small: Dp, medium: Dp, large: Dp): Dp {
-    return when {
-        screenWidth < 360.dp -> small
-        screenWidth < 600.dp -> medium
-        else -> large
-    }
-}
-
+// Campo de texto más compacto
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun CustomTextFieldLogin(
+fun CompactTextField(
     value: String,
     onValueChange: (String) -> Unit,
     placeholder: String,
@@ -399,10 +309,10 @@ fun CustomTextFieldLogin(
 ) {
     var passwordVisible by remember { mutableStateOf(false) }
 
-    val fieldHeight = getResponsiveSize(screenHeight, 48.dp, 56.dp, 64.dp)
-    val iconSize = getResponsiveSize(screenHeight, 20.dp, 24.dp, 28.dp)
-    val fontSize = getResponsiveFontSize(screenHeight, 14.sp, 16.sp, 18.sp)
-    val labelFontSize = getResponsiveFontSize(screenHeight, 14.sp, 16.sp, 18.sp)
+    val fieldHeight = getResponsiveSize(screenHeight, 44.dp, 48.dp, 52.dp)
+    val iconSize = getResponsiveSize(screenHeight, 16.dp, 18.dp, 20.dp)
+    val fontSize = getResponsiveFontSize(screenHeight, 12.sp, 14.sp, 16.sp)
+    val labelFontSize = getResponsiveFontSize(screenHeight, 12.sp, 14.sp, 16.sp)
 
     Column(modifier = modifier) {
         Text(
@@ -410,7 +320,7 @@ fun CustomTextFieldLogin(
             color = Color.Gray,
             fontWeight = FontWeight.Medium,
             fontSize = labelFontSize,
-            modifier = Modifier.padding(bottom = 8.dp)
+            modifier = Modifier.padding(bottom = 4.dp)
         )
 
         Box(
@@ -419,14 +329,14 @@ fun CustomTextFieldLogin(
                 .height(fieldHeight)
                 .background(
                     color = Color(0xFFF8F9FA),
-                    shape = RoundedCornerShape(16.dp)
+                    shape = RoundedCornerShape(10.dp)
                 )
         ) {
             Row(
                 verticalAlignment = Alignment.CenterVertically,
                 modifier = Modifier
                     .fillMaxSize()
-                    .padding(horizontal = 16.dp)
+                    .padding(horizontal = 12.dp)
             ) {
                 Icon(
                     leadingIcon,
@@ -434,7 +344,7 @@ fun CustomTextFieldLogin(
                     tint = PrimaryColor.copy(alpha = 0.7f),
                     modifier = Modifier.size(iconSize)
                 )
-                Spacer(modifier = Modifier.width(12.dp))
+                Spacer(modifier = Modifier.width(8.dp))
                 TextField(
                     value = value,
                     onValueChange = onValueChange,
@@ -462,13 +372,14 @@ fun CustomTextFieldLogin(
                 )
                 if (isPassword) {
                     IconButton(
-                        onClick = { passwordVisible = !passwordVisible }
+                        onClick = { passwordVisible = !passwordVisible },
+                        modifier = Modifier.size(iconSize)
                     ) {
                         Icon(
                             if (passwordVisible) Icons.Default.Visibility else Icons.Default.VisibilityOff,
                             null,
                             tint = PrimaryColor.copy(alpha = 0.6f),
-                            modifier = Modifier.size(iconSize)
+                            modifier = Modifier.size(iconSize * 0.8f)
                         )
                     }
                 }
@@ -477,6 +388,34 @@ fun CustomTextFieldLogin(
     }
 }
 
+
+// Funciones auxiliares para responsive design (mantenidas igual)
+@Composable
+fun getResponsiveSize(screenHeight: Dp, small: Dp, medium: Dp, large: Dp): Dp {
+    return when {
+        screenHeight < 600.dp -> small
+        screenHeight < 800.dp -> medium
+        else -> large
+    }
+}
+
+@Composable
+fun getResponsiveFontSize(screenHeight: Dp, small: androidx.compose.ui.unit.TextUnit, medium: androidx.compose.ui.unit.TextUnit, large: androidx.compose.ui.unit.TextUnit): androidx.compose.ui.unit.TextUnit {
+    return when {
+        screenHeight < 600.dp -> small
+        screenHeight < 800.dp -> medium
+        else -> large
+    }
+}
+
+@Composable
+fun getResponsivePadding(screenWidth: Dp, small: Dp, medium: Dp, large: Dp): Dp {
+    return when {
+        screenWidth < 360.dp -> small
+        screenWidth < 600.dp -> medium
+        else -> large
+    }
+}
 
 @Preview(showBackground = true, showSystemUi = true, widthDp = 411, heightDp = 820)
 @Composable
@@ -495,6 +434,20 @@ fun PreviewLoginScreenMedium() {
 @Preview(showBackground = true, showSystemUi = true, widthDp = 768, heightDp = 1024)
 @Composable
 fun PreviewLoginScreenTablet() {
+    val navController = rememberNavController()
+    LoginScreen(
+        navController = navController,
+        onLoginSuccess = { },
+        onNavigateToRegister = { },
+        onGoogleSignIn = { },
+        onTermsClicked = { println("Términos: $it") },
+        onPrivacyPolicyClicked = { println("Política: $it") }
+    )
+}
+
+@Preview(showBackground = true, showSystemUi = true, widthDp = 360, heightDp = 640)
+@Composable
+fun PreviewLoginScreenSmall() {
     val navController = rememberNavController()
     LoginScreen(
         navController = navController,
