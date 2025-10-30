@@ -5,29 +5,39 @@ import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
-import androidx.compose.runtime.*
+import androidx.navigation.compose.rememberNavController
+import androidx.navigation.compose.NavHost
+import androidx.navigation.compose.composable
 import com.wilkins.alertaya.GenericUserUi.AlertaYaMenu
 import com.wilkins.alertaya.GenericUserUi.SplashScreen
-import kotlinx.coroutines.delay
+import com.wilkins.alertaya.configuration.ProfileScreen
 
 class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         setContent {
+            val navController = rememberNavController()
+
             MaterialTheme {
                 Surface {
-                    var showSplash by remember { mutableStateOf(true) }
+                    NavHost(
+                        navController = navController,
+                        startDestination = "splash"
+                    ) {
+                        // Pantalla de carga
+                        composable("splash") {
+                            SplashScreen(navController)
+                        }
 
-                    // Controla cuánto tiempo se muestra el SplashScreen
-                    LaunchedEffect(Unit) {
-                        delay(2500) // 2.5 segundos
-                        showSplash = false
-                    }
+                        // Menú principal
+                        composable("menu") {
+                            AlertaYaMenu(navController)
+                        }
 
-                    if (showSplash) {
-                        SplashScreen()
-                    } else {
-                        AlertaYaMenu()
+                        // Pantalla de perfil
+                        composable("perfil") {
+                            ProfileScreen(navController)
+                        }
                     }
                 }
             }

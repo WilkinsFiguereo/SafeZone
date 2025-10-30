@@ -18,25 +18,26 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.navigation.NavController
 
 @Composable
-fun AlertaYaMenu() {
+fun AlertaYaMenu(navController: NavController) {
     var isOpen by remember { mutableStateOf(false) }
     val primaryColor = Color(0xFF16A34A)
+
     val menuItems = listOf(
-        MenuItem(Icons.Default.Person, "Perfil"),
-        MenuItem(Icons.Default.Home, "Inicio"),
-        MenuItem(Icons.Default.Notifications, "Noticias"),
-        MenuItem(Icons.Default.Place, "Reportes en tu zona"),
-        MenuItem(Icons.Default.Warning, "Alerta una emergencia"),
-        MenuItem(Icons.Default.Visibility, "Mis alertas"),
-        MenuItem(Icons.Default.Notifications, "Notificaciones"),
-        MenuItem(Icons.Default.Settings, "Configuración")
+        MenuItem(Icons.Default.Person, "Perfil", "perfil"),
+        MenuItem(Icons.Default.Home, "Inicio", "inicio"),
+        MenuItem(Icons.Default.Notifications, "Noticias", "noticias"),
+        MenuItem(Icons.Default.Place, "Reportes en tu zona", "reportes"),
+        MenuItem(Icons.Default.Warning, "Alerta una emergencia", "alerta"),
+        MenuItem(Icons.Default.Visibility, "Mis alertas", "mis_alertas"),
+        MenuItem(Icons.Default.Settings, "Configuración", "configuracion")
     )
 
     Box(modifier = Modifier.fillMaxSize()) {
         Column(modifier = Modifier.fillMaxSize()) {
-            // Header Principal Verde
+            // Header principal verde
             Row(
                 modifier = Modifier
                     .fillMaxWidth()
@@ -49,20 +50,24 @@ fun AlertaYaMenu() {
                 IconButton(onClick = { isOpen = !isOpen }) {
                     Icon(
                         imageVector = Icons.Default.Menu,
-                        contentDescription = "Menu",
+                        contentDescription = "Menú",
                         tint = Color.White,
                         modifier = Modifier.size(28.dp)
                     )
                 }
-                // Logo/Nombre AlertaYa
+
+                // Título o logo
                 Text(
                     text = "AlertaYa",
                     color = Color.White,
                     fontSize = 22.sp,
                     fontWeight = FontWeight.Bold
                 )
+
                 // Botón de perfil
-                IconButton(onClick = { /* Acción de perfil */ }) {
+                IconButton(onClick = {
+                    navController.navigate("perfil")
+                }) {
                     Box(
                         modifier = Modifier
                             .size(36.dp)
@@ -109,7 +114,7 @@ fun AlertaYaMenu() {
             }
         }
 
-        // Menú lateral animado (overlay)
+        // Menú lateral animado
         AnimatedVisibility(
             visible = isOpen,
             enter = androidx.compose.animation.slideInHorizontally(
@@ -138,7 +143,7 @@ fun AlertaYaMenu() {
                     ) {
                         Icon(
                             imageVector = Icons.Default.Menu,
-                            contentDescription = "Menu",
+                            contentDescription = "Menú",
                             tint = Color.White,
                             modifier = Modifier.size(28.dp)
                         )
@@ -150,6 +155,7 @@ fun AlertaYaMenu() {
                             fontWeight = FontWeight.Bold
                         )
                     }
+
                     Divider(
                         color = Color.White.copy(alpha = 0.2f),
                         thickness = 1.dp,
@@ -162,7 +168,12 @@ fun AlertaYaMenu() {
                         Row(
                             modifier = Modifier
                                 .fillMaxWidth()
-                                .clickable { isOpen = false /* Aquí puedes agregar navegación */ }
+                                .clickable {
+                                    isOpen = false
+                                    if (item.route == "perfil") {
+                                        navController.navigate("perfil")
+                                    }
+                                }
                                 .padding(horizontal = 20.dp, vertical = 14.dp),
                             verticalAlignment = Alignment.CenterVertically
                         ) {
@@ -202,7 +213,7 @@ fun AlertaYaMenu() {
                     }
                 }
 
-                // Área oscura al lado del menú (para cerrar al tocar)
+                // Fondo oscuro para cerrar al tocar fuera del menú
                 Box(
                     modifier = Modifier
                         .fillMaxSize()
@@ -216,5 +227,6 @@ fun AlertaYaMenu() {
 
 data class MenuItem(
     val icon: androidx.compose.ui.graphics.vector.ImageVector,
-    val label: String
+    val label: String,
+    val route: String
 )
