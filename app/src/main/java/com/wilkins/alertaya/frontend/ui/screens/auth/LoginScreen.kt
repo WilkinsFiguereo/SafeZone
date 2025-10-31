@@ -46,6 +46,7 @@ fun LoginScreen(
 ) {
     var email by remember { mutableStateOf("") }
     var password by remember { mutableStateOf("") }
+    var isLoading by remember { mutableStateOf(false) } // Estado para controlar la carga
     val scope = rememberCoroutineScope()
     val snackbarHostState = remember { SnackbarHostState() }
 
@@ -59,6 +60,11 @@ fun LoginScreen(
     val titleFontSize = getResponsiveFontSize(screenHeight, 20.sp, 24.sp, 28.sp)
     val horizontalPadding = getResponsivePadding(screenWidth, 16.dp, 24.dp, 32.dp)
     val verticalSpacing = getResponsiveSize(screenHeight, 8.dp, 12.dp, 16.dp)
+
+    // Si está cargando, mostrar overlay de carga
+    if (isLoading) {
+        LoadingOverlay()
+    }
 
     Scaffold(
         snackbarHost = { SnackbarHost(hostState = snackbarHostState) }
@@ -131,7 +137,8 @@ fun LoginScreen(
                     leadingIcon = Icons.Default.Email,
                     keyboardType = KeyboardType.Email,
                     modifier = Modifier.fillMaxWidth(),
-                    screenHeight = screenHeight
+                    screenHeight = screenHeight,
+                    enabled = !isLoading // Deshabilitar campo cuando está cargando
                 )
 
                 Spacer(modifier = Modifier.height(verticalSpacing))
@@ -144,18 +151,20 @@ fun LoginScreen(
                     leadingIcon = Icons.Default.Lock,
                     isPassword = true,
                     modifier = Modifier.fillMaxWidth(),
-                    screenHeight = screenHeight
+                    screenHeight = screenHeight,
+                    enabled = !isLoading // Deshabilitar campo cuando está cargando
                 )
 
                 Spacer(modifier = Modifier.height(verticalSpacing * 0.5f))
 
                 TextButton(
                     onClick = { /* TODO */ },
-                    modifier = Modifier.align(Alignment.End)
+                    modifier = Modifier.align(Alignment.End),
+                    enabled = !isLoading // Deshabilitar cuando está cargando
                 ) {
                     Text(
                         text = "¿Olvidaste tu contraseña?",
-                        color = PrimaryColor,
+                        color = if (isLoading) Color.Gray else PrimaryColor,
                         fontSize = getResponsiveFontSize(screenHeight, 10.sp, 12.sp, 14.sp),
                         fontWeight = FontWeight.Medium
                     )
@@ -169,11 +178,16 @@ fun LoginScreen(
                     onClick = {
                         scope.launch {
                             if (email.isNotEmpty() && password.isNotEmpty()) {
-                                val result = LoginBridge.performLogin(context,email, password)
-                                result.onSuccess { user ->
-                                    onLoginSuccess(user)
-                                }.onFailure { e ->
-                                    snackbarHostState.showSnackbar(e.message ?: "Error en login")
+                                isLoading = true // Iniciar carga
+                                try {
+                                    val result = LoginBridge.performLogin(context, email, password)
+                                    result.onSuccess { user ->
+                                        onLoginSuccess(user)
+                                    }.onFailure { e ->
+                                        snackbarHostState.showSnackbar(e.message ?: "Error en login")
+                                    }
+                                } finally {
+                                    isLoading = false // Finalizar carga
                                 }
                             } else {
                                 snackbarHostState.showSnackbar("Credenciales vacías")
@@ -186,16 +200,26 @@ fun LoginScreen(
                     modifier = Modifier
                         .fillMaxWidth()
                         .height(getResponsiveSize(screenHeight, 40.dp, 48.dp, 52.dp)),
-                    shape = RoundedCornerShape(12.dp)
+                    shape = RoundedCornerShape(12.dp),
+                    enabled = !isLoading // Deshabilitar botón cuando está cargando
                 ) {
-                    Icon(
-                        Icons.Default.Login,
-                        contentDescription = null,
-                        modifier = Modifier.size(getResponsiveSize(screenHeight, 16.dp, 18.dp, 20.dp))
-                    )
+                    if (isLoading) {
+                        // Mostrar indicador de carga en el botón
+                        CircularProgressIndicator(
+                            modifier = Modifier.size(getResponsiveSize(screenHeight, 16.dp, 18.dp, 20.dp)),
+                            color = Color.White,
+                            strokeWidth = 2.dp
+                        )
+                    } else {
+                        Icon(
+                            Icons.Default.Login,
+                            contentDescription = null,
+                            modifier = Modifier.size(getResponsiveSize(screenHeight, 16.dp, 18.dp, 20.dp))
+                        )
+                    }
                     Spacer(modifier = Modifier.width(verticalSpacing * 0.5f))
                     Text(
-                        "Iniciar sesión",
+                        if (isLoading) "Iniciando sesión..." else "Iniciar sesión",
                         fontSize = getResponsiveFontSize(screenHeight, 13.sp, 15.sp, 17.sp),
                         fontWeight = FontWeight.SemiBold
                     )
@@ -238,7 +262,8 @@ fun LoginScreen(
                         modifier = Modifier
                             .fillMaxWidth()
                             .height(getResponsiveSize(screenHeight, 36.dp, 40.dp, 44.dp)),
-                        shape = RoundedCornerShape(10.dp)
+                        shape = RoundedCornerShape(10.dp),
+                        enabled = !isLoading // Deshabilitar cuando está cargando
                     ) {
                         Box(
                             modifier = Modifier.size(getResponsiveSize(screenHeight, 16.dp, 18.dp, 20.dp)),
@@ -265,7 +290,8 @@ fun LoginScreen(
                         modifier = Modifier
                             .fillMaxWidth()
                             .height(getResponsiveSize(screenHeight, 36.dp, 40.dp, 44.dp)),
-                        shape = RoundedCornerShape(10.dp)
+                        shape = RoundedCornerShape(10.dp),
+                        enabled = !isLoading // Deshabilitar cuando está cargando
                     ) {
                         Icon(
                             Icons.Default.PersonAdd,
@@ -293,6 +319,35 @@ fun LoginScreen(
     }
 }
 
+// Componente para el overlay de carga
+@Composable
+fun LoadingOverlay() {
+    Box(
+        modifier = Modifier
+            .fillMaxSize()
+            .background(Color.Black.copy(alpha = 0.5f))
+            .clickable(enabled = false) {}, // Evitar clics mientras carga
+        contentAlignment = Alignment.Center
+    ) {
+        Column(
+            horizontalAlignment = Alignment.CenterHorizontally,
+            verticalArrangement = Arrangement.spacedBy(16.dp)
+        ) {
+            CircularProgressIndicator(
+                modifier = Modifier.size(64.dp),
+                color = PrimaryColor,
+                strokeWidth = 4.dp
+            )
+            Text(
+                text = "Iniciando sesión...",
+                color = Color.White,
+                fontSize = 18.sp,
+                fontWeight = FontWeight.Medium
+            )
+        }
+    }
+}
+
 // Campo de texto más compacto
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -305,7 +360,8 @@ fun CompactTextField(
     modifier: Modifier = Modifier,
     keyboardType: KeyboardType = KeyboardType.Text,
     isPassword: Boolean = false,
-    screenHeight: Dp
+    screenHeight: Dp,
+    enabled: Boolean = true // Nuevo parámetro para habilitar/deshabilitar
 ) {
     var passwordVisible by remember { mutableStateOf(false) }
 
@@ -317,7 +373,7 @@ fun CompactTextField(
     Column(modifier = modifier) {
         Text(
             text = label,
-            color = Color.Gray,
+            color = if (enabled) Color.Gray else Color.Gray.copy(alpha = 0.5f),
             fontWeight = FontWeight.Medium,
             fontSize = labelFontSize,
             modifier = Modifier.padding(bottom = 4.dp)
@@ -328,7 +384,7 @@ fun CompactTextField(
                 .fillMaxWidth()
                 .height(fieldHeight)
                 .background(
-                    color = Color(0xFFF8F9FA),
+                    color = if (enabled) Color(0xFFF8F9FA) else Color(0xFFF0F0F0),
                     shape = RoundedCornerShape(10.dp)
                 )
         ) {
@@ -341,7 +397,7 @@ fun CompactTextField(
                 Icon(
                     leadingIcon,
                     null,
-                    tint = PrimaryColor.copy(alpha = 0.7f),
+                    tint = if (enabled) PrimaryColor.copy(alpha = 0.7f) else Color.Gray.copy(alpha = 0.4f),
                     modifier = Modifier.size(iconSize)
                 )
                 Spacer(modifier = Modifier.width(8.dp))
@@ -362,23 +418,25 @@ fun CompactTextField(
                         unfocusedContainerColor = Color.Transparent,
                         focusedIndicatorColor = Color.Transparent,
                         unfocusedIndicatorColor = Color.Transparent,
-                        cursorColor = PrimaryColor,
-                        focusedTextColor = Color.Black,
-                        unfocusedTextColor = Color.Black
+                        cursorColor = if (enabled) PrimaryColor else Color.Gray,
+                        focusedTextColor = if (enabled) Color.Black else Color.Gray,
+                        unfocusedTextColor = if (enabled) Color.Black else Color.Gray
                     ),
                     modifier = Modifier.weight(1f),
                     singleLine = true,
-                    textStyle = LocalTextStyle.current.copy(fontSize = fontSize)
+                    textStyle = LocalTextStyle.current.copy(fontSize = fontSize),
+                    enabled = enabled // Pasar el estado de habilitado
                 )
                 if (isPassword) {
                     IconButton(
                         onClick = { passwordVisible = !passwordVisible },
-                        modifier = Modifier.size(iconSize)
+                        modifier = Modifier.size(iconSize),
+                        enabled = enabled // Deshabilitar botón de visibilidad cuando está cargando
                     ) {
                         Icon(
                             if (passwordVisible) Icons.Default.Visibility else Icons.Default.VisibilityOff,
                             null,
-                            tint = PrimaryColor.copy(alpha = 0.6f),
+                            tint = if (enabled) PrimaryColor.copy(alpha = 0.6f) else Color.Gray.copy(alpha = 0.4f),
                             modifier = Modifier.size(iconSize * 0.8f)
                         )
                     }

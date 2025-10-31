@@ -18,31 +18,71 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.navigation.NavController
+import com.wilkins.alertaya.backend.network.SupabaseService
+import com.wilkins.alertaya.frontend.ui.theme.PrimaryColor
+import com.wilkins.alertaya.ui.theme.NameApp
+import io.github.jan.supabase.gotrue.auth
+import kotlinx.coroutines.delay
 
 @Composable
-fun SplashScreen() {
-    val primaryColor = Color(0xFF16A34A) // Verde AlertaYa
+fun SplashScreen(navController: NavController) {
     val scale = remember { Animatable(0f) }
 
-    // Animación de entrada del logo
     LaunchedEffect(Unit) {
+        // Animación del logo
         scale.animateTo(
             targetValue = 1f,
             animationSpec = tween(durationMillis = 1200)
         )
+
+        // Espera breve antes de cambiar de pantalla
+        delay(800)
+
+        val context = navController.context
+        val session = SessionManager.loadSession(context)
+        val supabase = SupabaseService.getInstance()
+
+        if (session != null) {
+            try {
+                supabase.auth.importSession(session)
+                val user = supabase.auth.currentUserOrNull()
+                if (user != null) {
+                    // ✅ Navega al Home si hay sesión activa
+                    navController.navigate("home") {
+                        popUpTo("splash") { inclusive = true }
+                    }
+                } else {
+                    // ❌ Sesión inválida, redirigir al login
+                    navController.navigate("login") {
+                        popUpTo("splash") { inclusive = true }
+                    }
+                }
+            } catch (e: Exception) {
+                // En caso de error al importar la sesión
+                navController.navigate("login") {
+                    popUpTo("splash") { inclusive = true }
+                }
+            }
+        } else {
+            // No hay sesión guardada, ir al login
+            navController.navigate("login") {
+                popUpTo("splash") { inclusive = true }
+            }
+        }
     }
 
+    // --- UI del Splash ---
     Box(
         modifier = Modifier
             .fillMaxSize()
-            .background(primaryColor),
+            .background(PrimaryColor),
         contentAlignment = Alignment.Center
     ) {
         Column(
             horizontalAlignment = Alignment.CenterHorizontally,
             verticalArrangement = Arrangement.Center
         ) {
-            // Círculo del logo
             Box(
                 modifier = Modifier
                     .size(110.dp)
@@ -60,9 +100,8 @@ fun SplashScreen() {
 
             Spacer(modifier = Modifier.height(24.dp))
 
-            // Título
             Text(
-                text = "AlertaYa",
+                text = NameApp,
                 color = Color.White,
                 fontSize = 32.sp,
                 fontWeight = FontWeight.Bold,
@@ -71,7 +110,6 @@ fun SplashScreen() {
 
             Spacer(modifier = Modifier.height(8.dp))
 
-            // Subtítulo
             Text(
                 text = "Cuidándote en todo momento",
                 color = Color.White.copy(alpha = 0.8f),

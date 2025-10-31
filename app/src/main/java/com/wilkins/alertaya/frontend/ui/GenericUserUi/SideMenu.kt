@@ -2,11 +2,12 @@ package com.wilkins.alertaya.GenericUserUi
 
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.core.tween
+import androidx.compose.animation.slideInHorizontally
+import androidx.compose.animation.slideOutHorizontally
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.CircleShape
-import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.*
 import androidx.compose.material3.*
@@ -15,14 +16,17 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.wilkins.alertaya.frontend.ui.theme.PrimaryColor
+import com.wilkins.alertaya.ui.theme.NameApp
 
 @Composable
-fun AlertaYaMenu() {
+fun SideMenu() {
     var isOpen by remember { mutableStateOf(false) }
-    val primaryColor = Color(0xFF16A34A)
     val menuItems = listOf(
         MenuItem(Icons.Default.Person, "Perfil"),
         MenuItem(Icons.Default.Home, "Inicio"),
@@ -40,7 +44,7 @@ fun AlertaYaMenu() {
             Row(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .background(primaryColor)
+                    .background(PrimaryColor)
                     .padding(horizontal = 16.dp, vertical = 12.dp),
                 horizontalArrangement = Arrangement.SpaceBetween,
                 verticalAlignment = Alignment.CenterVertically
@@ -56,7 +60,7 @@ fun AlertaYaMenu() {
                 }
                 // Logo/Nombre AlertaYa
                 Text(
-                    text = "AlertaYa",
+                    text = NameApp,
                     color = Color.White,
                     fontSize = 22.sp,
                     fontWeight = FontWeight.Bold
@@ -80,43 +84,17 @@ fun AlertaYaMenu() {
                 }
             }
 
-            // Contenido principal
-            Box(
-                modifier = Modifier
-                    .fillMaxSize()
-                    .background(Color(0xFFF1F5F9))
-            ) {
-                Column(modifier = Modifier.padding(24.dp)) {
-                    Card(
-                        modifier = Modifier.fillMaxWidth(),
-                        colors = CardDefaults.cardColors(containerColor = Color.White)
-                    ) {
-                        Column(modifier = Modifier.padding(16.dp)) {
-                            Text(
-                                text = "Contenido Principal",
-                                color = primaryColor,
-                                fontSize = 24.sp,
-                                fontWeight = FontWeight.Bold
-                            )
-                            Spacer(modifier = Modifier.height(8.dp))
-                            Text(
-                                text = "Aquí va el contenido de tu aplicación.",
-                                color = Color.Gray
-                            )
-                        }
-                    }
-                }
-            }
         }
+
 
         // Menú lateral animado (overlay)
         AnimatedVisibility(
             visible = isOpen,
-            enter = androidx.compose.animation.slideInHorizontally(
+            enter = slideInHorizontally(
                 initialOffsetX = { -it },
                 animationSpec = tween(300)
             ),
-            exit = androidx.compose.animation.slideOutHorizontally(
+            exit = slideOutHorizontally(
                 targetOffsetX = { -it },
                 animationSpec = tween(300)
             )
@@ -126,7 +104,7 @@ fun AlertaYaMenu() {
                     modifier = Modifier
                         .width(280.dp)
                         .fillMaxHeight()
-                        .background(primaryColor)
+                        .background(PrimaryColor)
                 ) {
                     // Header del menú lateral
                     Row(
@@ -144,7 +122,7 @@ fun AlertaYaMenu() {
                         )
                         Spacer(modifier = Modifier.width(12.dp))
                         Text(
-                            text = "AlertaYa",
+                            text = NameApp,
                             color = Color.White,
                             fontSize = 22.sp,
                             fontWeight = FontWeight.Bold
@@ -215,6 +193,14 @@ fun AlertaYaMenu() {
 }
 
 data class MenuItem(
-    val icon: androidx.compose.ui.graphics.vector.ImageVector,
+    val icon: ImageVector,
     val label: String
 )
+
+@Preview(showBackground = true, showSystemUi = true)
+@Composable
+fun AlertaYaMenuPreview() {
+    MaterialTheme {
+        SideMenu()
+    }
+}
