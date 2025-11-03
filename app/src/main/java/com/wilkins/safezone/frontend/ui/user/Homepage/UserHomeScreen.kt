@@ -7,12 +7,13 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
+import androidx.navigation.NavController
 import com.wilkins.safezone.GenericUserUi.BottomNavigationMenu
 import com.wilkins.safezone.GenericUserUi.SideMenu
 import com.wilkins.safezone.R
 
 @Composable
-fun UserHomeScreen() {
+fun UserHomeScreen(navController: NavController) {
     val newsItems = listOf(
         NewsItem(
             title = "Nuevo programa de seguridad comunitaria",
@@ -64,7 +65,11 @@ fun UserHomeScreen() {
         }
 
         // 🔸 Menú lateral superior (fijo arriba)
-        SideMenu(modifier = Modifier.align(Alignment.TopCenter))
+        SideMenu(
+            navController = navController,
+            modifier = Modifier.align(Alignment.TopCenter)
+        )
+
 
         // 🔸 Menú inferior (fijo y siempre visible abajo)
         Box(

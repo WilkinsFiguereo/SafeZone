@@ -21,11 +21,15 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.navigation.NavController
 import com.wilkins.safezone.ui.theme.NameApp
 import com.wilkins.safezone.ui.theme.PrimaryColor
 
 @Composable
-fun SideMenu(modifier: Modifier = Modifier) {
+fun SideMenu(
+    navController: NavController,
+    modifier: Modifier = Modifier
+) {
     var isOpen by remember { mutableStateOf(false) }
     val menuItems = listOf(
         MenuItem(Icons.Default.Person, "Perfil"),
@@ -67,7 +71,12 @@ fun SideMenu(modifier: Modifier = Modifier) {
                     fontWeight = FontWeight.Bold
                 )
                 // Botón de perfil
-                IconButton(onClick = { /* Acción de perfil */ }) {
+                IconButton(onClick = {
+                    navController.navigate("profile") {
+                        // Opcional: evita que se acumulen múltiples instancias
+                        launchSingleTop = true
+                    }
+                }) {
                     Box(
                         modifier = Modifier
                             .size(36.dp)
@@ -83,6 +92,7 @@ fun SideMenu(modifier: Modifier = Modifier) {
                         )
                     }
                 }
+
             }
 
             // Aquí puedes agregar más contenido de tu app
@@ -198,10 +208,10 @@ data class MenuItem(
     val label: String
 )
 
-@Preview(showBackground = true, showSystemUi = true)
-@Composable
-fun AlertaYaMenuPreview() {
-    MaterialTheme {
-        SideMenu()
-    }
-}
+//@Preview(showBackground = true, showSystemUi = true)
+//@Composable
+//fun AlertaYaMenuPreview() {
+//    MaterialTheme {
+//        SideMenu()
+//    }
+//}
