@@ -6,11 +6,11 @@ plugins {
 }
 
 android {
-    namespace = "com.wilkins.alertaya"
+    namespace = "com.wilkins.safezone"
     compileSdk = 36
 
     defaultConfig {
-        applicationId = "com.wilkins.alertaya"
+        applicationId = "com.wilkins.safezone"
         minSdk = 24
         targetSdk = 36
         versionCode = 1
@@ -63,6 +63,10 @@ dependencies {
 
     // JSON
     implementation("org.jetbrains.kotlinx:kotlinx-serialization-json:1.6.0")
+
+
+    implementation("com.google.accompanist:accompanist-pager:0.30.1")
+    implementation("com.google.accompanist:accompanist-pager-indicators:0.30.1")
 
     // Librerías AndroidX
     implementation(libs.androidx.core.ktx)
