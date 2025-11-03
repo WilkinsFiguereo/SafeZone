@@ -25,7 +25,7 @@ import com.wilkins.safezone.ui.theme.NameApp
 import com.wilkins.safezone.ui.theme.PrimaryColor
 
 @Composable
-fun SideMenu() {
+fun SideMenu(modifier: Modifier = Modifier) {
     var isOpen by remember { mutableStateOf(false) }
     val menuItems = listOf(
         MenuItem(Icons.Default.Person, "Perfil"),
@@ -38,7 +38,7 @@ fun SideMenu() {
         MenuItem(Icons.Default.Settings, "Configuración")
     )
 
-    Box(modifier = Modifier.fillMaxSize()) {
+    Box(modifier = modifier.fillMaxSize()) {
         // Contenido principal
         Column(modifier = Modifier.fillMaxSize()) {
             // Header Principal Verde

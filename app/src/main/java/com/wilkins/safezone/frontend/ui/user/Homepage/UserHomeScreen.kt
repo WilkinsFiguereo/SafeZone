@@ -4,68 +4,79 @@ import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.runtime.Composable
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
+import com.wilkins.safezone.GenericUserUi.BottomNavigationMenu
 import com.wilkins.safezone.GenericUserUi.SideMenu
-import com.wilkins.safezone.frontend.ui.user.Homepage.NewsItem
-import com.wilkins.safezone.frontend.ui.user.Homepage.NewsSlider
-import com.wilkins.safezone.frontend.ui.user.Homepage.WelcomeBanner
+import com.wilkins.safezone.R
 
 @Composable
 fun UserHomeScreen() {
-    // Lista de noticias de ejemplo
     val newsItems = listOf(
         NewsItem(
             title = "Nuevo programa de seguridad comunitaria",
             date = "12/10/2024",
             description = "Se implementa nuevo sistema de vigilancia en el sector norte de la ciudad.",
-            imageRes = com.wilkins.safezone.R.drawable.personas_recogiendo
+            imageRes = R.drawable.personas_recogiendo
         ),
         NewsItem(
             title = "Jornada de limpieza este sábado",
             date = "15/10/2024",
             description = "Participa en la jornada de limpieza comunitaria en el parque central.",
-            imageRes = com.wilkins.safezone.R.drawable.bandalismo
+            imageRes = R.drawable.bandalismo
         ),
         NewsItem(
             title = "Mejoras en alumbrado público",
             date = "18/10/2024",
             description = "Instalación de nuevas luminarias en zonas estratégicas de la ciudad.",
-            imageRes = com.wilkins.safezone.R.drawable.baches
+            imageRes = R.drawable.baches
         )
     )
 
-    // Box principal para superponer el menú
+    // 🔹 Box principal que permite superposición de componentes
     Box(modifier = Modifier.fillMaxSize()) {
-        // Contenido principal con scroll
-        val scrollState = rememberScrollState()
+
+        // 🔸 Contenido principal con scroll
         Column(
             modifier = Modifier
                 .fillMaxSize()
-                .verticalScroll(scrollState)
+                .verticalScroll(rememberScrollState())
         ) {
-            // Espaciado para el header del menú (altura aproximada del header)
+            // Espacio para el SideMenu fijo
             Spacer(modifier = Modifier.height(75.dp))
 
             Spacer(modifier = Modifier.height(12.dp))
 
-            // Slider de noticias
             NewsSlider(
                 newsItems = newsItems,
-                onNewsClick = { newsItem ->
-                    // Manejar click en la noticia
-                }
+                onNewsClick = { /* Acción al hacer clic en noticia */ }
             )
 
             Spacer(modifier = Modifier.height(15.dp))
 
-            // Banner de bienvenida animado
             WelcomeBanner()
 
             Spacer(modifier = Modifier.height(16.dp))
+
+            // Espacio extra para asegurar que el contenido no queda detrás del BottomNavigation
+            Spacer(modifier = Modifier.height(100.dp))
         }
 
-        // Menú superior superpuesto (se dibuja encima del contenido)
-        SideMenu()
+        // 🔸 Menú lateral superior (fijo arriba)
+        SideMenu(modifier = Modifier.align(Alignment.TopCenter))
+
+        // 🔸 Menú inferior (fijo y siempre visible abajo)
+        Box(
+            modifier = Modifier
+                .fillMaxWidth()
+                .align(Alignment.BottomCenter)
+        ) {
+            BottomNavigationMenu(
+                onNewsClick = { /* Navegar a noticias */ },
+                onAlertClick = { /* Crear nueva alerta */ },
+                onMyAlertsClick = { /* Ver mis alertas */ }
+            )
+        }
     }
 }
