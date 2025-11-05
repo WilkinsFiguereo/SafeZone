@@ -2,6 +2,7 @@ plugins {
     alias(libs.plugins.android.application)
     alias(libs.plugins.kotlin.android)
     alias(libs.plugins.kotlin.compose)
+    id("org.jetbrains.kotlin.plugin.serialization") version "1.9.0"
 }
 
 android {
@@ -44,6 +45,10 @@ dependencies {
     implementation("io.github.jan-tennert.supabase:supabase-kt:2.5.4")
     implementation("io.github.jan-tennert.supabase:postgrest-kt:2.5.4")
 
+    // Navegación para Compose
+    implementation("androidx.navigation:navigation-compose:2.7.3")
+
+
     // Coroutines
     implementation("org.jetbrains.kotlinx:kotlinx-coroutines-android:1.7.3")
 
@@ -56,10 +61,10 @@ dependencies {
     implementation("androidx.compose.material:material-icons-core:1.5.0")
     implementation("androidx.compose.material:material-icons-extended:1.5.0")
 
-    implementation("androidx.compose.material:material:1.5.0")
-    implementation("androidx.compose.material:material-icons-core:1.5.0")
-    implementation("androidx.compose.material:material-icons-extended:1.5.0")
+    // JSON
+    implementation("org.jetbrains.kotlinx:kotlinx-serialization-json:1.6.0")
 
+    // Librerías AndroidX
     implementation(libs.androidx.core.ktx)
     implementation(libs.androidx.lifecycle.runtime.ktx)
     implementation(libs.androidx.activity.compose)
