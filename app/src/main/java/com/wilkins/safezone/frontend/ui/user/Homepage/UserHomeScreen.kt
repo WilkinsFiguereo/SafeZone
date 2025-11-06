@@ -58,7 +58,10 @@ fun UserHomeScreen(navController: NavController) {
 
             WelcomeBanner()
 
+
             Spacer(modifier = Modifier.height(16.dp))
+
+            RecentReportsSection()
 
             // Espacio extra para asegurar que el contenido no queda detrás del BottomNavigation
             Spacer(modifier = Modifier.height(100.dp))
