@@ -20,6 +20,8 @@ import com.wilkins.safezone.frontend.ui.user.Homepage.UserHomeScreen
 import com.wilkins.safezone.ui.theme.SafeZoneTheme
 import com.wilkins.safezone.ui.theme.PrimaryColor
 import io.github.jan.supabase.gotrue.auth
+import android.content.Context
+import androidx.compose.ui.platform.LocalContext
 
 class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -30,7 +32,6 @@ class MainActivity : ComponentActivity() {
                 val navController = rememberNavController()
                 var savedEmail by remember { mutableStateOf("") }
                 var savedPassword by remember { mutableStateOf("") }
-
 
                 NavHost(
                     navController = navController,
@@ -108,7 +109,10 @@ class MainActivity : ComponentActivity() {
                         // AdminHomeScreen()
                     }
 
-                    composable("profile") { NavigationDrawer(navController) }
+                    composable("profile") {
+                        val context = LocalContext.current
+                        val supabaseClient = SupabaseService.getInstance()
+                        NavigationDrawer(navController, context, supabaseClient) }
                 }
             }
         }

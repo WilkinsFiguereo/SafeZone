@@ -42,8 +42,9 @@ android {
 
 dependencies {
     // Supabase Kotlin
-    implementation("io.github.jan-tennert.supabase:supabase-kt:2.5.4")
+    implementation("io.github.jan-tennert.supabase:supabase-kt:3.2.6")
     implementation("io.github.jan-tennert.supabase:postgrest-kt:2.5.4")
+    implementation("io.github.jan-tennert.supabase:gotrue-kt:2.6.1")
 
     // Navegación para Compose
     implementation("androidx.navigation:navigation-compose:2.7.3")

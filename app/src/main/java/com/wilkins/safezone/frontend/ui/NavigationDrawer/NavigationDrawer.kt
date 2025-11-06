@@ -1,5 +1,7 @@
 package com.wilkins.safezone.frontend.ui.NavigationDrawer
 
+import SessionManager.logout
+import android.content.Context
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
@@ -11,6 +13,7 @@ import androidx.compose.material.icons.automirrored.filled.KeyboardArrowRight
 import androidx.compose.material.icons.filled.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -20,15 +23,17 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.navigation.NavController
+import io.github.jan.supabase.SupabaseClient
+import kotlinx.coroutines.launch
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun NavigationDrawer(navController: NavController) {
+fun NavigationDrawer(navController: NavController, context: Context, supabaseClient: SupabaseClient) {
     val backgroundColor = Color(0xFFF5F5F5)
     val cardColor = Color.White
     val textPrimary = Color(0xFF1F1F1F)
     val textSecondary = Color(0xFF6B7280)
-
+    val scope = rememberCoroutineScope()
     Scaffold(
         topBar = {
             TopAppBar(
@@ -184,9 +189,18 @@ fun NavigationDrawer(navController: NavController) {
 
                     ProfileMenuItem(
                         icon = Icons.Default.ExitToApp,
-                        title = "Cerrar sesion",
-                        onClick = { /* Cerrar sesión */ },
-                        showDivider = false
+                        title = "Cerrar sesión",
+                        showDivider = false,
+                        onClick = {
+                            scope.launch {
+                                logout(context, supabaseClient)
+
+                                // Redirige al login
+                                navController.navigate("login") {
+                                    popUpTo("profile") { inclusive = true }
+                                }
+                            }
+                        }
                     )
                 }
             }
