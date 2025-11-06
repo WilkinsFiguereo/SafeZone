@@ -26,6 +26,7 @@ import com.wilkins.safezone.GenericUserUi.SplashScreen
 import com.wilkins.safezone.backend.network.SupabaseService
 import com.wilkins.safezone.frontend.ui.NavigationDrawer.NavigationDrawer
 import com.wilkins.safezone.frontend.ui.NavigationDrawer.Profile
+import com.wilkins.safezone.frontend.ui.NavigationDrawer.SettingsScreen
 import com.wilkins.safezone.frontend.ui.screens.auth.LoginScreen
 import com.wilkins.safezone.frontend.ui.screens.auth.RegisterScreen
 import com.wilkins.safezone.frontend.ui.screens.auth.VerificationScreen
@@ -122,6 +123,18 @@ class MainActivity : ComponentActivity() {
                         }
 
                         composable("profile") { Profile(navController) }
+
+
+                        composable("settings") {
+                            SettingsScreen(
+                                navcontroller = navController,
+                                onBackClick = {
+                                    navController.navigate("NavigationDrawer") {
+                                        popUpTo("settings") { inclusive = true }
+                                    }
+                                }
+                            )
+                        }
                     }
                 }
             }

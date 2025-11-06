@@ -59,7 +59,7 @@ fun ProfileSection(
     Column(
         modifier = modifier
             .fillMaxWidth()
-            .padding(16.dp),
+            .padding(5.dp),
         verticalArrangement = Arrangement.spacedBy(16.dp)
     ) {
         // Main Profile Card with gradient header
