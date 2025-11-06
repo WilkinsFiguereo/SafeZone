@@ -14,6 +14,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.scale
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
@@ -28,44 +29,35 @@ import kotlinx.coroutines.delay
 @Composable
 fun SplashScreen(navController: NavController) {
     val scale = remember { Animatable(0f) }
+    val context = LocalContext.current // ✅ Esto debe estar dentro del Composable
 
     LaunchedEffect(Unit) {
-        // Animación del logo
-        scale.animateTo(
-            targetValue = 1f,
-            animationSpec = tween(durationMillis = 1200)
-        )
-
-        // Espera breve antes de cambiar de pantalla
+        // Animación
+        scale.animateTo(1f, animationSpec = tween(1200))
         delay(800)
 
-        val context = navController.context
-        val session = SessionManager.loadSession(context)
         val supabase = SupabaseService.getInstance()
+        val session = SessionManager.loadSession(context) // ✅ Aquí es seguro usarlo
 
         if (session != null) {
             try {
                 supabase.auth.importSession(session)
                 val user = supabase.auth.currentUserOrNull()
                 if (user != null) {
-                    // ✅ Navega al Home si hay sesión activa
-                    navController.navigate("home") {
+                    navController.navigate("userHome/${user.id}") {
                         popUpTo("splash") { inclusive = true }
                     }
                 } else {
-                    // ❌ Sesión inválida, redirigir al login
                     navController.navigate("login") {
                         popUpTo("splash") { inclusive = true }
                     }
                 }
             } catch (e: Exception) {
-                // En caso de error al importar la sesión
                 navController.navigate("login") {
                     popUpTo("splash") { inclusive = true }
                 }
             }
         } else {
-            // No hay sesión guardada, ir al login
             navController.navigate("login") {
                 popUpTo("splash") { inclusive = true }
             }

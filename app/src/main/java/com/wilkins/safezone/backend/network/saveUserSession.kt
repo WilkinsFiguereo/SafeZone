@@ -1,5 +1,7 @@
 import android.content.Context
 import android.util.Log
+import io.github.jan.supabase.SupabaseClient
+import io.github.jan.supabase.gotrue.auth
 import io.github.jan.supabase.gotrue.user.UserSession
 import kotlinx.serialization.encodeToString
 import kotlinx.serialization.decodeFromString
@@ -37,4 +39,23 @@ object SessionManager {
         prefs.edit().remove(KEY_SESSION).apply()
         Log.i("SessionManager", "🧹 Sesión eliminada correctamente.")
     }
+
+    suspend fun logout(context: Context, supabaseClient: SupabaseClient) {
+        try {
+            // 1. Cerrar sesión en Supabase
+            supabaseClient.auth.signOut()
+            Log.i("SessionManager", "🚪 Sesión cerrada en Supabase.")
+
+            // 2. Limpiar datos locales
+            clearSession(context)
+
+            Log.i("SessionManager", "✅ Logout completado exitosamente.")
+        } catch (e: Exception) {
+            Log.e("SessionManager", "❌ Error durante logout: ${e.message}", e)
+            // Limpiar sesión local aunque falle la llamada a Supabase
+            clearSession(context)
+        }
+    }
+
+
 }
