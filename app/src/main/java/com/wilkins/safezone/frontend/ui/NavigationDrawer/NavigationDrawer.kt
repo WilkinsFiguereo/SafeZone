@@ -74,7 +74,10 @@ fun NavigationDrawer(navController: NavController, context: Context, supabaseCli
             Card(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .clickable { /* Navegar a editar perfil */ },
+                    .clickable {
+                        // Navegar a la pantalla Profile
+                        navController.navigate("profile")
+                    },
                 shape = RoundedCornerShape(16.dp),
                 colors = CardDefaults.cardColors(containerColor = cardColor),
                 elevation = CardDefaults.cardElevation(defaultElevation = 1.dp)
@@ -128,7 +131,8 @@ fun NavigationDrawer(navController: NavController, context: Context, supabaseCli
                         modifier = Modifier.size(24.dp)
                     )
                 }
-            }
+
+        }
 
             Spacer(modifier = Modifier.height(16.dp))
 

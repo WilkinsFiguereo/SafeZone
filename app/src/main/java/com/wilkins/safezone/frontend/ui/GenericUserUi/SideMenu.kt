@@ -72,7 +72,7 @@ fun SideMenu(
                 )
                 // Botón de perfil
                 IconButton(onClick = {
-                    navController.navigate("profile") {
+                    navController.navigate("NavigationDrawer") {
                         // Opcional: evita que se acumulen múltiples instancias
                         launchSingleTop = true
                     }

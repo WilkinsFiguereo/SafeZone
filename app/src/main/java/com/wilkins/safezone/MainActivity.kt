@@ -25,6 +25,7 @@ import androidx.navigation.compose.rememberNavController
 import com.wilkins.safezone.GenericUserUi.SplashScreen
 import com.wilkins.safezone.backend.network.SupabaseService
 import com.wilkins.safezone.frontend.ui.NavigationDrawer.NavigationDrawer
+import com.wilkins.safezone.frontend.ui.NavigationDrawer.Profile
 import com.wilkins.safezone.frontend.ui.screens.auth.LoginScreen
 import com.wilkins.safezone.frontend.ui.screens.auth.RegisterScreen
 import com.wilkins.safezone.frontend.ui.screens.auth.VerificationScreen
@@ -114,11 +115,13 @@ class MainActivity : ComponentActivity() {
                         composable("adminHome/{userId}") {
                             // AdminHomeScreen()
                         }
-                        composable("profile") {
+                        composable("NavigationDrawer") {
                             val context = LocalContext.current
                             val supabaseClient = SupabaseService.getInstance()
                             NavigationDrawer(navController, context, supabaseClient)
                         }
+
+                        composable("profile") { Profile(navController) }
                     }
                 }
             }
