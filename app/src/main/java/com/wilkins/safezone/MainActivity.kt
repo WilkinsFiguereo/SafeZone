@@ -24,6 +24,7 @@ import androidx.navigation.compose.composable
 import androidx.navigation.compose.rememberNavController
 import com.wilkins.safezone.GenericUserUi.SplashScreen
 import com.wilkins.safezone.backend.network.SupabaseService
+import com.wilkins.safezone.frontend.ui.Admin.CrudUsuarios
 import com.wilkins.safezone.frontend.ui.NavigationDrawer.NavigationDrawer
 import com.wilkins.safezone.frontend.ui.NavigationDrawer.Profile
 import com.wilkins.safezone.frontend.ui.NavigationDrawer.SettingsScreen
@@ -41,101 +42,104 @@ class MainActivity : ComponentActivity() {
         super.onCreate(savedInstanceState)
 
         // 🔹 Activa pantalla completa antes de setContent
-        enableFullScreen()
+//        enableFullScreen()
+
+
 
         setContent {
             SafeZoneTheme {
                 // 🔹 Aplica el modo pantalla completa a toda la app
                 FullScreenTheme {
                     val navController = rememberNavController()
-                    var savedEmail by remember { mutableStateOf("") }
-                    var savedPassword by remember { mutableStateOf("") }
-
-                    NavHost(
-                        navController = navController,
-                        startDestination = "splash"
-                    ) {
-                        composable("splash") {
-                            SplashScreen(navController)
-                        }
-                        composable("login") {
-                            LoginScreen(
-                                navController = navController,
-                                onLoginSuccess = { user ->
-                                    when (user.role_id) {
-                                        1 -> navController.navigate("userHome/${user.id}") {
-                                            popUpTo("login") { inclusive = true }
-                                        }
-
-                                        2 -> navController.navigate("adminHome/${user.id}") {
-                                            popUpTo("login") { inclusive = true }
-                                        }
-                                    }
-                                },
-                                onNavigateToRegister = { navController.navigate("register") }
-                            )
-                        }
-                        composable("register") {
-                            RegisterScreen(
-                                onNavigateToLogin = {
-                                    navController.navigate("login") {
-                                        popUpTo("register") { inclusive = true }
-                                    }
-                                },
-                                onNavigateToVerification = { email, password ->
-                                    savedEmail = email
-                                    savedPassword = password
-                                    navController.navigate("verification") {
-                                        popUpTo("register") { inclusive = true }
-                                    }
-                                }
-                            )
-                        }
-                        composable("verification") {
-                            VerificationScreen(
-                                savedEmail = savedEmail,
-                                savedPassword = savedPassword,
-                                primaryColor = PrimaryColor,
-                                onBackClick = {
-                                    navController.navigate("login") {
-                                        popUpTo("verification") { inclusive = true }
-                                    }
-                                },
-                                onVerified = {
-                                    val supabase = SupabaseService.getInstance()
-                                    val userId = supabase.auth.currentUserOrNull()?.id ?: ""
-                                    navController.navigate("userHome/$userId") {
-                                        popUpTo("verification") { inclusive = true }
-                                    }
-                                }
-                            )
-                        }
-                        composable("userHome/{userId}") {
-                            UserHomeScreen(navController)
-                        }
-                        composable("adminHome/{userId}") {
-                            // AdminHomeScreen()
-                        }
-                        composable("NavigationDrawer") {
-                            val context = LocalContext.current
-                            val supabaseClient = SupabaseService.getInstance()
-                            NavigationDrawer(navController, context, supabaseClient)
-                        }
-
-                        composable("profile") { Profile(navController) }
-
-
-                        composable("settings") {
-                            SettingsScreen(
-                                navcontroller = navController,
-                                onBackClick = {
-                                    navController.navigate("NavigationDrawer") {
-                                        popUpTo("settings") { inclusive = true }
-                                    }
-                                }
-                            )
-                        }
-                    }
+                    CrudUsuarios(navController)
+//                    var savedEmail by remember { mutableStateOf("") }
+//                    var savedPassword by remember { mutableStateOf("") }
+//
+//                    NavHost(
+//                        navController = navController,
+//                        startDestination = "splash"
+//                    ) {
+//                        composable("splash") {
+//                            SplashScreen(navController)
+//                        }
+//                        composable("login") {
+//                            LoginScreen(
+//                                navController = navController,
+//                                onLoginSuccess = { user ->
+//                                    when (user.role_id) {
+//                                        1 -> navController.navigate("userHome/${user.id}") {
+//                                            popUpTo("login") { inclusive = true }
+//                                        }
+//
+//                                        2 -> navController.navigate("adminHome/${user.id}") {
+//                                            popUpTo("login") { inclusive = true }
+//                                        }
+//                                    }
+//                                },
+//                                onNavigateToRegister = { navController.navigate("register") }
+//                            )
+//                        }
+//                        composable("register") {
+//                            RegisterScreen(
+//                                onNavigateToLogin = {
+//                                    navController.navigate("login") {
+//                                        popUpTo("register") { inclusive = true }
+//                                    }
+//                                },
+//                                onNavigateToVerification = { email, password ->
+//                                    savedEmail = email
+//                                    savedPassword = password
+//                                    navController.navigate("verification") {
+//                                        popUpTo("register") { inclusive = true }
+//                                    }
+//                                }
+//                            )
+//                        }
+//                        composable("verification") {
+//                            VerificationScreen(
+//                                savedEmail = savedEmail,
+//                                savedPassword = savedPassword,
+//                                primaryColor = PrimaryColor,
+//                                onBackClick = {
+//                                    navController.navigate("login") {
+//                                        popUpTo("verification") { inclusive = true }
+//                                    }
+//                                },
+//                                onVerified = {
+//                                    val supabase = SupabaseService.getInstance()
+//                                    val userId = supabase.auth.currentUserOrNull()?.id ?: ""
+//                                    navController.navigate("userHome/$userId") {
+//                                        popUpTo("verification") { inclusive = true }
+//                                    }
+//                                }
+//                            )
+//                        }
+//                        composable("userHome/{userId}") {
+//                            UserHomeScreen(navController)
+//                        }
+//                        composable("adminHome/{userId}") {
+//                            // AdminHomeScreen()
+//                        }
+//                        composable("NavigationDrawer") {
+//                            val context = LocalContext.current
+//                            val supabaseClient = SupabaseService.getInstance()
+//                            NavigationDrawer(navController, context, supabaseClient)
+//                        }
+//
+//                        composable("profile") { Profile(navController) }
+//
+//
+//                        composable("settings") {
+//                            SettingsScreen(
+//                                navcontroller = navController,
+//                                onBackClick = {
+//                                    navController.navigate("NavigationDrawer") {
+//                                        popUpTo("settings") { inclusive = true }
+//                                    }
+//                                }
+//                            )
+//                        }
+//                    }
                 }
             }
         }
