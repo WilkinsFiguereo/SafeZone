@@ -1,5 +1,6 @@
 package com.wilkins.safezone.frontend.ui.Admin
 
+import android.widget.Toast
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
@@ -18,16 +19,19 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.style.TextAlign
-import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.NavController
 import com.wilkins.safezone.backend.network.Admin.CrudUser.UserProfileViewModel
+import com.wilkins.safezone.backend.network.Admin.CrudUser.Usuario
+import com.wilkins.safezone.bridge.profile.UpdateProfileBridge
 import com.wilkins.safezone.ui.theme.PrimaryColor
+import kotlinx.coroutines.launch
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -68,8 +72,7 @@ fun UserProfileCrud(
                             tint = MaterialTheme.colorScheme.primary
                         )
                     }
-                }
-                ,
+                },
                 colors = TopAppBarDefaults.topAppBarColors(
                     containerColor = MaterialTheme.colorScheme.surface,
                     titleContentColor = MaterialTheme.colorScheme.primary
@@ -302,6 +305,10 @@ fun UserProfileCrud(
 
                 Spacer(modifier = Modifier.height(32.dp))
 
+                // 🔹 Contexto y coroutine
+                val context = LocalContext.current
+                val coroutineScope = rememberCoroutineScope()
+
                 // Botones
                 Row(
                     modifier = Modifier
@@ -309,19 +316,46 @@ fun UserProfileCrud(
                         .padding(top = 12.dp),
                     horizontalArrangement = Arrangement.spacedBy(12.dp)
                 ) {
-                    // Botón Editar/Guardar
                     Button(
                         onClick = {
-//                            if (isEditing) {
-//                                // Modo Guardar - Guardar cambios
-//                                viewModel.updateProfile(
-//                                    name = nombreCompleto,
-//                                    email = email,
-//                                    phone = telefono
-//                                )
-//                                // Aquí puedes agregar lógica adicional para guardar en backend
-//                            }
-                            isEditing = !isEditing
+                            if (isEditing) {
+                                // Modo Guardar - Guardar cambios
+                                coroutineScope.launch {
+                                    // Construimos el objeto Usuario con los valores actuales del formulario
+                                    val usuarioActualizado = Usuario(
+                                        id = uuid,
+                                        idCompleto = profile.id ?: "",
+                                        nombre = nombreCompleto,
+                                        rol = profile.rol?.name ?: "Usuario",
+                                        roleId = profile.roleId ?: 1,
+                                        email = email,
+                                        telefono = telefono, // ✅ Incluir teléfono
+                                        photoProfile = profile.photoProfile ?: "",
+                                        createdAt = fechaCreacion,
+                                        estado = estado // ✅ Incluir estado
+                                    )
+
+                                    println("🔄 Enviando actualización para usuario: ${usuarioActualizado.nombre}")
+                                    println("📧 Email: ${usuarioActualizado.email}")
+                                    println("📞 Teléfono: ${usuarioActualizado.telefono}")
+                                    println("🎯 Estado: ${usuarioActualizado.estado}")
+
+                                    val result = UpdateProfileBridge.handleUpdateProfile(context, usuarioActualizado)
+
+                                    result.onSuccess {
+                                        Toast.makeText(context, "✅ Perfil actualizado correctamente", Toast.LENGTH_SHORT).show()
+                                        isEditing = false // Cambiar a modo visualización
+                                        // Opcional: Recargar los datos
+                                        viewModel.loadProfile(userId)
+                                    }.onFailure { error ->
+                                        Toast.makeText(context, "❌ Error: ${error.message}", Toast.LENGTH_LONG).show()
+                                        // Mantener modo edición para que el usuario pueda corregir
+                                    }
+                                }
+                            } else {
+                                // Modo Editar - Activar edición
+                                isEditing = true
+                            }
                         },
                         colors = ButtonDefaults.buttonColors(
                             containerColor = if (isEditing) Color(0xFF48BB78) else Color(0xFF667EEA)
@@ -344,16 +378,28 @@ fun UserProfileCrud(
                         )
                     }
 
-                    // Botón Deshabilitar/Habilitar
+                    // Botón Deshabilitar/Cancelar
                     Button(
                         onClick = {
-                            // Acción deshabilitar/habilitar
-                            val newStatus = if (estado == "Activo") "Inactivo" else "Activo"
-                            estado = newStatus
-                            // Aquí puedes agregar lógica para actualizar en backend
+                            if (isEditing) {
+                                // Modo Cancelar - Cancelar edición
+                                isEditing = false
+                                // Restaurar valores originales
+                                nombreCompleto = profile.name
+                                email = profile.email ?: ""
+                                telefono = profile.phone ?: ""
+                                estado = if (profile.statusId == 1) "Activo" else "Inactivo"
+                            } else {
+                                // Modo Deshabilitar/Habilitar
+                                val newStatus = if (estado == "Activo") "Inactivo" else "Activo"
+                                estado = newStatus
+                                // Aquí puedes agregar lógica para actualizar en backend
+                                Toast.makeText(context, "Estado cambiado a: $newStatus", Toast.LENGTH_SHORT).show()
+                            }
                         },
                         colors = ButtonDefaults.buttonColors(
-                            containerColor = if (estado == "Activo") Color(0xFFF56565) else Color(0xFF48BB78)
+                            containerColor = if (isEditing) Color(0xFFA0AEC0) else
+                                if (estado == "Activo") Color(0xFFF56565) else Color(0xFF48BB78)
                         ),
                         shape = RoundedCornerShape(12.dp),
                         modifier = Modifier
@@ -366,41 +412,8 @@ fun UserProfileCrud(
                         )
                     ) {
                         Text(
-                            text = if (estado == "Activo") "🚫 Deshabilitar" else "✅ Habilitar",
-                            fontSize = 16.sp,
-                            fontWeight = FontWeight.Bold,
-                            color = Color.White
-                        )
-                    }
-                }
-
-                // Botón Cancelar (solo visible en modo edición)
-                if (isEditing) {
-                    Spacer(modifier = Modifier.height(12.dp))
-                    Button(
-                        onClick = {
-                            // Cancelar edición y restaurar valores originales
-                            isEditing = false
-                            nombreCompleto = profile.name
-                            email = profile.email ?: ""
-                            telefono = profile.phone ?: ""
-                            estado = if (profile.statusId == 1) "Activo" else "Inactivo"
-                        },
-                        colors = ButtonDefaults.buttonColors(
-                            containerColor = Color(0xFFA0AEC0)
-                        ),
-                        shape = RoundedCornerShape(12.dp),
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .height(56.dp)
-                            .shadow(4.dp, RoundedCornerShape(12.dp)),
-                        elevation = ButtonDefaults.buttonElevation(
-                            defaultElevation = 0.dp,
-                            pressedElevation = 8.dp
-                        )
-                    ) {
-                        Text(
-                            text = "❌ Cancelar",
+                            text = if (isEditing) "❌ Cancelar" else
+                                if (estado == "Activo") "🚫 Deshabilitar" else "✅ Habilitar",
                             fontSize = 16.sp,
                             fontWeight = FontWeight.Bold,
                             color = Color.White
@@ -449,7 +462,6 @@ fun InputField(
             shape = RoundedCornerShape(12.dp),
             singleLine = true,
             enabled = enabled,
-//            keyboardOptions = androidx.compose.ui.text.input.KeyboardOptions(keyboardType = keyboardType)
         )
     }
 }
@@ -535,4 +547,3 @@ fun EstadoDropdown(
         }
     }
 }
-

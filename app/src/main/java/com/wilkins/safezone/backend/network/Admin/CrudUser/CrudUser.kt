@@ -5,6 +5,8 @@ import io.github.jan.supabase.postgrest.from
 import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
 import io.github.jan.supabase.postgrest.query.Columns
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.withContext
 
 // 🔹 Modelo de datos para Roles
 @Serializable
@@ -62,7 +64,7 @@ data class Profile(
 
 
 // 🔹 Servicio para manejar operaciones de Profile
-class ProfileService {
+class CrudUser {
 
     private val supabase = SupabaseService.getInstance()
 
@@ -118,5 +120,22 @@ class ProfileService {
             emptyList()
         }
     }
+
+    suspend fun updateUserProfile(user: Usuario): Boolean {
+        return try {
+            val response = supabase.from("users")
+                .update(user) {
+                    filter {
+                        eq("id", user.id)
+                    }
+                }
+
+            response.data != null
+        } catch (e: Exception) {
+            println("❌ Error actualizando perfil: ${e.message}")
+            false
+        }
+    }
+
 }
 

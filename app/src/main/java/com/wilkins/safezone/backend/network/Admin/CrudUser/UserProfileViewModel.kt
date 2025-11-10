@@ -9,7 +9,7 @@ import kotlinx.coroutines.launch
 
 class UserProfileViewModel : ViewModel() {
 
-    private val profileService = ProfileService()
+    private val profileService = CrudUser()
 
     // ✅ ID del usuario actualmente seleccionado
     var selectedUserId by mutableStateOf<String?>(null)

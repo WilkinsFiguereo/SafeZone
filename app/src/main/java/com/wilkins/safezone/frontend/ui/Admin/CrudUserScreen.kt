@@ -18,7 +18,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.NavController
-import com.wilkins.safezone.backend.network.Admin.CrudUser.ProfileService
+import com.wilkins.safezone.backend.network.Admin.CrudUser.CrudUser
 import com.wilkins.safezone.backend.network.Admin.CrudUser.UserProfileViewModel
 import com.wilkins.safezone.backend.network.Admin.CrudUser.Usuario
 import com.wilkins.safezone.frontend.ui.Admin.components.*
@@ -35,7 +35,7 @@ fun CrudUsuarios(navController: NavController? = null) {
     var showFilters by remember { mutableStateOf(false) }
 
     val coroutineScope = rememberCoroutineScope()
-    val profileService = remember { ProfileService() }
+    val profileService = remember { CrudUser() }
 
     // Opciones de filtro
     val filterOptions = listOf(
