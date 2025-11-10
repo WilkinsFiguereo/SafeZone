@@ -1,4 +1,4 @@
-package com.wilkins.safezone.backend.network.Admin
+package com.wilkins.safezone.backend.network.Admin.CrudUser
 
 import com.wilkins.safezone.backend.network.SupabaseService
 import io.github.jan.supabase.postgrest.from
@@ -38,6 +38,9 @@ data class Profile(
     @SerialName("phone")
     val phone: String? = null,
 
+    @SerialName("email")
+    val email: String? = null,
+
     @SerialName("photo_profile")
     val photoProfile: String? = null,
 
@@ -54,12 +57,9 @@ data class Profile(
     val createdAt: String = "",
 
     @SerialName("updated_at")
-    val updatedAt: String = "",
-
-    // 👇 Relación con auth.users
-    @SerialName("auth_users")
-    val auth: AuthUser? = null
+    val updatedAt: String = ""
 )
+
 
 // 🔹 Servicio para manejar operaciones de Profile
 class ProfileService {
@@ -67,13 +67,13 @@ class ProfileService {
     private val supabase = SupabaseService.getInstance()
 
     /**
-     * Obtener todos los perfiles con roles y correos
+     * Obtener todos los perfiles con roles
      */
     suspend fun getAllProfiles(): List<Profile> {
         return try {
             supabase
                 .from("profiles")
-                .select(Columns.raw("*, roles(name), auth_users(email)"))
+                .select(Columns.raw("*, roles(name)"))
                 .decodeList<Profile>()
         } catch (e: Exception) {
             println("Error al obtener perfiles: ${e.message}")
@@ -88,7 +88,7 @@ class ProfileService {
         return try {
             supabase
                 .from("profiles")
-                .select(Columns.raw("*, roles(name), auth_users(email)")) {
+                .select(Columns.raw("*, roles(name)")) {
                     filter {
                         eq("id", userId)
                     }
@@ -101,13 +101,13 @@ class ProfileService {
     }
 
     /**
-     * Obtener perfiles filtrados por rol (incluye email)
+     * Obtener perfiles filtrados por rol
      */
     suspend fun getProfilesByRole(roleId: Int): List<Profile> {
         return try {
             supabase
                 .from("profiles")
-                .select(Columns.raw("*, roles(name), auth_users(email)")) {
+                .select(Columns.raw("*, roles(name)")) {
                     filter {
                         eq("role_id", roleId)
                     }
@@ -119,3 +119,4 @@ class ProfileService {
         }
     }
 }
+
