@@ -68,6 +68,9 @@ dependencies {
     implementation("com.google.accompanist:accompanist-pager:0.30.1")
     implementation("com.google.accompanist:accompanist-pager-indicators:0.30.1")
 
+
+    implementation("androidx.lifecycle:lifecycle-runtime-ktx:2.8.3")
+
     // Librerías AndroidX
     implementation(libs.androidx.core.ktx)
     implementation(libs.androidx.lifecycle.runtime.ktx)

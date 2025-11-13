@@ -1,45 +1,44 @@
 package com.wilkins.safezone.backend.network.Admin.CrudUser
 
-import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import kotlinx.coroutines.launch
 
 class UserProfileViewModel : ViewModel() {
+    private val crudUser = CrudUser()
 
-    private val profileService = CrudUser()
-
-    // ✅ ID del usuario actualmente seleccionado
-    var selectedUserId by mutableStateOf<String?>(null)
-        private set
-
-    // ✅ Datos del perfil cargado desde Supabase
     var profile by mutableStateOf<Profile?>(null)
         private set
 
-    // ✅ Estado de carga
+    var roles by mutableStateOf<List<Role>>(emptyList())
+        private set
+
     var loading by mutableStateOf(false)
         private set
 
-    /**
-     * ✅ Guarda el UUID del usuario que se seleccionó
-     */
-    fun selectUser(uuid: String) {
-        selectedUserId = uuid
-    }
+    var loadingRoles by mutableStateOf(false)
+        private set
 
     /**
-     * ✅ Carga la información del perfil por ID
+     * Cargar el perfil de un usuario específico
      */
     fun loadProfile(userId: String) {
         viewModelScope.launch {
+            loading = true
             try {
-                loading = true
-                profile = profileService.getProfileById(userId)
+                profile = crudUser.getProfileById(userId)
+                println("✅ Perfil cargado: ${profile?.name}")
+                println("   - ID: ${profile?.id}")
+                println("   - Email: ${profile?.email}")
+                println("   - Teléfono: ${profile?.phone}")
+                println("   - Rol: ${profile?.rol?.name} (ID: ${profile?.roleId})")
+                println("   - Estado: ${profile?.statusId}")
             } catch (e: Exception) {
                 println("❌ Error cargando perfil: ${e.message}")
+                e.printStackTrace()
             } finally {
                 loading = false
             }
@@ -47,9 +46,50 @@ class UserProfileViewModel : ViewModel() {
     }
 
     /**
-     * ✅ Carga el perfil seleccionado (si existe)
+     * Cargar todos los roles disponibles desde la base de datos
      */
-    fun loadSelectedProfile() {
-        selectedUserId?.let { loadProfile(it) }
+    fun loadRoles() {
+        viewModelScope.launch {
+            loadingRoles = true
+            try {
+                roles = crudUser.getAllRoles()
+                println("✅ Roles cargados: ${roles.size} roles encontrados")
+                roles.forEach { role ->
+                    println("   - ${role.name} (ID: ${role.id})")
+                }
+            } catch (e: Exception) {
+                println("❌ Error cargando roles: ${e.message}")
+                e.printStackTrace()
+            } finally {
+                loadingRoles = false
+            }
+        }
+    }
+
+    /**
+     * Recargar el perfil (útil después de actualizar)
+     */
+    fun refreshProfile(userId: String) {
+        loadProfile(userId)
+    }
+
+    /**
+     * Seleccionar un usuario específico para ver/editar su perfil
+     */
+    fun selectUser(userId: String) {
+        viewModelScope.launch {
+            loading = true
+            try {
+                profile = crudUser.getProfileById(userId)
+                println("✅ Usuario seleccionado: ${profile?.name}")
+                println("   - UUID: ${profile?.id}")
+                println("   - Rol: ${profile?.rol?.name} (ID: ${profile?.roleId})")
+            } catch (e: Exception) {
+                println("❌ Error seleccionando usuario: ${e.message}")
+                e.printStackTrace()
+            } finally {
+                loading = false
+            }
+        }
     }
 }

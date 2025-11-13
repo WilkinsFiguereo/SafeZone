@@ -18,96 +18,92 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.text.font.FontWeight
-import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.navigation.NavController
-import com.wilkins.safezone.ui.theme.NameApp
 import com.wilkins.safezone.ui.theme.PrimaryColor
 
 @Composable
-fun SideMenu(
+fun AdminMenu(
     navController: NavController,
-    modifier: Modifier = Modifier
+    modifier: Modifier = Modifier,
+    showHeader: Boolean = true,
+    isMenuOpen: Boolean, // ✅ Estado controlado desde fuera
+    onMenuToggle: () -> Unit, // ✅ Callback para toggle del menú
+    content: @Composable () -> Unit = {}
 ) {
-    var isOpen by remember { mutableStateOf(false) }
+    // Menú específico para administrador
     val menuItems = listOf(
-        MenuItem(Icons.Default.Person, "Perfil"),
-        MenuItem(Icons.Default.Home, "Inicio"),
-        MenuItem(Icons.Default.Notifications, "Noticias"),
-        MenuItem(Icons.Default.Place, "Reportes en tu zona"),
-        MenuItem(Icons.Default.Warning, "Alerta una emergencia"),
-        MenuItem(Icons.Default.Visibility, "Mis alertas"),
-        MenuItem(Icons.Default.Notifications, "Notificaciones"),
-        MenuItem(Icons.Default.Settings, "Configuración")
+        AdminMenuItem(Icons.Default.Dashboard, "Dashboard", "admin_dashboard"),
+        AdminMenuItem(Icons.Default.People, "Lista de Usuarios", "crudUsuarios"),
+        AdminMenuItem(Icons.Default.PersonOff, "Usuarios Deshabilitados", "disabled_users"),
+        AdminMenuItem(Icons.Default.Assessment, "Generar Reportes", "generate_reports"),
+        AdminMenuItem(Icons.Default.Pending, "Reportes Pendientes", "pending_reports"),
+        AdminMenuItem(Icons.Default.Update, "Reportes en Proceso", "in_progress_reports"),
+        AdminMenuItem(Icons.Default.CheckCircle, "Reportes Completados", "completed_reports"),
+        AdminMenuItem(Icons.Default.Cancel, "Reportes Cancelados", "cancelled_reports"),
+        AdminMenuItem(Icons.Default.Settings, "Configuración", "admin_settings")
     )
 
     Box(modifier = modifier.fillMaxSize()) {
-        // Contenido principal
+        // Contenido principal proporcionado por el caller
         Column(modifier = Modifier.fillMaxSize()) {
-            // Header Principal Verde
-            Row(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .background(PrimaryColor)
-                    .padding(horizontal = 16.dp, vertical = 12.dp),
-                horizontalArrangement = Arrangement.SpaceBetween,
-                verticalAlignment = Alignment.CenterVertically
-            ) {
-                // Botón de menú (3 líneas)
-                IconButton(onClick = { isOpen = !isOpen }) {
-                    Icon(
-                        imageVector = Icons.Default.Menu,
-                        contentDescription = "Menu",
-                        tint = Color.White,
-                        modifier = Modifier.size(28.dp)
-                    )
-                }
-                // Logo/Nombre AlertaYa
-                Text(
-                    text = NameApp,
-                    color = Color.White,
-                    fontSize = 22.sp,
-                    fontWeight = FontWeight.Bold
-                )
-                // Botón de perfil
-                IconButton(onClick = {
-                    navController.navigate("NavigationDrawer") {
-                        // Opcional: evita que se acumulen múltiples instancias
-                        launchSingleTop = true
-                    }
-                }) {
-                    Box(
-                        modifier = Modifier
-                            .size(36.dp)
-                            .clip(CircleShape)
-                            .background(Color.White.copy(alpha = 0.3f)),
-                        contentAlignment = Alignment.Center
-                    ) {
+            // ✅ Solo mostrar header si showHeader es true
+            if (showHeader) {
+                // Header Principal
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .background(PrimaryColor)
+                        .padding(horizontal = 16.dp, vertical = 12.dp),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    // Botón de menú (3 líneas)
+                    IconButton(onClick = onMenuToggle) { // ✅ Usar el callback
                         Icon(
-                            imageVector = Icons.Default.Person,
-                            contentDescription = "Perfil",
+                            imageVector = Icons.Default.Menu,
+                            contentDescription = "Menu",
                             tint = Color.White,
-                            modifier = Modifier.size(24.dp)
+                            modifier = Modifier.size(28.dp)
                         )
                     }
+                    // Logo/Nombre
+                    Text(
+                        text = "Panel Admin",
+                        color = Color.White,
+                        fontSize = 22.sp,
+                        fontWeight = FontWeight.Bold
+                    )
+                    // Botón de perfil
+                    IconButton(onClick = {
+                        navController.navigate("admin_profile")
+                    }) {
+                        Box(
+                            modifier = Modifier
+                                .size(36.dp)
+                                .clip(CircleShape)
+                                .background(Color.White.copy(alpha = 0.3f)),
+                            contentAlignment = Alignment.Center
+                        ) {
+                            Icon(
+                                imageVector = Icons.Default.Person,
+                                contentDescription = "Perfil",
+                                tint = Color.White,
+                                modifier = Modifier.size(24.dp)
+                            )
+                        }
+                    }
                 }
-
             }
 
-            // Aquí puedes agregar más contenido de tu app
-            // Por ejemplo:
-            // Box(
-            //     modifier = Modifier.fillMaxSize(),
-            //     contentAlignment = Alignment.Center
-            // ) {
-            //     Text("Contenido de la aplicación")
-            // }
+            // Contenido proporcionado por el caller
+            content()
         }
 
         // Menú lateral animado con overlay
         AnimatedVisibility(
-            visible = isOpen,
+            visible = isMenuOpen, // ✅ Usar el estado controlado
             enter = slideInHorizontally(
                 initialOffsetX = { -it },
                 animationSpec = tween(300)
@@ -141,7 +137,7 @@ fun SideMenu(
                         )
                         Spacer(modifier = Modifier.width(12.dp))
                         Text(
-                            text = NameApp,
+                            text = "Admin Panel",
                             color = Color.White,
                             fontSize = 22.sp,
                             fontWeight = FontWeight.Bold
@@ -155,28 +151,13 @@ fun SideMenu(
                     Spacer(modifier = Modifier.height(8.dp))
 
                     // Items del menú
-                    // Items del menú
                     menuItems.forEach { item ->
                         Row(
                             modifier = Modifier
                                 .fillMaxWidth()
                                 .clickable {
-                                    isOpen = false
-
-                                    // 👉 Navegación según el item
-                                    when (item.label) {
-                                        "Inicio" -> navController.navigate("userHome") {
-                                            launchSingleTop = true
-                                            popUpTo("userHome") { inclusive = true }
-                                        }
-                                        "Perfil" -> navController.navigate("ProfileUser") { launchSingleTop = true }
-                                        "Noticias" -> navController.navigate("NewsUser") { launchSingleTop = true }
-                                        "Reportes en tu zona" -> navController.navigate("ReportsUser") { launchSingleTop = true }
-                                        "Alerta una emergencia" -> navController.navigate("AlertUser") { launchSingleTop = true }
-                                        "Mis alertas" -> navController.navigate("MyAlertsUser") { launchSingleTop = true }
-                                        "Notificaciones" -> navController.navigate("NotificationsUser") { launchSingleTop = true }
-                                        "Configuración" -> navController.navigate("SettingsUser") { launchSingleTop = true }
-                                    }
+                                    onMenuToggle() // ✅ Cerrar menú al seleccionar
+                                    navController.navigate(item.route)
                                 }
                                 .padding(horizontal = 20.dp, vertical = 14.dp),
                             verticalAlignment = Alignment.CenterVertically
@@ -196,7 +177,6 @@ fun SideMenu(
                         }
                     }
 
-
                     Spacer(modifier = Modifier.weight(1f))
 
                     // Footer
@@ -211,26 +191,27 @@ fun SideMenu(
                             modifier = Modifier.padding(bottom = 12.dp)
                         )
                         Text(
-                            text = "Versión 1.0",
+                            text = "Admin Versión 1.0",
                             color = Color.White.copy(alpha = 0.7f),
                             fontSize = 12.sp
                         )
                     }
                 }
+
+                // Overlay para cerrar el menú
+                Box(
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .clickable { onMenuToggle() } // ✅ Cerrar menú al hacer clic fuera
+                        .background(Color.Black.copy(alpha = 0.3f))
+                )
             }
         }
     }
 }
 
-data class MenuItem(
+data class AdminMenuItem(
     val icon: ImageVector,
-    val label: String
+    val label: String,
+    val route: String
 )
-
-//@Preview(showBackground = true, showSystemUi = true)
-//@Composable
-//fun AlertaYaMenuPreview() {
-//    MaterialTheme {
-//        SideMenu()
-//    }
-//}

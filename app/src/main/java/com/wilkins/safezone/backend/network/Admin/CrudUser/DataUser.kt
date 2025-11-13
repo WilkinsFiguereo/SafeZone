@@ -9,6 +9,7 @@ data class Usuario(
     val nombre: String,
     val rol: String,
     val roleId: Int,
+    val address: String? = null,
     val email: String? = null,
     val telefono: String? = null, // ✅ Agregar este campo
     val photoProfile: String? = null,

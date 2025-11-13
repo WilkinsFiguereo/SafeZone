@@ -27,6 +27,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.NavController
+import com.wilkins.safezone.backend.network.Admin.CrudUser.Role
 import com.wilkins.safezone.backend.network.Admin.CrudUser.UserProfileViewModel
 import com.wilkins.safezone.backend.network.Admin.CrudUser.Usuario
 import com.wilkins.safezone.bridge.profile.UpdateProfileBridge
@@ -42,13 +43,19 @@ fun UserProfileCrud(
 ) {
     val profile = viewModel.profile
     val loading = viewModel.loading
+    val roles = viewModel.roles
+    val loadingRoles = viewModel.loadingRoles
 
     LaunchedEffect(userId) {
         viewModel.loadProfile(userId)
+        viewModel.loadRoles()
     }
 
     // Estado para controlar el modo edición
     var isEditing by remember { mutableStateOf(false) }
+
+    // ✅ Estado para controlar el diálogo de confirmación
+    var showSaveDialog by remember { mutableStateOf(false) }
 
     Scaffold(
         topBar = {
@@ -80,7 +87,7 @@ fun UserProfileCrud(
             )
         }
     ) { padding ->
-        if (loading) {
+        if (loading || loadingRoles) {
             Box(
                 modifier = Modifier
                     .fillMaxSize()
@@ -104,18 +111,19 @@ fun UserProfileCrud(
             return@Scaffold
         }
 
-        // ✅ Ahora usamos los datos reales del usuario
-        var nombreCompleto by remember { mutableStateOf<String>(profile.name) }
-        var uuid by remember { mutableStateOf<String>(profile.id) }
-        var telefono by remember { mutableStateOf<String>(profile.phone ?: "") }
-        var email by remember { mutableStateOf<String>(profile.email ?: "") }
-        var fechaCreacion by remember { mutableStateOf<String>(profile.createdAt) }
-        var estado by remember { mutableStateOf<String>(if (profile.statusId == 1) "Activo" else "Inactivo") }
+        // ✅ Estados del formulario
+        var nombreCompleto by remember { mutableStateOf(profile.name) }
+        var uuid by remember { mutableStateOf(profile.id) }
+        var telefono by remember { mutableStateOf(profile.phone ?: "") }
+        var email by remember { mutableStateOf(profile.email ?: "") }
+        var fechaCreacion by remember { mutableStateOf(profile.createdAt) }
+        var estado by remember { mutableStateOf(if (profile.statusId == 1) "Activo" else "Inactivo") }
+        var direccion by remember { mutableStateOf(profile.address ?: "") }
 
-        // 👉 puedes eliminar dirección si no existe en tu tabla
-        var direccion by remember { mutableStateOf("") }
+        // ✅ Estado para el rol seleccionado
+        var rolSeleccionado by remember { mutableStateOf(profile.rol?.name ?: "Usuario") }
+        var rolIdSeleccionado by remember { mutableStateOf(profile.roleId) }
 
-        // 🔽 Aquí sigue el mismo diseño que ya tenías 🔽
         Column(
             modifier = Modifier
                 .fillMaxSize()
@@ -208,7 +216,7 @@ fun UserProfileCrud(
                         color = Color(0xFFEDF2F7)
                     ) {
                         Text(
-                            text = "👤 ${profile.rol?.name ?: "Usuario"}",
+                            text = "👤 $rolSeleccionado",
                             modifier = Modifier.padding(horizontal = 20.dp, vertical = 8.dp),
                             fontSize = 14.sp,
                             fontWeight = FontWeight.SemiBold,
@@ -247,7 +255,7 @@ fun UserProfileCrud(
                 InputField(
                     label = "UUID",
                     value = uuid,
-                    onValueChange = { uuid = it },
+                    onValueChange = { },
                     enabled = false
                 )
 
@@ -285,11 +293,25 @@ fun UserProfileCrud(
 
                 Spacer(modifier = Modifier.height(16.dp))
 
+                // ✅ Dropdown de Rol (dinámico desde la BD)
+                RolDropdown(
+                    label = "Rol",
+                    roles = roles,
+                    rolSeleccionado = rolSeleccionado,
+                    onRolChange = { nombreRol, idRol ->
+                        rolSeleccionado = nombreRol
+                        rolIdSeleccionado = idRol
+                    },
+                    enabled = isEditing
+                )
+
+                Spacer(modifier = Modifier.height(16.dp))
+
                 // Fecha de creación (siempre deshabilitado)
                 InputField(
                     label = "Fecha de creación",
                     value = fechaCreacion,
-                    onValueChange = { fechaCreacion = it },
+                    onValueChange = { },
                     enabled = false
                 )
 
@@ -305,9 +327,113 @@ fun UserProfileCrud(
 
                 Spacer(modifier = Modifier.height(32.dp))
 
-                // 🔹 Contexto y coroutine
                 val context = LocalContext.current
                 val coroutineScope = rememberCoroutineScope()
+
+                // ✅ Diálogo de confirmación para guardar
+                if (showSaveDialog) {
+                    AlertDialog(
+                        onDismissRequest = { showSaveDialog = false },
+                        icon = {
+                            Icon(
+                                imageVector = Icons.Default.Person,
+                                contentDescription = "Guardar",
+                                tint = Color(0xFF667EEA),
+                                modifier = Modifier.size(48.dp)
+                            )
+                        },
+                        title = {
+                            Text(
+                                text = "Confirmar cambios",
+                                fontWeight = FontWeight.Bold,
+                                fontSize = 20.sp,
+                                color = Color(0xFF2D3748)
+                            )
+                        },
+                        text = {
+                            Column {
+                                Text(
+                                    text = "¿Estás seguro de que deseas guardar los cambios realizados en el perfil de $nombreCompleto?",
+                                    fontSize = 15.sp,
+                                    color = Color(0xFF4A5568),
+                                    lineHeight = 22.sp
+                                )
+                                Spacer(modifier = Modifier.height(12.dp))
+                                Text(
+                                    text = "Cambios a guardar:",
+                                    fontSize = 13.sp,
+                                    fontWeight = FontWeight.SemiBold,
+                                    color = Color(0xFF667EEA)
+                                )
+                                Spacer(modifier = Modifier.height(8.dp))
+                                Text(
+                                    text = "• Nombre: $nombreCompleto\n• Email: $email\n• Teléfono: $telefono\n• Rol: $rolSeleccionado\n• Estado: $estado",
+                                    fontSize = 13.sp,
+                                    color = Color(0xFF718096),
+                                    lineHeight = 20.sp
+                                )
+                            }
+                        },
+                        confirmButton = {
+                            Button(
+                                onClick = {
+                                    showSaveDialog = false
+                                    coroutineScope.launch {
+                                        val usuarioActualizado = Usuario(
+                                            id = uuid,
+                                            idCompleto = profile.id ?: "",
+                                            nombre = nombreCompleto,
+                                            rol = rolSeleccionado,
+                                            roleId = rolIdSeleccionado,
+                                            address = direccion,
+                                            email = email,
+                                            telefono = telefono,
+                                            photoProfile = profile.photoProfile ?: "",
+                                            createdAt = fechaCreacion,
+                                            estado = estado
+                                        )
+
+                                        println("🔄 Enviando actualización para usuario: ${usuarioActualizado.nombre}")
+                                        println("📧 Email: ${usuarioActualizado.email}")
+                                        println("📞 Teléfono: ${usuarioActualizado.telefono}")
+                                        println("📍 Dirección: ${usuarioActualizado.address}")
+                                        println("👤 Rol: ${usuarioActualizado.rol} (ID: ${usuarioActualizado.roleId})")
+                                        println("🎯 Estado: ${usuarioActualizado.estado}")
+
+                                        val result = UpdateProfileBridge.handleUpdateProfile(context, usuarioActualizado)
+
+                                        result.onSuccess {
+                                            Toast.makeText(context, "✅ Perfil actualizado correctamente", Toast.LENGTH_SHORT).show()
+                                            isEditing = false
+                                            viewModel.loadProfile(userId)
+                                        }.onFailure { error ->
+                                            Toast.makeText(context, "❌ Error: ${error.message}", Toast.LENGTH_LONG).show()
+                                        }
+                                    }
+                                },
+                                colors = ButtonDefaults.buttonColors(
+                                    containerColor = Color(0xFF48BB78)
+                                ),
+                                shape = RoundedCornerShape(12.dp)
+                            ) {
+                                Text("✅ Sí, guardar", fontWeight = FontWeight.Bold)
+                            }
+                        },
+                        dismissButton = {
+                            OutlinedButton(
+                                onClick = { showSaveDialog = false },
+                                shape = RoundedCornerShape(12.dp),
+                                colors = ButtonDefaults.outlinedButtonColors(
+                                    contentColor = Color(0xFF718096)
+                                )
+                            ) {
+                                Text("❌ Cancelar", fontWeight = FontWeight.Medium)
+                            }
+                        },
+                        shape = RoundedCornerShape(20.dp),
+                        containerColor = Color.White
+                    )
+                }
 
                 // Botones
                 Row(
@@ -319,39 +445,8 @@ fun UserProfileCrud(
                     Button(
                         onClick = {
                             if (isEditing) {
-                                // Modo Guardar - Guardar cambios
-                                coroutineScope.launch {
-                                    // Construimos el objeto Usuario con los valores actuales del formulario
-                                    val usuarioActualizado = Usuario(
-                                        id = uuid,
-                                        idCompleto = profile.id ?: "",
-                                        nombre = nombreCompleto,
-                                        rol = profile.rol?.name ?: "Usuario",
-                                        roleId = profile.roleId ?: 1,
-                                        email = email,
-                                        telefono = telefono, // ✅ Incluir teléfono
-                                        photoProfile = profile.photoProfile ?: "",
-                                        createdAt = fechaCreacion,
-                                        estado = estado // ✅ Incluir estado
-                                    )
-
-                                    println("🔄 Enviando actualización para usuario: ${usuarioActualizado.nombre}")
-                                    println("📧 Email: ${usuarioActualizado.email}")
-                                    println("📞 Teléfono: ${usuarioActualizado.telefono}")
-                                    println("🎯 Estado: ${usuarioActualizado.estado}")
-
-                                    val result = UpdateProfileBridge.handleUpdateProfile(context, usuarioActualizado)
-
-                                    result.onSuccess {
-                                        Toast.makeText(context, "✅ Perfil actualizado correctamente", Toast.LENGTH_SHORT).show()
-                                        isEditing = false // Cambiar a modo visualización
-                                        // Opcional: Recargar los datos
-                                        viewModel.loadProfile(userId)
-                                    }.onFailure { error ->
-                                        Toast.makeText(context, "❌ Error: ${error.message}", Toast.LENGTH_LONG).show()
-                                        // Mantener modo edición para que el usuario pueda corregir
-                                    }
-                                }
+                                // ✅ Mostrar diálogo de confirmación antes de guardar
+                                showSaveDialog = true
                             } else {
                                 // Modo Editar - Activar edición
                                 isEditing = true
@@ -388,13 +483,40 @@ fun UserProfileCrud(
                                 nombreCompleto = profile.name
                                 email = profile.email ?: ""
                                 telefono = profile.phone ?: ""
+                                direccion = profile.address ?: ""
                                 estado = if (profile.statusId == 1) "Activo" else "Inactivo"
+                                rolSeleccionado = profile.rol?.name ?: "Usuario"
+                                rolIdSeleccionado = profile.roleId
                             } else {
                                 // Modo Deshabilitar/Habilitar
-                                val newStatus = if (estado == "Activo") "Inactivo" else "Activo"
-                                estado = newStatus
-                                // Aquí puedes agregar lógica para actualizar en backend
-                                Toast.makeText(context, "Estado cambiado a: $newStatus", Toast.LENGTH_SHORT).show()
+                                coroutineScope.launch {
+                                    val newStatus = if (estado == "Activo") "Inactivo" else "Activo"
+                                    val newStatusId = if (estado == "Activo") 2 else 1
+
+                                    val usuarioActualizado = Usuario(
+                                        id = uuid,
+                                        idCompleto = profile.id ?: "",
+                                        nombre = nombreCompleto,
+                                        rol = rolSeleccionado,
+                                        roleId = rolIdSeleccionado,
+                                        address = direccion,
+                                        email = email,
+                                        telefono = telefono,
+                                        photoProfile = profile.photoProfile ?: "",
+                                        createdAt = fechaCreacion,
+                                        estado = newStatus
+                                    )
+
+                                    val result = UpdateProfileBridge.handleUpdateProfile(context, usuarioActualizado)
+
+                                    result.onSuccess {
+                                        estado = newStatus
+                                        Toast.makeText(context, "✅ Estado cambiado a: $newStatus", Toast.LENGTH_SHORT).show()
+                                        viewModel.loadProfile(userId)
+                                    }.onFailure { error ->
+                                        Toast.makeText(context, "❌ Error: ${error.message}", Toast.LENGTH_LONG).show()
+                                    }
+                                }
                             }
                         },
                         colors = ButtonDefaults.buttonColors(
@@ -467,6 +589,89 @@ fun InputField(
 }
 
 @Composable
+fun RolDropdown(
+    label: String,
+    roles: List<Role>,
+    rolSeleccionado: String,
+    onRolChange: (String, Int) -> Unit,
+    enabled: Boolean = true
+) {
+    var expanded by remember { mutableStateOf(false) }
+
+    Column {
+        Text(
+            text = label,
+            fontSize = 13.sp,
+            fontWeight = FontWeight.SemiBold,
+            color = Color(0xFF4A5568),
+            modifier = Modifier.padding(bottom = 8.dp)
+        )
+
+        Box(
+            modifier = Modifier
+                .fillMaxWidth()
+                .height(56.dp)
+        ) {
+            OutlinedTextField(
+                value = rolSeleccionado,
+                onValueChange = { },
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .clickable(enabled = enabled) { if (enabled) expanded = true },
+                colors = OutlinedTextFieldDefaults.colors(
+                    focusedBorderColor = if (enabled) Color(0xFF667EEA) else Color(0xFFCBD5E0),
+                    unfocusedBorderColor = Color(0xFFCBD5E0),
+                    focusedContainerColor = Color.White,
+                    unfocusedContainerColor = if (enabled) Color(0xFFFAFAFA) else Color(0xFFF7FAFC),
+                    cursorColor = Color.Transparent,
+                    disabledContainerColor = Color(0xFFF7FAFC),
+                    disabledBorderColor = Color(0xFFE2E8F0),
+                    disabledTextColor = Color(0xFF718096)
+                ),
+                shape = RoundedCornerShape(12.dp),
+                singleLine = true,
+                enabled = false,
+                trailingIcon = {
+                    if (enabled) {
+                        Icon(
+                            Icons.Default.ArrowDropDown,
+                            contentDescription = "Desplegar",
+                            tint = Color(0xFF667EEA)
+                        )
+                    }
+                }
+            )
+
+            if (enabled) {
+                DropdownMenu(
+                    expanded = expanded,
+                    onDismissRequest = { expanded = false },
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .background(Color.White)
+                ) {
+                    roles.forEach { rol ->
+                        DropdownMenuItem(
+                            text = {
+                                Text(
+                                    text = "${rol.name}",
+                                    color = if (rol.name == rolSeleccionado) Color(0xFF667EEA) else Color(0xFF2D3748),
+                                    fontWeight = if (rol.name == rolSeleccionado) FontWeight.Bold else FontWeight.Normal
+                                )
+                            },
+                            onClick = {
+                                onRolChange(rol.name, rol.id)
+                                expanded = false
+                            }
+                        )
+                    }
+                }
+            }
+        }
+    }
+}
+
+@Composable
 fun EstadoDropdown(
     label: String,
     estado: String,
@@ -495,7 +700,7 @@ fun EstadoDropdown(
                 onValueChange = { },
                 modifier = Modifier
                     .fillMaxWidth()
-                    .clickable(enabled = enabled) { expanded = enabled },
+                    .clickable(enabled = enabled) { if (enabled) expanded = true },
                 colors = OutlinedTextFieldDefaults.colors(
                     focusedBorderColor = if (enabled) Color(0xFF667EEA) else Color(0xFFCBD5E0),
                     unfocusedBorderColor = Color(0xFFCBD5E0),
@@ -533,7 +738,8 @@ fun EstadoDropdown(
                             text = {
                                 Text(
                                     text = estadoOption,
-                                    color = if (estadoOption == estado) Color(0xFF667EEA) else Color(0xFF2D3748)
+                                    color = if (estadoOption == estado) Color(0xFF667EEA) else Color(0xFF2D3748),
+                                    fontWeight = if (estadoOption == estado) FontWeight.Bold else FontWeight.Normal
                                 )
                             },
                             onClick = {

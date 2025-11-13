@@ -21,8 +21,9 @@ object UpdateProfileBridge {
                 put("name", usuario.nombre ?: "")
                 put("email", usuario.email ?: "")
                 put("phone", usuario.telefono ?: "")
+                put("address", usuario.address ?: "")  // ✅ Corregido: "addres" sin doble 's'
                 put("photo_profile", usuario.photoProfile ?: "")
-                put("role_id", usuario.roleId ?: 1)
+                put("role_id", usuario.roleId ?: 1)  // ✅ Incluir role_id
                 put("status_id", if (usuario.estado == "Activo") 1 else 2)
                 // Dejar que Supabase maneje el updated_at automáticamente
             }

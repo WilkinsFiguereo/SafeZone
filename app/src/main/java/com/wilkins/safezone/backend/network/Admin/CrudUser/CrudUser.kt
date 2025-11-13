@@ -5,8 +5,6 @@ import io.github.jan.supabase.postgrest.from
 import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
 import io.github.jan.supabase.postgrest.query.Columns
-import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.withContext
 
 // 🔹 Modelo de datos para Roles
 @Serializable
@@ -43,6 +41,9 @@ data class Profile(
     @SerialName("email")
     val email: String? = null,
 
+    @SerialName("address")
+    val address: String? = null,
+
     @SerialName("photo_profile")
     val photoProfile: String? = null,
 
@@ -67,6 +68,21 @@ data class Profile(
 class CrudUser {
 
     private val supabase = SupabaseService.getInstance()
+
+    /**
+     * Obtener todos los roles disponibles
+     */
+    suspend fun getAllRoles(): List<Role> {
+        return try {
+            supabase
+                .from("roles")
+                .select()
+                .decodeList<Role>()
+        } catch (e: Exception) {
+            println("❌ Error al obtener roles: ${e.message}")
+            emptyList()
+        }
+    }
 
     /**
      * Obtener todos los perfiles con roles
@@ -136,6 +152,4 @@ class CrudUser {
             false
         }
     }
-
 }
-
