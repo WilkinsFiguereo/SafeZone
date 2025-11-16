@@ -11,9 +11,13 @@ import androidx.navigation.NavController
 import com.wilkins.safezone.GenericUserUi.BottomNavigationMenu
 import com.wilkins.safezone.GenericUserUi.SideMenu
 import com.wilkins.safezone.R
+import com.wilkins.safezone.backend.network.SupabaseService
+import io.github.jan.supabase.gotrue.auth
 
 @Composable
 fun UserHomeScreen(navController: NavController) {
+    val supabase = SupabaseService.getInstance()
+    val userId = supabase.auth.currentUserOrNull()?.id ?: ""
     val newsItems = listOf(
         NewsItem(
             title = "Nuevo programa de seguridad comunitaria",
@@ -70,7 +74,8 @@ fun UserHomeScreen(navController: NavController) {
         // 🔸 Menú lateral superior (fijo arriba)
         SideMenu(
             navController = navController,
-            modifier = Modifier.align(Alignment.TopCenter)
+            modifier = Modifier.align(Alignment.TopCenter),
+            userId = userId
         )
 
 

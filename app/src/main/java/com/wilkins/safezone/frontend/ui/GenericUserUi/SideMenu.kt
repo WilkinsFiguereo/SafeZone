@@ -28,6 +28,7 @@ import com.wilkins.safezone.ui.theme.PrimaryColor
 @Composable
 fun SideMenu(
     navController: NavController,
+    userId: String, // 👈 Agregamos el parámetro del ID de usuario
     modifier: Modifier = Modifier
 ) {
     var isOpen by remember { mutableStateOf(false) }
@@ -43,9 +44,7 @@ fun SideMenu(
     )
 
     Box(modifier = modifier.fillMaxSize()) {
-        // Contenido principal
         Column(modifier = Modifier.fillMaxSize()) {
-            // Header Principal Verde
             Row(
                 modifier = Modifier
                     .fillMaxWidth()
@@ -54,7 +53,6 @@ fun SideMenu(
                 horizontalArrangement = Arrangement.SpaceBetween,
                 verticalAlignment = Alignment.CenterVertically
             ) {
-                // Botón de menú (3 líneas)
                 IconButton(onClick = { isOpen = !isOpen }) {
                     Icon(
                         imageVector = Icons.Default.Menu,
@@ -63,17 +61,16 @@ fun SideMenu(
                         modifier = Modifier.size(28.dp)
                     )
                 }
-                // Logo/Nombre AlertaYa
+
                 Text(
                     text = NameApp,
                     color = Color.White,
                     fontSize = 22.sp,
                     fontWeight = FontWeight.Bold
                 )
-                // Botón de perfil
+
                 IconButton(onClick = {
                     navController.navigate("NavigationDrawer") {
-                        // Opcional: evita que se acumulen múltiples instancias
                         launchSingleTop = true
                     }
                 }) {
@@ -92,20 +89,9 @@ fun SideMenu(
                         )
                     }
                 }
-
             }
-
-            // Aquí puedes agregar más contenido de tu app
-            // Por ejemplo:
-            // Box(
-            //     modifier = Modifier.fillMaxSize(),
-            //     contentAlignment = Alignment.Center
-            // ) {
-            //     Text("Contenido de la aplicación")
-            // }
         }
 
-        // Menú lateral animado con overlay
         AnimatedVisibility(
             visible = isOpen,
             enter = slideInHorizontally(
@@ -118,14 +104,12 @@ fun SideMenu(
             )
         ) {
             Row(modifier = Modifier.fillMaxSize()) {
-                // Panel del menú lateral
                 Column(
                     modifier = Modifier
                         .width(280.dp)
                         .fillMaxHeight()
                         .background(PrimaryColor)
                 ) {
-                    // Header del menú lateral
                     Row(
                         modifier = Modifier
                             .fillMaxWidth()
@@ -147,6 +131,7 @@ fun SideMenu(
                             fontWeight = FontWeight.Bold
                         )
                     }
+
                     Divider(
                         color = Color.White.copy(alpha = 0.2f),
                         thickness = 1.dp,
@@ -154,28 +139,25 @@ fun SideMenu(
                     )
                     Spacer(modifier = Modifier.height(8.dp))
 
-                    // Items del menú
-                    // Items del menú
+                    // 🔹 Items del menú
                     menuItems.forEach { item ->
                         Row(
                             modifier = Modifier
                                 .fillMaxWidth()
                                 .clickable {
                                     isOpen = false
-
-                                    // 👉 Navegación según el item
                                     when (item.label) {
-                                        "Inicio" -> navController.navigate("userHome") {
+                                        "Inicio" -> navController.navigate("userHome/$userId") {
                                             launchSingleTop = true
-                                            popUpTo("userHome") { inclusive = true }
+                                            popUpTo("userHome/$userId") { inclusive = true }
                                         }
-                                        "Perfil" -> navController.navigate("ProfileUser") { launchSingleTop = true }
+                                        "Perfil" -> navController.navigate("profile") { launchSingleTop = true }
                                         "Noticias" -> navController.navigate("NewsUser") { launchSingleTop = true }
                                         "Reportes en tu zona" -> navController.navigate("ReportsUser") { launchSingleTop = true }
                                         "Alerta una emergencia" -> navController.navigate("AlertUser") { launchSingleTop = true }
                                         "Mis alertas" -> navController.navigate("MyAlertsUser") { launchSingleTop = true }
                                         "Notificaciones" -> navController.navigate("NotificationsUser") { launchSingleTop = true }
-                                        "Configuración" -> navController.navigate("SettingsUser") { launchSingleTop = true }
+                                        "Configuración" -> navController.navigate("settings") { launchSingleTop = true }
                                     }
                                 }
                                 .padding(horizontal = 20.dp, vertical = 14.dp),
@@ -196,10 +178,7 @@ fun SideMenu(
                         }
                     }
 
-
                     Spacer(modifier = Modifier.weight(1f))
-
-                    // Footer
                     Column(
                         modifier = Modifier
                             .fillMaxWidth()
@@ -221,6 +200,7 @@ fun SideMenu(
         }
     }
 }
+
 
 data class MenuItem(
     val icon: ImageVector,

@@ -130,45 +130,71 @@ fun CrudUsuarios(navController: NavController? = null) {
         ) {
             // Contenido del CRUD con SU PROPIO header personalizado
             Column(modifier = Modifier.fillMaxSize()) {
-                // ✅ Header personalizado del CRUD con botón de menú
+                // ✅ Header personalizado del CRUD MÁS COMPACTO Y MEJORADO
                 Row(
                     modifier = Modifier
                         .fillMaxWidth()
                         .background(PrimaryColor)
-                        .padding(horizontal = 16.dp, vertical = 10.dp), // 🔽 Más compacto
+                        .padding(horizontal = 12.dp, vertical = 8.dp), // 🔽 Más compacto
                     horizontalArrangement = Arrangement.SpaceBetween,
                     verticalAlignment = Alignment.CenterVertically
                 ) {
-                    // Botón de menú (3 líneas) - ✅ Ahora funciona!
-                    IconButton(
-                        onClick = { isMenuOpen = !isMenuOpen },
-                        modifier = Modifier.size(40.dp)
+                    // Botón de menú y título a la izquierda
+                    Row(
+                        verticalAlignment = Alignment.CenterVertically,
+                        modifier = Modifier.weight(1f)
                     ) {
-                        Icon(
-                            imageVector = Icons.Default.Menu,
-                            contentDescription = "Menu",
-                            tint = Color.White,
-                            modifier = Modifier.size(24.dp)
+                        IconButton(
+                            onClick = { isMenuOpen = !isMenuOpen },
+                            modifier = Modifier.size(36.dp) // 🔽 Más pequeño
+                        ) {
+                            Icon(
+                                imageVector = Icons.Default.Menu,
+                                contentDescription = "Menu",
+                                tint = Color.White,
+                                modifier = Modifier.size(20.dp) // 🔽 Icono más pequeño
+                            )
+                        }
+
+                        Spacer(modifier = Modifier.width(8.dp))
+
+                        Text(
+                            text = "Gestión de Usuarios",
+                            color = Color.White,
+                            fontSize = 16.sp, // 🔽 Texto más compacto
+                            fontWeight = FontWeight.Bold
                         )
                     }
-                    // Título del CRUD
-                    Text(
-                        text = "Gestión de Usuarios",
-                        color = Color.White,
-                        fontSize = 18.sp, // 🔽 Texto más compacto
-                        fontWeight = FontWeight.Bold
-                    )
-                    // Botón de perfil
-                    IconButton(
-                        onClick = { navController.navigate("admin_profile") },
-                        modifier = Modifier.size(40.dp)
+
+                    // 🔽 NUEVO: Botón de Crear Usuario COMPACTO
+                    Button(
+                        onClick = {
+                            navController.navigate("CreateUserCrud")
+                        },
+                        colors = ButtonDefaults.buttonColors(
+                            containerColor = Color.White,
+                            contentColor = PrimaryColor
+                        ),
+                        modifier = Modifier
+                            .height(32.dp) // 🔽 Más compacto
+                            .width(120.dp) // 🔽 Ancho fijo para consistencia
                     ) {
-                        Icon(
-                            imageVector = Icons.Default.Person,
-                            contentDescription = "Perfil",
-                            tint = Color.White,
-                            modifier = Modifier.size(20.dp)
-                        )
+                        Row(
+                            horizontalArrangement = Arrangement.Center,
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            Icon(
+                                imageVector = Icons.Default.PersonAdd,
+                                contentDescription = "Crear usuario",
+                                modifier = Modifier.size(14.dp) // 🔽 Icono más pequeño
+                            )
+                            Spacer(modifier = Modifier.width(4.dp))
+                            Text(
+                                text = "Crear",
+                                fontSize = 11.sp, // 🔽 Texto más pequeño
+                                fontWeight = FontWeight.Bold
+                            )
+                        }
                     }
                 }
 
@@ -191,10 +217,10 @@ fun CrudUsuarios(navController: NavController? = null) {
                         onFilterSelected = { selectedFilter = it },
                         modifier = Modifier
                             .fillMaxWidth()
-                            .padding(12.dp) // 🔽 Padding más compacto
+                            .padding(8.dp) // 🔽 Padding más compacto
                     )
 
-                    // Cabecera de la tabla COMPACTA
+                    // Cabecera de la tabla SUPER COMPACTA
                     CompactTableHeader()
 
                     // Contenido de la tabla
@@ -261,10 +287,10 @@ fun CrudUsuarios(navController: NavController? = null) {
                     onFilterSelected = { selectedFilter = it },
                     modifier = Modifier
                         .fillMaxWidth()
-                        .padding(12.dp)
+                        .padding(8.dp)
                 )
 
-                // Cabecera de la tabla COMPACTA
+                // Cabecera de la tabla SUPER COMPACTA
                 CompactTableHeader()
 
                 // Contenido de la tabla
@@ -296,51 +322,60 @@ fun CrudUsuarios(navController: NavController? = null) {
     }
 }
 
-// 🔽 NUEVO: Cabecera de tabla compacta
+// 🔽 MEJORADO: Cabecera de tabla SUPER COMPACTA
 @Composable
 fun CompactTableHeader() {
     Row(
         modifier = Modifier
             .fillMaxWidth()
             .background(MaterialTheme.colorScheme.primary)
-            .padding(horizontal = 12.dp, vertical = 10.dp), // 🔽 Más compacto
-        horizontalArrangement = Arrangement.SpaceBetween
+            .padding(horizontal = 8.dp, vertical = 8.dp), // 🔽 Más compacto
+        horizontalArrangement = Arrangement.SpaceBetween,
+        verticalAlignment = Alignment.CenterVertically
     ) {
         Text(
             "USUARIO",
             fontWeight = FontWeight.Bold,
             color = Color.White,
-            fontSize = 12.sp, // 🔽 Texto más pequeño
-            modifier = Modifier.weight(1.8f)
+            fontSize = 10.sp, // 🔽 Texto más pequeño
+            modifier = Modifier.weight(1.8f),
+            maxLines = 1,
+            overflow = TextOverflow.Ellipsis
         )
         Text(
             "ROL",
             fontWeight = FontWeight.Bold,
             color = Color.White,
-            fontSize = 12.sp,
+            fontSize = 10.sp,
             modifier = Modifier.weight(1f),
-            textAlign = TextAlign.Center
+            textAlign = TextAlign.Center,
+            maxLines = 1,
+            overflow = TextOverflow.Ellipsis
         )
         Text(
             "EMAIL",
             fontWeight = FontWeight.Bold,
             color = Color.White,
-            fontSize = 12.sp,
+            fontSize = 10.sp,
             modifier = Modifier.weight(1.5f),
-            textAlign = TextAlign.Center
+            textAlign = TextAlign.Center,
+            maxLines = 1,
+            overflow = TextOverflow.Ellipsis
         )
         Text(
             "ACCIONES",
             fontWeight = FontWeight.Bold,
             color = Color.White,
-            fontSize = 12.sp,
-            modifier = Modifier.weight(0.7f), // 🔽 Menos espacio para acciones
-            textAlign = TextAlign.Center
+            fontSize = 10.sp,
+            modifier = Modifier.weight(0.8f), // 🔽 Ajustado para que quepa mejor
+            textAlign = TextAlign.Center,
+            maxLines = 1,
+            overflow = TextOverflow.Ellipsis
         )
     }
 }
 
-// 🔽 NUEVO: Tabla de usuarios compacta
+// 🔽 MEJORADO: Tabla de usuarios SUPER COMPACTA
 @Composable
 fun CompactUsersTable(
     users: List<Usuario>,
@@ -369,16 +404,16 @@ fun CompactUsersTable(
                 Divider(
                     modifier = Modifier
                         .fillMaxWidth()
-                        .padding(horizontal = 12.dp),
-                    thickness = 0.3.dp, // 🔽 Línea más delgada
-                    color = MaterialTheme.colorScheme.outline.copy(alpha = 0.2f)
+                        .padding(horizontal = 8.dp),
+                    thickness = 0.2.dp, // 🔽 Línea más delgada
+                    color = MaterialTheme.colorScheme.outline.copy(alpha = 0.1f)
                 )
             }
         }
     }
 }
 
-// 🔽 NUEVO: Item de usuario compacto
+// 🔽 MEJORADO: Item de usuario SUPER COMPACTO
 @Composable
 fun CompactUserListItem(
     usuario: Usuario,
@@ -390,11 +425,11 @@ fun CompactUserListItem(
         modifier = modifier
             .fillMaxWidth()
             .clickable { onClick(usuario.idCompleto) }
-            .padding(horizontal = 12.dp, vertical = 8.dp), // 🔽 Padding más compacto
+            .padding(horizontal = 8.dp, vertical = 6.dp), // 🔽 Padding más compacto
         verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.SpaceBetween
     ) {
-        // Columna Usuario - MÁS COMPACTO
+        // Columna Usuario - SUPER COMPACTO
         Column(
             modifier = Modifier.weight(1.8f),
             verticalArrangement = Arrangement.Center
@@ -402,20 +437,20 @@ fun CompactUserListItem(
             Text(
                 text = usuario.nombre,
                 fontWeight = FontWeight.SemiBold,
-                fontSize = 13.sp, // 🔽 Texto más pequeño
+                fontSize = 12.sp, // 🔽 Texto más pequeño
                 maxLines = 1,
                 overflow = TextOverflow.Ellipsis
             )
             Text(
                 text = "ID: ${usuario.id}",
-                fontSize = 10.sp, // 🔽 Texto más pequeño
+                fontSize = 9.sp, // 🔽 Texto más pequeño
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
                 maxLines = 1,
                 overflow = TextOverflow.Ellipsis
             )
         }
 
-        // Columna Rol - MÁS COMPACTO
+        // Columna Rol - SUPER COMPACTO
         Box(
             modifier = Modifier
                 .weight(1f)
@@ -430,19 +465,19 @@ fun CompactUserListItem(
 
             Text(
                 text = usuario.rol,
-                fontSize = 10.sp, // 🔽 Texto más pequeño
+                fontSize = 9.sp, // 🔽 Texto más pequeño
                 fontWeight = FontWeight.Medium,
                 color = Color.White,
                 modifier = Modifier
-                    .background(roleColor, RoundedCornerShape(4.dp)) // 🔽 Bordes más pequeños
-                    .padding(horizontal = 4.dp, vertical = 2.dp) // 🔽 Padding más pequeño
+                    .background(roleColor, RoundedCornerShape(3.dp)) // 🔽 Bordes más pequeños
+                    .padding(horizontal = 4.dp, vertical = 1.dp) // 🔽 Padding más pequeño
             )
         }
 
-        // Columna Email - MÁS COMPACTO
+        // Columna Email - SUPER COMPACTO
         Text(
             text = usuario.email ?: "Sin email",
-            fontSize = 11.sp, // 🔽 Texto más pequeño
+            fontSize = 10.sp, // 🔽 Texto más pequeño
             color = MaterialTheme.colorScheme.onSurfaceVariant,
             maxLines = 1,
             overflow = TextOverflow.Ellipsis,
@@ -452,27 +487,28 @@ fun CompactUserListItem(
             textAlign = TextAlign.Center
         )
 
-        // Columna Acciones - MÁS COMPACTO
+        // Columna Acciones - SUPER COMPACTO
         Box(
             modifier = Modifier
-                .weight(0.7f)
+                .weight(0.8f)
                 .wrapContentWidth(Alignment.CenterHorizontally)
         ) {
             IconButton(
                 onClick = { onClick(usuario.idCompleto) },
-                modifier = Modifier.size(32.dp) // 🔽 Botón más pequeño
+                modifier = Modifier.size(28.dp) // 🔽 Botón más pequeño
             ) {
                 Icon(
                     Icons.Default.Visibility,
                     contentDescription = "Ver detalles",
                     tint = MaterialTheme.colorScheme.primary,
-                    modifier = Modifier.size(16.dp) // 🔽 Icono más pequeño
+                    modifier = Modifier.size(14.dp) // 🔽 Icono más pequeño
                 )
             }
         }
     }
 }
 
+// 🔽 MEJORADO: Estado vacío más compacto
 @Composable
 fun EmptyState(
     isLoading: Boolean,
@@ -485,24 +521,24 @@ fun EmptyState(
     Box(
         modifier = modifier
             .fillMaxSize()
-            .padding(24.dp), // 🔽 Padding más compacto
+            .padding(16.dp), // 🔽 Padding más compacto
         contentAlignment = Alignment.Center
     ) {
         if (isLoading) {
             CircularProgressIndicator(
                 color = MaterialTheme.colorScheme.primary,
-                modifier = Modifier.size(32.dp) // 🔽 Spinner más pequeño
+                modifier = Modifier.size(28.dp) // 🔽 Spinner más pequeño
             )
         } else {
             Column(
                 horizontalAlignment = Alignment.CenterHorizontally,
-                verticalArrangement = Arrangement.spacedBy(6.dp) // 🔽 Espaciado más compacto
+                verticalArrangement = Arrangement.spacedBy(4.dp) // 🔽 Espaciado más compacto
             ) {
                 Icon(
                     Icons.Default.SearchOff,
                     contentDescription = "Sin resultados",
                     tint = MaterialTheme.colorScheme.onSurfaceVariant,
-                    modifier = Modifier.size(36.dp) // 🔽 Icono más pequeño
+                    modifier = Modifier.size(32.dp) // 🔽 Icono más pequeño
                 )
                 Text(
                     text = if (searchText.isNotEmpty()) {
@@ -511,15 +547,121 @@ fun EmptyState(
                         errorMessage ?: "No se encontraron usuarios"
                     },
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    fontSize = 14.sp, // 🔽 Texto más pequeño
-                    textAlign = TextAlign.Center
+                    fontSize = 12.sp, // 🔽 Texto más pequeño
+                    textAlign = TextAlign.Center,
+                    maxLines = 2,
+                    overflow = TextOverflow.Ellipsis
                 )
                 if (searchText.isNotEmpty()) {
                     Text(
-                        text = "Filtro activo: ${filterOptions.find { it.first == selectedFilter }?.second ?: "Todos"}",
-                        fontSize = 11.sp, // 🔽 Texto más pequeño
+                        text = "Filtro: ${filterOptions.find { it.first == selectedFilter }?.second ?: "Todos"}",
+                        fontSize = 10.sp, // 🔽 Texto más pequeño
                         color = MaterialTheme.colorScheme.primary,
                         textAlign = TextAlign.Center
+                    )
+                }
+            }
+        }
+    }
+}
+
+// 🔽 MEJORADO: SearchBar más compacta (si necesitas ajustarla también)
+@Composable
+fun SearchBar(
+    searchText: String,
+    onSearchTextChange: (String) -> Unit,
+    selectedFilter: String,
+    showFilters: Boolean,
+    onToggleFilters: () -> Unit,
+    isLoading: Boolean,
+    onRefresh: () -> Unit,
+    filterOptions: List<Pair<String, String>>,
+    onFilterSelected: (String) -> Unit,
+    modifier: Modifier = Modifier
+) {
+    Column(modifier = modifier) {
+        Row(
+            verticalAlignment = Alignment.CenterVertically,
+            modifier = Modifier.fillMaxWidth()
+        ) {
+            // Campo de búsqueda
+            OutlinedTextField(
+                value = searchText,
+                onValueChange = onSearchTextChange,
+                placeholder = {
+                    Text(
+                        "Buscar usuarios...",
+                        fontSize = 12.sp // 🔽 Texto más pequeño
+                    )
+                },
+                leadingIcon = {
+                    Icon(
+                        Icons.Default.Search,
+                        contentDescription = "Buscar",
+                        modifier = Modifier.size(16.dp) // 🔽 Icono más pequeño
+                    )
+                },
+                modifier = Modifier
+                    .weight(1f)
+                    .height(40.dp), // 🔽 Altura más compacta
+                textStyle = LocalTextStyle.current.copy(fontSize = 12.sp),
+
+            )
+
+            Spacer(modifier = Modifier.width(8.dp))
+
+            // Botón de filtros
+            IconButton(
+                onClick = onToggleFilters,
+                modifier = Modifier.size(40.dp) // 🔽 Más compacto
+            ) {
+                Icon(
+                    Icons.Default.FilterList,
+                    contentDescription = "Filtros",
+                    modifier = Modifier.size(18.dp) // 🔽 Icono más pequeño
+                )
+            }
+
+            // Botón de refresh
+            IconButton(
+                onClick = onRefresh,
+                modifier = Modifier.size(40.dp), // 🔽 Más compacto
+                enabled = !isLoading
+            ) {
+                if (isLoading) {
+                    CircularProgressIndicator(
+                        modifier = Modifier.size(16.dp), // 🔽 Spinner más pequeño
+                        strokeWidth = 2.dp
+                    )
+                } else {
+                    Icon(
+                        Icons.Default.Refresh,
+                        contentDescription = "Actualizar",
+                        modifier = Modifier.size(18.dp) // 🔽 Icono más pequeño
+                    )
+                }
+            }
+        }
+
+        // Filtros (si están visibles)
+        if (showFilters) {
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(top = 8.dp),
+                horizontalArrangement = Arrangement.spacedBy(4.dp)
+            ) {
+                filterOptions.forEach { (key, value) ->
+                    FilterChip(
+                        selected = selectedFilter == key,
+                        onClick = { onFilterSelected(key) },
+                        label = {
+                            Text(
+                                value,
+                                fontSize = 10.sp // 🔽 Texto más pequeño
+                            )
+                        },
+                        modifier = Modifier.height(28.dp) // 🔽 Más compacto
                     )
                 }
             }

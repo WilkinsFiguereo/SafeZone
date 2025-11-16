@@ -15,9 +15,14 @@ import androidx.compose.ui.unit.dp
 import androidx.navigation.NavController
 import com.wilkins.safezone.GenericUserUi.BottomNavigationMenu
 import com.wilkins.safezone.GenericUserUi.SideMenu
+import com.wilkins.safezone.backend.network.AppUser
+import com.wilkins.safezone.backend.network.SupabaseService
+import io.github.jan.supabase.gotrue.auth
 
 @Composable
 fun Profile(navController: NavController){
+    val supabase = SupabaseService.getInstance()
+    val userId = supabase.auth.currentUserOrNull()?.id ?: ""
     Box(modifier = Modifier.fillMaxSize()) {
 
         // 🔸 Contenido principal con scroll
@@ -36,7 +41,8 @@ fun Profile(navController: NavController){
         // 🔸 Menú lateral superior (fijo arriba)
         SideMenu(
             navController = navController,
-            modifier = Modifier.align(Alignment.TopCenter)
+            modifier = Modifier.align(Alignment.TopCenter),
+            userId = userId
         )
 
 
