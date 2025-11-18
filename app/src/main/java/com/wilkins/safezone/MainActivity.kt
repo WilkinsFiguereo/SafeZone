@@ -53,121 +53,125 @@ class MainActivity : ComponentActivity() {
                     var savedEmail by remember { mutableStateOf("") }
                     var savedPassword by remember { mutableStateOf("") }
 
-                    AdminDashboard(navController)
-//                    NavHost(
-//                        navController = navController,
-//                        startDestination = "splash"
-//                    ) {
-//                        composable("splash") {
-//                            SplashScreen(navController)
-//                        }
-//
-//                        // 🔐 LOGIN
-//                        composable("login") {
-//                            LoginScreen(
-//                                navController = navController,
-//                                onLoginSuccess = { user ->
-//                                    when (user.role_id) {
-//                                        2 -> { // 🔹 Admin
-//                                            navController.navigate("crudUsuarios") {
-//                                                popUpTo("login") { inclusive = true }
-//                                            }
-//                                        }
-//                                        1 -> { // 🔹 user
-//                                            navController.navigate("userHome/${user.id}") {
-//                                                popUpTo("login") { inclusive = true }
-//                                            }
-//                                        }
-//                                    }
-//                                },
-//                                onNavigateToRegister = { navController.navigate("register") }
-//                            )
-//                        }
-//
-//                        // 📝 REGISTRO
-//                        composable("register") {
-//                            RegisterScreen(
-//                                onNavigateToLogin = {
-//                                    navController.navigate("login") {
-//                                        popUpTo("register") { inclusive = true }
-//                                    }
-//                                },
-//                                onNavigateToVerification = { email, password ->
-//                                    savedEmail = email
-//                                    savedPassword = password
-//                                    navController.navigate("verification") {
-//                                        popUpTo("register") { inclusive = true }
-//                                    }
-//                                }
-//                            )
-//                        }
-//
-//                        // ✅ VERIFICACIÓN
-//                        composable("verification") {
-//                            VerificationScreen(
-//                                savedEmail = savedEmail,
-//                                savedPassword = savedPassword,
-//                                primaryColor = PrimaryColor,
-//                                onBackClick = {
-//                                    navController.navigate("login") {
-//                                        popUpTo("verification") { inclusive = true }
-//                                    }
-//                                },
-//                                onVerified = {
-//                                    val supabase = SupabaseService.getInstance()
-//                                    val userId = supabase.auth.currentUserOrNull()?.id ?: ""
-//                                    navController.navigate("userHome/$userId") {
-//                                        popUpTo("verification") { inclusive = true }
-//                                    }
-//                                }
-//                            )
-//                        }
-//
-//                        // 👤 PANTALLA DE USUARIO
-//                        composable("userHome/{userId}") {
-//                            UserHomeScreen(navController)
-//                        }
-//
-//                        // ⚙️ ADMIN - CRUD DE USUARIOS
-//                        composable("crudUsuarios") {
-//                            CrudUsuarios(navController)
-//                        }
-//
-//                        // 🧭 Navigation Drawer
-//                        composable("navigationDrawer") {
-//                            val context = LocalContext.current
-//                            val supabaseClient = SupabaseService.getInstance()
-//                            NavigationDrawer(navController, context, supabaseClient)
-//                        }
-//
-//                        // 👤 PERFIL
-//                        composable("profile") { Profile(navController) }
-//
-//                        // ⚙️ CONFIGURACIÓN
-//                        composable("settings") {
-//                            SettingsScreen(
-//                                navcontroller = navController,
-//                                onBackClick = {
-//                                    navController.navigate("navigationDrawer") {
-//                                        popUpTo("settings") { inclusive = true }
-//                                    }
-//                                }
-//                            )
-//                        }
-//
-//                        // 📋 PERFIL DETALLE DE USUARIO (Admin)
-//                        composable(
-//                            route = "userProfileCrud/{uuid}",
-//                            arguments = listOf(navArgument("uuid") { type = NavType.StringType })
-//                        ) { backStackEntry ->
-//                            val uuid = backStackEntry.arguments?.getString("uuid") ?: ""
-//                            UserProfileCrud(userId = uuid, navController = navController)
-//                        }
-//
-//                        composable("CreateUserCrud"){
-//                            CreateUserScreen(navController)
-//                        }
-//                    }
+
+                    NavHost(
+                        navController = navController,
+                        startDestination = "splash"
+                    ) {
+                        composable("splash") {
+                            SplashScreen(navController)
+                        }
+
+                        // 🔐 LOGIN
+                        composable("login") {
+                            LoginScreen(
+                                navController = navController,
+                                onLoginSuccess = { user ->
+                                    when (user.role_id) {
+                                        2 -> { // 🔹 Admin
+                                            navController.navigate("DashboardAdmin") {
+                                                popUpTo("login") { inclusive = true }
+                                            }
+                                        }
+                                        1 -> { // 🔹 user
+                                            navController.navigate("userHome/${user.id}") {
+                                                popUpTo("login") { inclusive = true }
+                                            }
+                                        }
+                                    }
+                                },
+                                onNavigateToRegister = { navController.navigate("register") }
+                            )
+                        }
+
+                        // 📝 REGISTRO
+                        composable("register") {
+                            RegisterScreen(
+                                onNavigateToLogin = {
+                                    navController.navigate("login") {
+                                        popUpTo("register") { inclusive = true }
+                                    }
+                                },
+                                onNavigateToVerification = { email, password ->
+                                    savedEmail = email
+                                    savedPassword = password
+                                    navController.navigate("verification") {
+                                        popUpTo("register") { inclusive = true }
+                                    }
+                                }
+                            )
+                        }
+
+                        // ✅ VERIFICACIÓN
+                        composable("verification") {
+                            VerificationScreen(
+                                savedEmail = savedEmail,
+                                savedPassword = savedPassword,
+                                primaryColor = PrimaryColor,
+                                onBackClick = {
+                                    navController.navigate("login") {
+                                        popUpTo("verification") { inclusive = true }
+                                    }
+                                },
+                                onVerified = {
+                                    val supabase = SupabaseService.getInstance()
+                                    val userId = supabase.auth.currentUserOrNull()?.id ?: ""
+                                    navController.navigate("userHome/$userId") {
+                                        popUpTo("verification") { inclusive = true }
+                                    }
+                                }
+                            )
+                        }
+
+                        // 👤 PANTALLA DE USUARIO
+                        composable("userHome/{userId}") {
+                            UserHomeScreen(navController)
+                        }
+
+                        // ⚙️ ADMIN - CRUD DE USUARIOS
+                        composable("crudUsuarios") {
+                            CrudUsuarios(navController)
+                        }
+
+                        // 🧭 Navigation Drawer
+                        composable("navigationDrawer") {
+                            val context = LocalContext.current
+                            val supabaseClient = SupabaseService.getInstance()
+                            NavigationDrawer(navController, context, supabaseClient)
+                        }
+
+                        // 👤 PERFIL
+                        composable("profile") { Profile(navController) }
+
+                        // ⚙️ CONFIGURACIÓN
+                        composable("settings") {
+                            SettingsScreen(
+                                navcontroller = navController,
+                                onBackClick = {
+                                    navController.navigate("navigationDrawer") {
+                                        popUpTo("settings") { inclusive = true }
+                                    }
+                                }
+                            )
+                        }
+
+                        // 📋 PERFIL DETALLE DE USUARIO (Admin)
+                        composable(
+                            route = "userProfileCrud/{uuid}",
+                            arguments = listOf(navArgument("uuid") { type = NavType.StringType })
+                        ) { backStackEntry ->
+                            val uuid = backStackEntry.arguments?.getString("uuid") ?: ""
+                            UserProfileCrud(userId = uuid, navController = navController)
+                        }
+
+                        composable("CreateUserCrud"){
+                            CreateUserScreen(navController)
+                        }
+
+                        composable("DashboardAdmin"){
+                            AdminDashboard(navController)
+                        }
+                    }
                 }
             }
         }
