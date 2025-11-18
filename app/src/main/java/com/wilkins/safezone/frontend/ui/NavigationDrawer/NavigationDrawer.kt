@@ -181,10 +181,14 @@ fun NavigationDrawer(navController: NavController, context: Context, supabaseCli
                     )
 
                     ProfileMenuItem(
-                        icon = Icons.Default.Build,
-                        title = "Configuracion",
-                        onClick = { /* Navegar */ }
+                        icon = Icons.Default.Settings,
+                        title = "Ajustes y privacidad",
+                        onClick = {
+                            navController.navigate("settings")
+                        }
                     )
+
+
 
                     HorizontalDivider(
                         modifier = Modifier.padding(horizontal = 16.dp),

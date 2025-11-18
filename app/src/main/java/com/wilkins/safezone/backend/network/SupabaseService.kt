@@ -5,6 +5,7 @@ import io.github.jan.supabase.createSupabaseClient
 import io.github.jan.supabase.postgrest.Postgrest
 import io.github.jan.supabase.gotrue.Auth
 
+
 class SupabaseService private constructor() {
 
     companion object {
