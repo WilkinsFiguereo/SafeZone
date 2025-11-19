@@ -1,8 +1,9 @@
 package com.wilkins.safezone.bridge.auth
 
 import com.wilkins.safezone.backend.network.AppUser
-import com.wilkins.safezone.backend.network.login
+import com.wilkins.safezone.backend.network.auth.login
 import android.content.Context
+import android.util.Log
 
 
 /**
@@ -11,19 +12,44 @@ import android.content.Context
  */
 object LoginBridge {
 
-    /**
-     * Llama al backend para autenticar al usuario.
-     * Devuelve AppUser si el login fue exitoso, o null si falló.
-     */
     suspend fun performLogin(context: Context, email: String, password: String): Result<AppUser> {
         return try {
-            val user = login(context, email, password) // ✅ pasar context
+            Log.i("LoginBridge", "═══════════════════════════════════")
+            Log.i("LoginBridge", "🌉 LoginBridge.performLogin()")
+            Log.i("LoginBridge", "   - Email: $email")
+
+            val user = login(context, email, password)
+
+            Log.i("LoginBridge", "═══════════════════════════════════")
+            Log.i("LoginBridge", "📦 RESULTADO DEL LOGIN")
+            Log.i("LoginBridge", "   - User: $user")
+            Log.i("LoginBridge", "   - User es null?: ${user == null}")
+
             if (user != null) {
+                Log.i("LoginBridge", "   - User ID: ${user.id}")
+                Log.i("LoginBridge", "   - User Email: ${user.email}")
+                Log.i("LoginBridge", "   - User Role: ${user.role_id}")
+
+                // Verificar que se guardó correctamente
+                val roleVerificado = SessionManager.getUserRole(context)
+                Log.i("LoginBridge", "   - Role verificado en SP: $roleVerificado")
+
+                if (roleVerificado != user.role_id) {
+                    Log.e("LoginBridge", "❌ ADVERTENCIA: Discrepancia en role_id!")
+                    Log.e("LoginBridge", "   Del usuario: ${user.role_id}")
+                    Log.e("LoginBridge", "   De SharedPreferences: $roleVerificado")
+                }
+
+                Log.i("LoginBridge", "═══════════════════════════════════")
                 Result.success(user)
             } else {
+                Log.e("LoginBridge", "❌ Usuario es null")
+                Log.i("LoginBridge", "═══════════════════════════════════")
                 Result.failure(Exception("Credenciales inválidas o cuenta no verificada"))
             }
         } catch (e: Exception) {
+            Log.e("LoginBridge", "❌ Excepción en LoginBridge: ${e.message}", e)
+            Log.i("LoginBridge", "═══════════════════════════════════")
             Result.failure(e)
         }
     }

@@ -1,7 +1,7 @@
 package com.wilkins.safezone.bridge.auth
 
 import android.content.Context
-import com.wilkins.safezone.backend.network.registerUser
+import com.wilkins.safezone.backend.network.auth.registerUser
 
 object RegisterBridge {
 

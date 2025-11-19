@@ -1,10 +1,12 @@
-package com.wilkins.safezone.backend.network
+package com.wilkins.safezone.backend.network.auth
 
 import android.util.Log
 import io.github.jan.supabase.gotrue.auth
 import io.github.jan.supabase.gotrue.providers.builtin.Email
 import io.github.jan.supabase.postgrest.postgrest
 import android.content.Context
+import com.wilkins.safezone.backend.network.AppUser
+import com.wilkins.safezone.backend.network.SupabaseService
 
 suspend fun login(context: Context, email: String, password: String): AppUser? {
     val client = SupabaseService.getInstance()
@@ -16,7 +18,7 @@ suspend fun login(context: Context, email: String, password: String): AppUser? {
             this.password = password
         }
 
-        // 🔄 Guardar sesión si existe
+        // 🔄 Guardar sesión
         client.auth.currentSessionOrNull()?.let { session ->
             SessionManager.saveSession(context, session)
             Log.i("SupabaseLogin", "✅ Sesión guardada correctamente para ${session.user?.email}")
@@ -30,10 +32,17 @@ suspend fun login(context: Context, email: String, password: String): AppUser? {
         }
 
         // Obtener perfil del usuario
-        client.postgrest
+        val user = client.postgrest
             .from("profiles")
             .select { filter { eq("id", userId) } }
             .decodeSingleOrNull<AppUser>()
+
+        // 🔥 Guardar id y role_id del usuario
+        if (user != null) {
+            SessionManager.saveUserData(context, user)
+        }
+
+        user
 
     } catch (e: Exception) {
         Log.e("SupabaseLogin", "❌ Error durante login: ${e.message}", e)

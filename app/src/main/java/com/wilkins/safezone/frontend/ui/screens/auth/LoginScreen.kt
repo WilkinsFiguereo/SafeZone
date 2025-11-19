@@ -173,21 +173,30 @@ fun LoginScreen(
 
                 val context = LocalContext.current
                 // Botón principal compacto
+                // En el Button del LoginScreen, cambia esto:
+
                 Button(
                     onClick = {
                         scope.launch {
                             if (email.isNotEmpty() && password.isNotEmpty()) {
-                                isLoading = true // Iniciar carga
+                                isLoading = true
                                 try {
                                     val result = LoginBridge.performLogin(context, email, password)
                                     result.onSuccess { user ->
+                                        // ✅ NO desactivar isLoading aquí, dejar que la navegación se complete
+                                        // El overlay de carga desaparecerá automáticamente al cambiar de pantalla
                                         onLoginSuccess(user)
                                     }.onFailure { e ->
+                                        // ❌ Solo desactivar si hay error
+                                        isLoading = false
                                         snackbarHostState.showSnackbar(e.message ?: "Error en login")
                                     }
-                                } finally {
-                                    isLoading = false // Finalizar carga
+                                } catch (e: Exception) {
+                                    // ❌ Solo desactivar si hay excepción
+                                    isLoading = false
+                                    snackbarHostState.showSnackbar("Error inesperado: ${e.message}")
                                 }
+                                // ⚠️ REMOVIDO: No poner isLoading = false aquí en finally
                             } else {
                                 snackbarHostState.showSnackbar("Credenciales vacías")
                             }
@@ -200,10 +209,9 @@ fun LoginScreen(
                         .fillMaxWidth()
                         .height(getResponsiveSize(screenHeight, 40.dp, 48.dp, 52.dp)),
                     shape = RoundedCornerShape(12.dp),
-                    enabled = !isLoading // Deshabilitar botón cuando está cargando
+                    enabled = !isLoading
                 ) {
                     if (isLoading) {
-                        // Mostrar indicador de carga en el botón
                         CircularProgressIndicator(
                             modifier = Modifier.size(getResponsiveSize(screenHeight, 16.dp, 18.dp, 20.dp)),
                             color = Color.White,
