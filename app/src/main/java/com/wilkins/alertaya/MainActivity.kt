@@ -10,7 +10,7 @@ import androidx.compose.runtime.setValue
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.rememberNavController
-import com.wilkins.alertaya.backend.network.SupabaseService
+import com.wilkins.alertaya.frontend.ui.network.SupabaseService
 import com.wilkins.alertaya.frontend.ui.screens.auth.LoginScreen
 import com.wilkins.alertaya.frontend.ui.screens.auth.RegisterScreen
 import com.wilkins.alertaya.frontend.ui.screens.auth.VerificationScreen

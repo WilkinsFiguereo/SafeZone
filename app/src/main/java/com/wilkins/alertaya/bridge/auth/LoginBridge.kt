@@ -1,7 +1,7 @@
 package com.wilkins.alertaya.bridge.auth
 
-import com.wilkins.alertaya.backend.network.AppUser
-import com.wilkins.alertaya.backend.network.login
+import com.wilkins.alertaya.frontend.ui.network.AppUser
+import com.wilkins.alertaya.frontend.ui.network.login
 import android.content.Context
 
 

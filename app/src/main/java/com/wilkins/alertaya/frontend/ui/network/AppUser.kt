@@ -1,4 +1,4 @@
-package com.wilkins.alertaya.backend.network
+package com.wilkins.alertaya.frontend.ui.network
 import kotlinx.serialization.Serializable
 
 @Serializable

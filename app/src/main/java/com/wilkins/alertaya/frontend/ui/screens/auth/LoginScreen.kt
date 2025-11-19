@@ -29,7 +29,7 @@ import kotlinx.coroutines.launch
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.navigation.NavController
 import androidx.navigation.compose.rememberNavController
-import com.wilkins.alertaya.backend.network.AppUser
+import com.wilkins.alertaya.frontend.ui.network.AppUser
 import com.wilkins.alertaya.bridge.auth.LoginBridge
 import android.content.Context
 import androidx.compose.ui.platform.LocalContext

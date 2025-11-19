@@ -6,7 +6,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
-import com.wilkins.alertaya.backend.network.AppUser
+import com.wilkins.alertaya.frontend.ui.network.AppUser
 
 @Composable
 fun UserHomeScreen(userId: String) {

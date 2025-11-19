@@ -1,7 +1,7 @@
 package com.wilkins.alertaya.bridge.auth
 
 import android.content.Context
-import com.wilkins.alertaya.backend.network.registerUser
+import com.wilkins.alertaya.frontend.ui.network.registerUser
 
 object RegisterBridge {
 

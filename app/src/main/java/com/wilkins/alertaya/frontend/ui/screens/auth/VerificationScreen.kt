@@ -18,12 +18,12 @@ import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import com.wilkins.alertaya.backend.network.SupabaseService
-import com.wilkins.alertaya.backend.network.SupabaseService.Companion.supabaseHttpUrl
-import com.wilkins.alertaya.backend.network.SupabaseService.Companion.supabaseKey
+import com.wilkins.alertaya.frontend.ui.network.SupabaseService
+import com.wilkins.alertaya.frontend.ui.network.SupabaseService.Companion.supabaseHttpUrl
+import com.wilkins.alertaya.frontend.ui.network.SupabaseService.Companion.supabaseKey
 import com.wilkins.alertaya.ui.theme.PrimaryColor
 import androidx.compose.ui.unit.TextUnit
-import com.wilkins.alertaya.backend.network.AppUser
+import com.wilkins.alertaya.frontend.ui.network.AppUser
 import io.github.jan.supabase.SupabaseClient
 import io.github.jan.supabase.gotrue.auth
 import kotlinx.coroutines.delay

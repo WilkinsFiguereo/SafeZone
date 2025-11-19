@@ -1,4 +1,4 @@
-package com.wilkins.alertaya.backend.network
+package com.wilkins.alertaya.frontend.ui.network
 
 import android.util.Log
 import io.github.jan.supabase.gotrue.auth

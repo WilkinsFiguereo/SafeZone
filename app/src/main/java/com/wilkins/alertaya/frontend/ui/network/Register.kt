@@ -1,4 +1,4 @@
-package com.wilkins.alertaya.backend.network
+package com.wilkins.alertaya.frontend.ui.network
 
 import android.content.Context
 import android.util.Log

@@ -1,4 +1,4 @@
-package com.wilkins.alertaya.backend.network
+package com.wilkins.alertaya.frontend.ui.network
 
 import io.github.jan.supabase.SupabaseClient
 import io.github.jan.supabase.createSupabaseClient
