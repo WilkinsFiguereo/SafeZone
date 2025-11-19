@@ -1,4 +1,4 @@
-package com.wilkins.safezone.frontend.ui.user.Homepage
+package com.wilkins.safezone.frontend.ui.user.Homepage.Components
 
 
 import androidx.compose.foundation.background

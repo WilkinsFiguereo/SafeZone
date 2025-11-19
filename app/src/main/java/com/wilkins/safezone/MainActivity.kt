@@ -37,6 +37,9 @@ import com.wilkins.safezone.frontend.ui.screens.auth.LoginScreen
 import com.wilkins.safezone.frontend.ui.screens.auth.RegisterScreen
 import com.wilkins.safezone.frontend.ui.screens.auth.VerificationScreen
 import com.wilkins.safezone.frontend.ui.user.Homepage.UserHomeScreen
+import com.wilkins.safezone.frontend.ui.user.News.NewsScreen
+import com.wilkins.safezone.frontend.ui.user.Notification.Notification
+import com.wilkins.safezone.frontend.ui.user.Notification.NotificationsScreen
 import com.wilkins.safezone.ui.theme.SafeZoneTheme
 import com.wilkins.safezone.ui.theme.PrimaryColor
 import io.github.jan.supabase.gotrue.auth
@@ -171,6 +174,19 @@ class MainActivity : ComponentActivity() {
                         composable("DashboardAdmin"){
                             AdminDashboard(navController)
                         }
+
+
+
+                        composable("NewsUser"){
+                            val supabase = SupabaseService.getInstance()
+                            val userId = supabase.auth.currentUserOrNull()?.id ?: ""
+                            NewsScreen(navController, userId = userId)
+                        }
+
+                        composable("Notification"){
+                            NotificationsScreen(navController)
+                        }
+
                     }
                 }
             }

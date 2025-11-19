@@ -12,6 +12,10 @@ import com.wilkins.safezone.GenericUserUi.BottomNavigationMenu
 import com.wilkins.safezone.GenericUserUi.SideMenu
 import com.wilkins.safezone.R
 import com.wilkins.safezone.backend.network.SupabaseService
+import com.wilkins.safezone.frontend.ui.user.Homepage.Components.NewsItem
+import com.wilkins.safezone.frontend.ui.user.Homepage.Components.NewsSlider
+import com.wilkins.safezone.frontend.ui.user.Homepage.Components.RecentReportsSection
+import com.wilkins.safezone.frontend.ui.user.Homepage.Components.WelcomeBanner
 import io.github.jan.supabase.gotrue.auth
 
 @Composable
@@ -62,7 +66,6 @@ fun UserHomeScreen(navController: NavController) {
 
             WelcomeBanner()
 
-
             Spacer(modifier = Modifier.height(16.dp))
 
             RecentReportsSection()
@@ -70,14 +73,6 @@ fun UserHomeScreen(navController: NavController) {
             // Espacio extra para asegurar que el contenido no queda detrás del BottomNavigation
             Spacer(modifier = Modifier.height(100.dp))
         }
-
-        // 🔸 Menú lateral superior (fijo arriba)
-        SideMenu(
-            navController = navController,
-            modifier = Modifier.align(Alignment.TopCenter),
-            userId = userId
-        )
-
 
         // 🔸 Menú inferior (fijo y siempre visible abajo)
         Box(
@@ -91,5 +86,13 @@ fun UserHomeScreen(navController: NavController) {
                 onMyAlertsClick = { /* Ver mis alertas */ }
             )
         }
+
+        // 🔸 Menú lateral superior (fijo arriba y POR ENCIMA del bottom menu)
+        // Se coloca al final para que esté en la capa superior
+        SideMenu(
+            navController = navController,
+            modifier = Modifier.align(Alignment.TopCenter),
+            userId = userId
+        )
     }
 }

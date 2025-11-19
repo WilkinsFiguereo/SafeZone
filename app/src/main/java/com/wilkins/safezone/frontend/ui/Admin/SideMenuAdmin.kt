@@ -34,7 +34,7 @@ fun AdminMenu(
 ) {
     // Menú específico para administrador
     val menuItems = listOf(
-        AdminMenuItem(Icons.Default.Dashboard, "Dashboard", "admin_dashboard"),
+        AdminMenuItem(Icons.Default.Dashboard, "Dashboard", "DashboardAdmin"),
         AdminMenuItem(Icons.Default.People, "Lista de Usuarios", "crudUsuarios"),
         AdminMenuItem(Icons.Default.PersonOff, "Usuarios Deshabilitados", "disabled_users"),
         AdminMenuItem(Icons.Default.Assessment, "Generar Reportes", "generate_reports"),

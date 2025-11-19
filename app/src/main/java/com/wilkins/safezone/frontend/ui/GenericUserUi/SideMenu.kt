@@ -155,8 +155,8 @@ fun SideMenu(
                                         "Noticias" -> navController.navigate("NewsUser") { launchSingleTop = true }
                                         "Reportes en tu zona" -> navController.navigate("ReportsUser") { launchSingleTop = true }
                                         "Alerta una emergencia" -> navController.navigate("AlertUser") { launchSingleTop = true }
-                                        "Mis alertas" -> navController.navigate("MyAlertsUser") { launchSingleTop = true }
-                                        "Notificaciones" -> navController.navigate("NotificationsUser") { launchSingleTop = true }
+                                        "Mis alertas" -> navController.navigate("Notification") { launchSingleTop = true }
+                                        "Notificaciones" -> navController.navigate("Notification") { launchSingleTop = true }
                                         "Configuración" -> navController.navigate("settings") { launchSingleTop = true }
                                     }
                                 }

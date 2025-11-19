@@ -42,7 +42,7 @@ fun Profile(navController: NavController){
         SideMenu(
             navController = navController,
             modifier = Modifier.align(Alignment.TopCenter),
-            userId = userId
+            userId = userId,
         )
 
 
