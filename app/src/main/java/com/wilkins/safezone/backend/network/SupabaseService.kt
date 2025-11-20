@@ -1,6 +1,7 @@
 
 package com.wilkins.safezone.backend.network
 
+import io.github.jan.supabase.storage.Storage
 import io.github.jan.supabase.SupabaseClient
 import io.github.jan.supabase.createSupabaseClient
 import io.github.jan.supabase.postgrest.Postgrest
@@ -24,6 +25,7 @@ class SupabaseService private constructor() {
                 ) {
                     install(Auth)
                     install(Postgrest)
+                    install(Storage)
                 }
             }
             return instance!!

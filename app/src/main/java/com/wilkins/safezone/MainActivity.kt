@@ -1,5 +1,6 @@
 package com.wilkins.safezone
 
+import SessionManager.getUserProfile
 import android.os.Build
 import android.os.Bundle
 import android.util.Log
@@ -12,6 +13,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.produceState
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
@@ -26,7 +28,9 @@ import androidx.navigation.compose.composable
 import androidx.navigation.compose.rememberNavController
 import androidx.navigation.navArgument
 import com.wilkins.safezone.GenericUserUi.SplashScreen
+import com.wilkins.safezone.backend.network.AppUser
 import com.wilkins.safezone.backend.network.SupabaseService
+import com.wilkins.safezone.bridge.User.Form.ReportRepository
 import com.wilkins.safezone.frontend.ui.Admin.CrudUser.CreateUserScreen
 import com.wilkins.safezone.frontend.ui.Admin.CrudUser.CrudUsuarios
 import com.wilkins.safezone.frontend.ui.Admin.CrudUser.UserProfileCrud
@@ -39,6 +43,7 @@ import com.wilkins.safezone.frontend.ui.NavigationDrawer.SettingsScreen
 import com.wilkins.safezone.frontend.ui.screens.auth.LoginScreen
 import com.wilkins.safezone.frontend.ui.screens.auth.RegisterScreen
 import com.wilkins.safezone.frontend.ui.screens.auth.VerificationScreen
+import com.wilkins.safezone.frontend.ui.user.Form.FormScreen
 import com.wilkins.safezone.frontend.ui.user.Homepage.UserHomeScreen
 import com.wilkins.safezone.frontend.ui.user.News.NewsScreen
 import com.wilkins.safezone.frontend.ui.user.Notification.Notification
@@ -59,6 +64,11 @@ class MainActivity : ComponentActivity() {
                     var savedEmail by remember { mutableStateOf("") }
                     var savedPassword by remember { mutableStateOf("") }
                     val context = LocalContext.current
+                    val userState = produceState<AppUser?>(initialValue = null) {
+                        value = getUserProfile(context)
+                    }
+
+                    val user = userState.value
 
                     // Función helper para verificar si hay sesión activa
                     fun hasActiveSession(): Boolean {
@@ -289,6 +299,19 @@ class MainActivity : ComponentActivity() {
                             } else {
                                 val supabaseClient = SupabaseService.getInstance()
                                 NotificationsScreen(navController, context, supabaseClient)
+                            }
+                        }
+
+                        composable("FormUser") {
+                            if (!hasActiveSession()) {
+                                Log.w("MainActivity", "⚠️ Intento de acceso sin sesión a Notification")
+                                navController.navigate("login") {
+                                    popUpTo(0) { inclusive = true }
+                                }
+                            } else {
+                                val supabaseClient = SupabaseService.getInstance()
+                                val userId = supabaseClient.auth.currentUserOrNull()?.id ?: ""
+                                FormScreen(navController, userId, user?.name ?: "Usuario", supabaseClient)
                             }
                         }
 

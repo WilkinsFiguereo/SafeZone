@@ -66,7 +66,7 @@ fun SideMenu(
         MenuSection(
             title = "Alertas",
             items = listOf(
-                MenuItem(Icons.Default.Warning, "Alerta una emergencia", "AlertUser"),
+                MenuItem(Icons.Default.Warning, "Alerta una emergencia", "FormUser"),
                 MenuItem(Icons.Default.Visibility, "Mis alertas", "MyAlerts"),
                 MenuItem(Icons.Default.Notifications, "Notificaciones", "Notification")
             )
@@ -234,14 +234,18 @@ fun SideMenu(
                                     isOpen = false
                                     onMenuToggle(false)
 
-                                    scope.launch {
-                                        logout(context, supabaseClient)
-
-                                        navController.navigate("login") {
-                                            popUpTo("profile") { inclusive = true }
+                                    if (route == "logout") {
+                                        scope.launch {
+                                            logout(context, supabaseClient)
+                                            navController.navigate("login") {
+                                                popUpTo(0) { inclusive = true }
+                                            }
                                         }
+                                    } else {
+                                        navController.navigate(route)
                                     }
                                 }
+
                             )
                         }
                     }
