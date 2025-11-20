@@ -1,4 +1,8 @@
+<<<<<<<< HEAD:app/src/main/java/com/wilkins/safezone/backend/network/auth/Register.kt
 package com.wilkins.safezone.backend.network.auth
+========
+package com.wilkins.alertaya.frontend.ui.network
+>>>>>>>> ca56ce16a5f9ae9a4b46b712c16bb89abf6ea575:app/src/main/java/com/wilkins/alertaya/frontend/ui/network/Register.kt
 
 import android.content.Context
 import android.util.Log
