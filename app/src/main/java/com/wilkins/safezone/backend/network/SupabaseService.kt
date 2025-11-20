@@ -1,8 +1,5 @@
-<<<<<<<< HEAD:app/src/main/java/com/wilkins/safezone/backend/network/SupabaseService.kt
+
 package com.wilkins.safezone.backend.network
-========
-package com.wilkins.alertaya.frontend.ui.network
->>>>>>>> ca56ce16a5f9ae9a4b46b712c16bb89abf6ea575:app/src/main/java/com/wilkins/alertaya/frontend/ui/network/SupabaseService.kt
 
 import io.github.jan.supabase.SupabaseClient
 import io.github.jan.supabase.createSupabaseClient
