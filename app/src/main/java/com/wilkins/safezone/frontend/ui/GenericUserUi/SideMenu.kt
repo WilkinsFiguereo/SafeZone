@@ -111,31 +111,10 @@ fun SideMenu(
                 )
 
                 Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                    // Badge de notificaciones
-                    BadgedBox(
-                        badge = {
-                            Badge(
-                                containerColor = Color.Red,
-                                contentColor = Color.White
-                            ) {
-                                Text("3", fontSize = 10.sp)
-                            }
-                        }
-                    ) {
-                        IconButton(onClick = {
-                            navController.navigate("Notification")
-                        }) {
-                            Icon(
-                                imageVector = Icons.Default.Notifications,
-                                contentDescription = "Notificaciones",
-                                tint = Color.White,
-                                modifier = Modifier.size(24.dp)
-                            )
-                        }
-                    }
+
 
                     IconButton(onClick = {
-                        navController.navigate("profile")
+                        navController.navigate("navigationDrawer")
                     }) {
                         Box(
                             modifier = Modifier
