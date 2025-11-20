@@ -1,7 +1,9 @@
 package com.wilkins.safezone.frontend.ui.user.Homepage
 
+import SessionManager.getUserProfile
 import android.Manifest
 import android.annotation.SuppressLint
+import android.content.Context
 import android.content.pm.PackageManager
 import android.util.Log
 import androidx.activity.compose.rememberLauncherForActivityResult
@@ -37,17 +39,24 @@ import com.google.maps.android.compose.rememberCameraPositionState
 import com.wilkins.safezone.GenericUserUi.BottomNavigationMenu
 import com.wilkins.safezone.GenericUserUi.SideMenu
 import com.wilkins.safezone.R
+import com.wilkins.safezone.backend.network.AppUser
 import com.wilkins.safezone.backend.network.SupabaseService
 import com.wilkins.safezone.frontend.ui.user.Homepage.Components.NewsItem
 import com.wilkins.safezone.frontend.ui.user.Homepage.Components.NewsSlider
 import com.wilkins.safezone.frontend.ui.user.Homepage.Components.RecentReportsSection
 import com.wilkins.safezone.frontend.ui.user.Homepage.Components.WelcomeBanner
+import io.github.jan.supabase.SupabaseClient
 import io.github.jan.supabase.gotrue.auth
 
 @Composable
-fun UserHomeScreen(navController: NavController) {
+fun UserHomeScreen(navController: NavController, context: Context, supabaseClient: SupabaseClient) {
     val supabase = SupabaseService.getInstance()
     val userId = supabase.auth.currentUserOrNull()?.id ?: ""
+    val userState = produceState<AppUser?>(initialValue = null) {
+        value = getUserProfile(context)
+    }
+
+    val user = userState.value
     val newsItems = listOf(
         NewsItem(
             title = "Nuevo programa de seguridad comunitaria",
@@ -110,7 +119,10 @@ fun UserHomeScreen(navController: NavController) {
         SideMenu(
             navController = navController,
             modifier = Modifier.align(Alignment.TopCenter),
-            userId = userId
+            userId = userId,
+            userName = user?.name ?: "Usuario",
+            context = context,
+            supabaseClient = supabaseClient
         )
     }
 }

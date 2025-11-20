@@ -32,6 +32,7 @@ import com.wilkins.safezone.frontend.ui.Admin.CrudUser.CrudUsuarios
 import com.wilkins.safezone.frontend.ui.Admin.CrudUser.UserProfileCrud
 import com.wilkins.safezone.frontend.ui.Admin.Dasbhoard.AdminDashboard
 import com.wilkins.safezone.frontend.ui.Map.GoogleMapScreen
+import com.wilkins.safezone.frontend.ui.Moderator.Dashboard.ModeratorDashboard
 import com.wilkins.safezone.frontend.ui.NavigationDrawer.NavigationDrawer
 import com.wilkins.safezone.frontend.ui.NavigationDrawer.Profile
 import com.wilkins.safezone.frontend.ui.NavigationDrawer.SettingsScreen
@@ -67,8 +68,6 @@ class MainActivity : ComponentActivity() {
                         return hasSession
                     }
 
-
-
                     NavHost(
                         navController = navController,
                         startDestination = "splash"
@@ -97,6 +96,12 @@ class MainActivity : ComponentActivity() {
                                         2 -> {
                                             Log.i("MainActivity", "✅ Rol 2 → DashboardAdmin")
                                             navController.navigate("DashboardAdmin") {
+                                                popUpTo("login") { inclusive = true }
+                                            }
+                                        }
+                                        3 -> {
+                                            Log.i("MainActivity", "✅ Rol 2 → DashboardMod")
+                                            navController.navigate("DashboardMod") {
                                                 popUpTo("login") { inclusive = true }
                                             }
                                         }
@@ -160,7 +165,8 @@ class MainActivity : ComponentActivity() {
                                     popUpTo(0) { inclusive = true }
                                 }
                             } else {
-                                UserHomeScreen(navController)
+                                val supabaseClient = SupabaseService.getInstance()
+                                UserHomeScreen(navController, context, supabaseClient)
                             }
                         }
 
@@ -209,7 +215,8 @@ class MainActivity : ComponentActivity() {
                                     popUpTo(0) { inclusive = true }
                                 }
                             } else {
-                                Profile(navController)
+                                val supabaseClient = SupabaseService.getInstance()
+                                Profile(navController, context, supabaseClient, )
                             }
                         }
 
@@ -268,7 +275,8 @@ class MainActivity : ComponentActivity() {
                             } else {
                                 val supabase = SupabaseService.getInstance()
                                 val userId = supabase.auth.currentUserOrNull()?.id ?: ""
-                                NewsScreen(navController, userId = userId)
+                                val supabaseClient = SupabaseService.getInstance()
+                                NewsScreen(navController, userId = userId, context, supabaseClient)
                             }
                         }
 
@@ -279,7 +287,26 @@ class MainActivity : ComponentActivity() {
                                     popUpTo(0) { inclusive = true }
                                 }
                             } else {
-                                NotificationsScreen(navController)
+                                val supabaseClient = SupabaseService.getInstance()
+                                NotificationsScreen(navController, context, supabaseClient)
+                            }
+                        }
+
+                        composable("DashboardMod") {
+                            if (!hasActiveSession()) {
+                                Log.w("MainActivity", "⚠️ Intento de acceso sin sesión a Notification")
+                                navController.navigate("login") {
+                                    popUpTo(0) { inclusive = true }
+                                }
+                            } else {
+                                val supabaseClient = SupabaseService.getInstance()
+
+                                ModeratorDashboard(
+                                    navController = navController,
+                                    moderatorId = "MOD001",
+                                    context = context,
+                                    supabaseClient = supabaseClient
+                                )
                             }
                         }
                     }

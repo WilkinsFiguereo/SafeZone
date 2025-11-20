@@ -1,5 +1,7 @@
 package com.wilkins.safezone.frontend.ui.user.Notification
 
+import SessionManager.getUserProfile
+import android.content.Context
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
@@ -23,7 +25,9 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.navigation.NavController
 import com.wilkins.safezone.GenericUserUi.SideMenu
+import com.wilkins.safezone.backend.network.AppUser
 import com.wilkins.safezone.backend.network.SupabaseService
+import io.github.jan.supabase.SupabaseClient
 import io.github.jan.supabase.gotrue.auth
 
 data class Notification(
@@ -47,13 +51,18 @@ enum class FilterTab(val label: String, val icon: ImageVector) {
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun NotificationsScreen(navController: NavController) {
+fun NotificationsScreen(navController: NavController, context: Context, subaseClient: SupabaseClient) {
     val supabase = SupabaseService.getInstance()
     val userId = supabase.auth.currentUserOrNull()?.id ?: ""
 
     var searchText by remember { mutableStateOf("") }
     var selectedTab by remember { mutableStateOf(FilterTab.ALL) }
     var isSearchActive by remember { mutableStateOf(false) }
+    val userState = produceState<AppUser?>(initialValue = null) {
+        value = getUserProfile(context)
+    }
+
+    val user = userState.value
 
     val notifications = remember {
         listOf(
@@ -288,7 +297,10 @@ fun NotificationsScreen(navController: NavController) {
         SideMenu(
             navController = navController,
             modifier = Modifier.align(Alignment.TopCenter),
-            userId = userId
+            userId = userId,
+            userName = user?.name ?: "Usuario",
+            context = context,
+            supabaseClient = subaseClient
         )
     }
 }

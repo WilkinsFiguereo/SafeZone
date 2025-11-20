@@ -54,6 +54,7 @@ fun SplashScreen(navController: NavController) {
                     when (roleId) {
                         1 -> {
                             Log.i("SplashScreen", "✅ Rol 1 → UserHome")
+                            Log.i("SplashScreen", "✅ Rol 1 → UserHome")
                             navController.navigate("userHome/${user.id}") {
                                 popUpTo("splash") { inclusive = true }
                             }
@@ -62,6 +63,12 @@ fun SplashScreen(navController: NavController) {
                             Log.i("SplashScreen", "✅ Rol 2 → DashboardAdmin")
                             navController.navigate("DashboardAdmin") {
                                 popUpTo("splash") { inclusive = true }
+                            }
+                        }
+                        3 -> {
+                            Log.i("MainActivity", "✅ Rol 2 → DashboardMod")
+                            navController.navigate("DashboardMod") {
+                                popUpTo("login") { inclusive = true }
                             }
                         }
                         else -> {

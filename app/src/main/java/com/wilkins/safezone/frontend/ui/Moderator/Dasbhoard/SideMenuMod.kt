@@ -1,4 +1,4 @@
-package com.wilkins.safezone.GenericUserUi
+package com.wilkins.safezone.frontend.ui.Moderator.Dasbhoard
 
 import SessionManager.logout
 import android.content.Context
@@ -31,10 +31,10 @@ import io.github.jan.supabase.SupabaseClient
 import kotlinx.coroutines.launch
 
 @Composable
-fun SideMenu(
+fun ModeratorSideMenu(
     navController: NavController,
-    userId: String,
-    userName: String , // Nombre del usuario
+    moderatorId: String,
+    moderatorName: String = "Moderador",
     currentRoute: String = "",
     modifier: Modifier = Modifier,
     isMenuOpen: Boolean = false,
@@ -44,38 +44,49 @@ fun SideMenu(
 ) {
     var isOpen by remember { mutableStateOf(isMenuOpen) }
     val scope = rememberCoroutineScope()
+
     LaunchedEffect(isMenuOpen) {
         isOpen = isMenuOpen
     }
 
     val menuSections = listOf(
         MenuSection(
-            title = "Principal",
+            title = "Panel Principal",
             items = listOf(
-                MenuItem(Icons.Default.Home, "Inicio", "userHome/$userId"),
-                MenuItem(Icons.Default.Person, "Mi Perfil", "profile")
+                ModeratorMenuItem(Icons.Default.Dashboard, "Dashboard", "moderatorDashboard"),
+                ModeratorMenuItem(Icons.Default.BarChart, "Estadísticas", "moderatorStats")
             )
         ),
         MenuSection(
-            title = "Información",
+            title = "Gestión de Noticias",
             items = listOf(
-                MenuItem(Icons.Default.Newspaper, "Noticias", "NewsUser"),
-                MenuItem(Icons.Default.Place, "Reportes en tu zona", "ReportsUser")
+                ModeratorMenuItem(Icons.Default.Newspaper, "Ver Noticias", "NewsUser"),
+                ModeratorMenuItem(Icons.Default.Add, "Subir Noticia", "moderatorCreateNews"),
+                ModeratorMenuItem(Icons.Default.Edit, "Editar Noticias", "moderatorEditNews")
             )
         ),
         MenuSection(
-            title = "Alertas",
+            title = "Reportes",
             items = listOf(
-                MenuItem(Icons.Default.Warning, "Alerta una emergencia", "AlertUser"),
-                MenuItem(Icons.Default.Visibility, "Mis alertas", "MyAlerts"),
-                MenuItem(Icons.Default.Notifications, "Notificaciones", "Notification")
+                ModeratorMenuItem(Icons.Default.Report, "Ver Reportes", "moderatorReports"),
+                ModeratorMenuItem(Icons.Default.PendingActions, "Reportes Pendientes", "moderatorPendingReports"),
+                ModeratorMenuItem(Icons.Default.CheckCircle, "Reportes Resueltos", "moderatorResolvedReports")
+            )
+        ),
+        MenuSection(
+            title = "Usuarios",
+            items = listOf(
+                ModeratorMenuItem(Icons.Default.People, "Gestionar Usuarios", "moderatorUsers"),
+                ModeratorMenuItem(Icons.Default.Block, "Usuarios Bloqueados", "moderatorBlockedUsers")
             )
         ),
         MenuSection(
             title = "Configuración",
             items = listOf(
-                MenuItem(Icons.Default.Settings, "Configuración", "settings"),
-                MenuItem(Icons.Default.Logout, "Cerrar Sesión", "logout")
+                ModeratorMenuItem(Icons.Default.Person, "Mi Perfil", "moderatorProfile"),
+                ModeratorMenuItem(Icons.Default.Notifications, "Notificaciones", "moderatorNotifications"),
+                ModeratorMenuItem(Icons.Default.Settings, "Configuración", "moderatorSettings"),
+                ModeratorMenuItem(Icons.Default.Logout, "Cerrar Sesión", "logout")
             )
         )
     )
@@ -103,12 +114,19 @@ fun SideMenu(
                     )
                 }
 
-                Text(
-                    text = NameApp,
-                    color = Color.White,
-                    fontSize = 22.sp,
-                    fontWeight = FontWeight.Bold
-                )
+                Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                    Text(
+                        text = NameApp,
+                        color = Color.White,
+                        fontSize = 20.sp,
+                        fontWeight = FontWeight.Bold
+                    )
+                    Text(
+                        text = "Panel Moderador",
+                        color = Color.White.copy(alpha = 0.8f),
+                        fontSize = 12.sp
+                    )
+                }
 
                 Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                     // Badge de notificaciones
@@ -118,12 +136,12 @@ fun SideMenu(
                                 containerColor = Color.Red,
                                 contentColor = Color.White
                             ) {
-                                Text("3", fontSize = 10.sp)
+                                Text("5", fontSize = 10.sp)
                             }
                         }
                     ) {
                         IconButton(onClick = {
-                            navController.navigate("Notification")
+                            navController.navigate("moderatorNotifications")
                         }) {
                             Icon(
                                 imageVector = Icons.Default.Notifications,
@@ -135,7 +153,7 @@ fun SideMenu(
                     }
 
                     IconButton(onClick = {
-                        navController.navigate("profile")
+                        navController.navigate("moderatorProfile")
                     }) {
                         Box(
                             modifier = Modifier
@@ -175,7 +193,7 @@ fun SideMenu(
                         .fillMaxHeight()
                         .background(PrimaryColor)
                 ) {
-                    // Header del menú con info del usuario
+                    // Header del menú
                     Column(
                         modifier = Modifier
                             .fillMaxWidth()
@@ -193,7 +211,7 @@ fun SideMenu(
                                 contentAlignment = Alignment.Center
                             ) {
                                 Icon(
-                                    imageVector = Icons.Default.Person,
+                                    imageVector = Icons.Default.Shield,
                                     contentDescription = null,
                                     tint = Color.White,
                                     modifier = Modifier.size(28.dp)
@@ -202,10 +220,15 @@ fun SideMenu(
                             Spacer(modifier = Modifier.width(12.dp))
                             Column {
                                 Text(
-                                    text = userName,
+                                    text = moderatorName,
                                     color = Color.White,
                                     fontSize = 18.sp,
                                     fontWeight = FontWeight.Bold
+                                )
+                                Text(
+                                    text = "ID: $moderatorId",
+                                    color = Color.White.copy(alpha = 0.7f),
+                                    fontSize = 12.sp
                                 )
                             }
                         }
@@ -234,11 +257,17 @@ fun SideMenu(
                                     isOpen = false
                                     onMenuToggle(false)
 
-                                    scope.launch {
-                                        logout(context, supabaseClient)
-
-                                        navController.navigate("login") {
-                                            popUpTo("profile") { inclusive = true }
+                                    if (route == "logout") {
+                                        // Implementar lógica de cerrar sesión
+                                        scope.launch {
+                                            logout(context, supabaseClient)
+                                            navController.navigate("login") {
+                                                popUpTo(0) { inclusive = true }
+                                            }
+                                        }
+                                    } else {
+                                        navController.navigate(route) {
+                                            launchSingleTop = true
                                         }
                                     }
                                 }
@@ -264,7 +293,7 @@ fun SideMenu(
                         ) {
                             Column {
                                 Text(
-                                    text = "SafeZone App",
+                                    text = "SafeZone Moderator",
                                     color = Color.White.copy(alpha = 0.7f),
                                     fontSize = 12.sp,
                                     fontWeight = FontWeight.Medium
@@ -276,7 +305,7 @@ fun SideMenu(
                                 )
                             }
                             Icon(
-                                imageVector = Icons.Default.Security,
+                                imageVector = Icons.Default.VerifiedUser,
                                 contentDescription = null,
                                 tint = Color.White.copy(alpha = 0.5f),
                                 modifier = Modifier.size(20.dp)
@@ -353,7 +382,7 @@ fun MenuSectionComponent(
     }
 }
 
-data class MenuItem(
+data class ModeratorMenuItem(
     val icon: ImageVector,
     val label: String,
     val route: String
@@ -361,5 +390,5 @@ data class MenuItem(
 
 data class MenuSection(
     val title: String,
-    val items: List<MenuItem>
+    val items: List<ModeratorMenuItem>
 )

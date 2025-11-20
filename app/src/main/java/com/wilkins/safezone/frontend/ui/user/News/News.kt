@@ -1,5 +1,7 @@
 package com.wilkins.safezone.frontend.ui.user.News
 
+import SessionManager.getUserProfile
+import android.content.Context
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
@@ -13,18 +15,26 @@ import androidx.compose.ui.zIndex
 import androidx.navigation.NavController
 import com.wilkins.safezone.GenericUserUi.BottomNavigationMenu
 import com.wilkins.safezone.GenericUserUi.SideMenu
+import com.wilkins.safezone.backend.network.AppUser
 import com.wilkins.safezone.frontend.ui.user.News.components.NewsCard
 import com.wilkins.safezone.frontend.ui.user.News.components.NewsListItem
+import io.github.jan.supabase.SupabaseClient
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun NewsScreen(
     navController: NavController,
-    userId: String
+    userId: String,
+    context: Context,
+    supabaseClient: SupabaseClient
 ) {
     var searchQuery by remember { mutableStateOf("") }
     var selectedFilter by remember { mutableStateOf(NewsFilter.ALL) }
+    val userState = produceState<AppUser?>(initialValue = null) {
+        value = getUserProfile(context)
+    }
 
+    val user = userState.value
     // Filtrar noticias según la búsqueda y categoría
     val filteredLatestNews = remember(searchQuery, selectedFilter) {
         var news = NewsData.latestNews
@@ -182,7 +192,10 @@ fun NewsScreen(
         ) {
             SideMenu(
                 navController = navController,
-                userId = userId
+                userId = userId,
+                userName = user?.name ?: "Usuario",
+                context = context,
+                supabaseClient = supabaseClient
             )
         }
     }
