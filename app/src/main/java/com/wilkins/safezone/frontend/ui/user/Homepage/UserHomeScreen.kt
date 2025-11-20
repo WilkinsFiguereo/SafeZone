@@ -1,13 +1,39 @@
 package com.wilkins.safezone.frontend.ui.user.Homepage
 
+import android.Manifest
+import android.annotation.SuppressLint
+import android.content.pm.PackageManager
+import android.util.Log
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.contract.ActivityResultContracts
+import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
-import androidx.compose.runtime.Composable
+import androidx.compose.material3.Card
+import androidx.compose.material3.CardDefaults
+import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.Text
+import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
+import androidx.core.content.ContextCompat
 import androidx.navigation.NavController
+import com.google.android.gms.maps.model.CameraPosition
+import com.google.android.gms.maps.model.LatLng
+import com.google.maps.android.compose.GoogleMap
+import com.google.maps.android.compose.MapProperties
+import com.google.maps.android.compose.MapUiSettings
+import com.google.maps.android.compose.Marker
+import com.google.maps.android.compose.MarkerState
+import com.google.maps.android.compose.rememberCameraPositionState
 import com.wilkins.safezone.GenericUserUi.BottomNavigationMenu
 import com.wilkins.safezone.GenericUserUi.SideMenu
 import com.wilkins.safezone.R
@@ -43,56 +69,179 @@ fun UserHomeScreen(navController: NavController) {
         )
     )
 
-    // 🔹 Box principal que permite superposición de componentes
     Box(modifier = Modifier.fillMaxSize()) {
-
-        // 🔸 Contenido principal con scroll
         Column(
             modifier = Modifier
                 .fillMaxSize()
                 .verticalScroll(rememberScrollState())
         ) {
-            // Espacio para el SideMenu fijo
             Spacer(modifier = Modifier.height(75.dp))
-
             Spacer(modifier = Modifier.height(12.dp))
 
             NewsSlider(
                 newsItems = newsItems,
-                onNewsClick = { /* Acción al hacer clic en noticia */ }
+                onNewsClick = { }
             )
 
             Spacer(modifier = Modifier.height(15.dp))
-
             WelcomeBanner()
-
             Spacer(modifier = Modifier.height(16.dp))
 
-            RecentReportsSection()
+            // 🗺️ Nueva sección: Reportes cercanos con mapa
+            NearbyReportsMapSection()
 
-            // Espacio extra para asegurar que el contenido no queda detrás del BottomNavigation
+            Spacer(modifier = Modifier.height(16.dp))
+            RecentReportsSection()
             Spacer(modifier = Modifier.height(100.dp))
         }
 
-        // 🔸 Menú inferior (fijo y siempre visible abajo)
         Box(
             modifier = Modifier
                 .fillMaxWidth()
                 .align(Alignment.BottomCenter)
         ) {
             BottomNavigationMenu(
-                onNewsClick = { /* Navegar a noticias */ },
-                onAlertClick = { /* Crear nueva alerta */ },
-                onMyAlertsClick = { /* Ver mis alertas */ }
+                onNewsClick = { },
+                onAlertClick = { },
+                onMyAlertsClick = { }
             )
         }
 
-        // 🔸 Menú lateral superior (fijo arriba y POR ENCIMA del bottom menu)
-        // Se coloca al final para que esté en la capa superior
         SideMenu(
             navController = navController,
             modifier = Modifier.align(Alignment.TopCenter),
             userId = userId
         )
+    }
+}
+
+@SuppressLint("MissingPermission")
+@Composable
+fun NearbyReportsMapSection() {
+    val context = LocalContext.current
+
+    var hasLocationPermission by remember {
+        mutableStateOf(
+            ContextCompat.checkSelfPermission(
+                context,
+                Manifest.permission.ACCESS_FINE_LOCATION
+            ) == PackageManager.PERMISSION_GRANTED
+        )
+    }
+
+    val permissionLauncher = rememberLauncherForActivityResult(
+        contract = ActivityResultContracts.RequestPermission(),
+        onResult = { granted ->
+            Log.i("NearbyReportsMap", "📌 Resultado permiso: $granted")
+            hasLocationPermission = granted
+        }
+    )
+
+    LaunchedEffect(Unit) {
+        if (!hasLocationPermission) {
+            Log.i("NearbyReportsMap", "🚨 Solicitando permiso de ubicación")
+            permissionLauncher.launch(Manifest.permission.ACCESS_FINE_LOCATION)
+        }
+    }
+
+    Card(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(horizontal = 16.dp),
+        shape = RoundedCornerShape(16.dp),
+        elevation = CardDefaults.cardElevation(defaultElevation = 4.dp)
+    ) {
+        Column(
+            modifier = Modifier
+                .fillMaxWidth()
+                .background(Color.White)
+        ) {
+            // Título de la sección
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(16.dp),
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Text(
+                    text = "📍 Reportes cercanos a tu zona",
+                    fontSize = 18.sp,
+                    fontWeight = FontWeight.Bold,
+                    color = Color(0xFF1976D2)
+                )
+            }
+
+            // Mapa de Google
+            Box(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .height(300.dp)
+                    .padding(horizontal = 16.dp)
+                    .clip(RoundedCornerShape(12.dp))
+            ) {
+                GoogleMapWithReports(hasLocationPermission = hasLocationPermission)
+            }
+
+            // Información adicional
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(16.dp),
+                horizontalArrangement = Arrangement.SpaceBetween
+            ) {
+                Text(
+                    text = "🔴 5 reportes activos",
+                    fontSize = 14.sp,
+                    color = Color.Gray
+                )
+                Text(
+                    text = "Ver todos →",
+                    fontSize = 14.sp,
+                    fontWeight = FontWeight.SemiBold,
+                    color = Color(0xFF1976D2)
+                )
+            }
+        }
+    }
+}
+
+@SuppressLint("MissingPermission")
+@Composable
+fun GoogleMapWithReports(hasLocationPermission: Boolean) {
+    val santoDomingo = LatLng(18.4861, -69.9312)
+
+    // Reportes de ejemplo cercanos
+    val nearbyReports = listOf(
+        LatLng(18.4900, -69.9400) to "Bache en vía principal",
+        LatLng(18.4820, -69.9280) to "Alumbrado público dañado",
+        LatLng(18.4880, -69.9350) to "Basura acumulada",
+        LatLng(18.4840, -69.9320) to "Vandalismo en parque",
+        LatLng(18.4910, -69.9310) to "Árbol caído"
+    )
+
+    val cameraPositionState = rememberCameraPositionState {
+        position = CameraPosition.fromLatLngZoom(santoDomingo, 13f)
+    }
+
+    GoogleMap(
+        modifier = Modifier.fillMaxSize(),
+        cameraPositionState = cameraPositionState,
+        properties = MapProperties(
+            isMyLocationEnabled = hasLocationPermission
+        ),
+        uiSettings = MapUiSettings(
+            zoomControlsEnabled = true,
+            compassEnabled = true,
+            myLocationButtonEnabled = hasLocationPermission
+        )
+    ) {
+        // Marcadores de reportes cercanos
+        nearbyReports.forEach { (position, title) ->
+            Marker(
+                state = MarkerState(position = position),
+                title = title,
+                snippet = "Toca para ver detalles"
+            )
+        }
     }
 }

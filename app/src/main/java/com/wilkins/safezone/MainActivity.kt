@@ -31,6 +31,7 @@ import com.wilkins.safezone.frontend.ui.Admin.CrudUser.CreateUserScreen
 import com.wilkins.safezone.frontend.ui.Admin.CrudUser.CrudUsuarios
 import com.wilkins.safezone.frontend.ui.Admin.CrudUser.UserProfileCrud
 import com.wilkins.safezone.frontend.ui.Admin.Dasbhoard.AdminDashboard
+import com.wilkins.safezone.frontend.ui.Map.GoogleMapScreen
 import com.wilkins.safezone.frontend.ui.NavigationDrawer.NavigationDrawer
 import com.wilkins.safezone.frontend.ui.NavigationDrawer.Profile
 import com.wilkins.safezone.frontend.ui.NavigationDrawer.SettingsScreen
@@ -65,6 +66,8 @@ class MainActivity : ComponentActivity() {
                         Log.i("MainActivity", "🔐 Verificando sesión: ${if (hasSession) "Activa" else "Inactiva"}")
                         return hasSession
                     }
+
+
 
                     NavHost(
                         navController = navController,
