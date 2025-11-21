@@ -63,6 +63,27 @@ data class Profile(
     val updatedAt: String = ""
 )
 
+// 🔹 DTO para actualizar el perfil
+@Serializable
+data class ProfileUpdateDTO(
+    @SerialName("name")
+    val name: String? = null,
+
+    @SerialName("phone")
+    val phone: String? = null,
+
+    @SerialName("email")
+    val email: String? = null,
+
+    @SerialName("address")
+    val address: String? = null,
+
+    @SerialName("role_id")
+    val roleId: Int? = null,
+
+    @SerialName("status_id")
+    val statusId: Int? = null
+)
 
 // 🔹 Servicio para manejar operaciones de Profile
 class CrudUser {
@@ -137,18 +158,80 @@ class CrudUser {
         }
     }
 
+    /**
+     * Actualizar perfil de usuario
+     */
     suspend fun updateUserProfile(user: Usuario): Boolean {
         return try {
-            val response = supabase.from("users")
-                .update(user) {
+            // Convertir estado a status_id
+            val statusId = when (user.estado.lowercase()) {
+                "activo" -> 1
+                "inactivo" -> 2
+                "pendiente" -> 3
+                "bloqueado" -> 4
+                else -> 1
+            }
+
+            val updateData = ProfileUpdateDTO(
+                name = user.nombre,
+                phone = user.telefono,
+                email = user.email,
+                address = user.address,
+                roleId = user.roleId,
+                statusId = statusId
+            )
+
+            println("🔄 Actualizando perfil en Supabase:")
+            println("   ID: ${user.id}")
+            println("   Nombre: ${updateData.name}")
+            println("   Email: ${updateData.email}")
+            println("   Teléfono: ${updateData.phone}")
+            println("   Dirección: ${updateData.address}")
+            println("   Role ID: ${updateData.roleId}")
+            println("   Status ID: ${updateData.statusId}")
+
+            supabase.from("profiles")
+                .update(updateData) {
                     filter {
                         eq("id", user.id)
                     }
                 }
 
-            response.data != null
+            println("✅ Perfil actualizado exitosamente")
+            true
         } catch (e: Exception) {
             println("❌ Error actualizando perfil: ${e.message}")
+            e.printStackTrace()
+            false
+        }
+    }
+
+    /**
+     * Cambiar solo el estado del usuario (habilitar/deshabilitar)
+     */
+    suspend fun toggleUserStatus(userId: String, currentStatusId: Int): Boolean {
+        return try {
+            val newStatusId = if (currentStatusId == 1) 2 else 1
+
+            println("🔄 Cambiando estado del usuario:")
+            println("   ID: $userId")
+            println("   Estado actual: $currentStatusId")
+            println("   Nuevo estado: $newStatusId")
+
+            val updateData = ProfileUpdateDTO(statusId = newStatusId)
+
+            supabase.from("profiles")
+                .update(updateData) {
+                    filter {
+                        eq("id", userId)
+                    }
+                }
+
+            println("✅ Estado cambiado exitosamente")
+            true
+        } catch (e: Exception) {
+            println("❌ Error cambiando estado: ${e.message}")
+            e.printStackTrace()
             false
         }
     }
