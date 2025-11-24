@@ -9,7 +9,7 @@ suspend fun insertReportBackend(report: Report): Boolean {
     val client = SupabaseService.getInstance()
 
     val result = client.postgrest
-        .from("reports")
+        .from("report")
         .insert(report)
 
     return result.data != null

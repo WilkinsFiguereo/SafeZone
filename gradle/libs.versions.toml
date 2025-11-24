@@ -11,6 +11,7 @@ composeBom = "2024.09.00"
 foundation = "1.9.4"
 firebaseCrashlyticsBuildtools = "3.0.6"
 datastoreCore = "1.1.7"
+window = "1.5.1"
 
 [libraries]
 androidx-core-ktx = { group = "androidx.core", name = "core-ktx", version.ref = "coreKtx" }
@@ -30,6 +31,7 @@ androidx-material3 = { group = "androidx.compose.material3", name = "material3" 
 androidx-foundation = { group = "androidx.compose.foundation", name = "foundation", version.ref = "foundation" }
 firebase-crashlytics-buildtools = { group = "com.google.firebase", name = "firebase-crashlytics-buildtools", version.ref = "firebaseCrashlyticsBuildtools" }
 androidx-datastore-core = { group = "androidx.datastore", name = "datastore-core", version.ref = "datastoreCore" }
+androidx-window = { group = "androidx.window", name = "window", version.ref = "window" }
 
 [plugins]
 android-application = { id = "com.android.application", version.ref = "agp" }

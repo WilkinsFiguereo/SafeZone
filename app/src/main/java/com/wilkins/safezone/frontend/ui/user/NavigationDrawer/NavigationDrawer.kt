@@ -1,4 +1,4 @@
-package com.wilkins.safezone.frontend.ui.NavigationDrawer
+package com.wilkins.safezone.frontend.ui.user.NavigationDrawer
 
 import SessionManager.getUserProfile
 import SessionManager.logout

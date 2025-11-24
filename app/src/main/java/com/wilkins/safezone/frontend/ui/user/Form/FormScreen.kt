@@ -1,5 +1,7 @@
 package com.wilkins.safezone.frontend.ui.user.Form
 
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
@@ -24,7 +26,9 @@ import com.wilkins.safezone.ui.theme.PrimaryColor
 import io.github.jan.supabase.SupabaseClient
 import com.wilkins.safezone.backend.network.User.Form.Affair
 import com.wilkins.safezone.backend.network.User.Form.getAffairs
+import com.wilkins.safezone.backend.network.User.Form.uploadImageToSupabase
 import com.wilkins.safezone.bridge.User.Form.ReportRepository
+import com.wilkins.safezone.frontend.ui.Map.GoogleMapPicker
 import kotlinx.coroutines.launch
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -46,7 +50,9 @@ fun FormScreen(
     var descripcion by remember { mutableStateOf("") }
     var direccion by remember { mutableStateOf("") }
     var evidenciaSubida by remember { mutableStateOf(false) }
+    var imageBytes by remember { mutableStateOf<ByteArray?>(null) }
     var imageUrl by remember { mutableStateOf<String?>(null) }
+    var showMapPicker by remember { mutableStateOf(false) }
     var isAnonymous by remember { mutableStateOf(false) }
 
     // Lista de affairs desde la BD
@@ -60,6 +66,37 @@ fun FormScreen(
 
     // Estado para el dropdown de asunto
     var affairExpandido by remember { mutableStateOf(false) }
+    val launcher = rememberLauncherForActivityResult(
+        contract = ActivityResultContracts.GetContent(),
+        onResult = { uri ->
+            if (uri != null) {
+                scope.launch {
+                    try {
+                        val inputStream = context.contentResolver.openInputStream(uri)
+                        if (inputStream == null) {
+                            snackbarMessage = "No se pudo leer la imagen"
+                            showSnackbar = true
+                            return@launch
+                        }
+
+                        val bytes = inputStream.readBytes()
+                        inputStream.close()
+
+                        imageBytes = bytes  // SOLO GUARDAR, NO SUBIR
+                        evidenciaSubida = true
+
+                        snackbarMessage = "Imagen seleccionada"
+                        showSnackbar = true
+
+                    } catch (e: Exception) {
+                        snackbarMessage = "Error al seleccionar imagen: ${e.message}"
+                        showSnackbar = true
+                    }
+                }
+            }
+        }
+
+    )
 
     // Cargar affairs al iniciar
     LaunchedEffect(Unit) {
@@ -259,6 +296,17 @@ fun FormScreen(
                                 }
                             }
 
+                            if (showMapPicker) {
+                                GoogleMapPicker(
+                                    onLocationSelected = { direccionSeleccionada ->
+                                        direccion = direccionSeleccionada
+                                    },
+                                    onDismiss = {
+                                        showMapPicker = false
+                                    }
+                                )
+                            }
+
                             // Dropdown Menu
                             if (affairExpandido) {
                                 Card(
@@ -323,8 +371,12 @@ fun FormScreen(
                             modifier = Modifier.padding(bottom = 10.dp)
                         )
 
+
+
                         Card(
-                            modifier = Modifier.fillMaxWidth(),
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .clickable { showMapPicker = true },
                             elevation = CardDefaults.cardElevation(defaultElevation = 6.dp),
                             colors = CardDefaults.cardColors(containerColor = Color(0xFFF1F8E9)),
                             shape = RoundedCornerShape(12.dp)
@@ -344,20 +396,21 @@ fun FormScreen(
                                 Spacer(modifier = Modifier.width(14.dp))
                                 Column(modifier = Modifier.weight(1f)) {
                                     Text(
-                                        "Seleccionar en el mapa",
+                                        text = "Seleccionar en el mapa",
                                         color = PrimaryColor,
                                         fontWeight = FontWeight.Medium,
                                         fontSize = 15.sp
                                     )
                                     Text(
-                                        "Funcionalidad próximamente disponible",
+                                        text = if (direccion.isEmpty()) "Toca para elegir la ubicación"
+                                        else direccion,
                                         color = PrimaryColor,
-                                        fontSize = 12.sp,
-                                        modifier = Modifier.padding(top = 2.dp)
+                                        fontSize = 12.sp
                                     )
                                 }
                             }
                         }
+
 
                         OutlinedTextField(
                             value = direccion,
@@ -439,7 +492,7 @@ fun FormScreen(
                                 .fillMaxWidth()
                                 .clickable {
                                     // TODO: Implementar lógica para subir evidencia
-                                    evidenciaSubida = true
+                                    launcher.launch("image/*")
                                 },
                             elevation = CardDefaults.cardElevation(defaultElevation = 6.dp),
                             colors = CardDefaults.cardColors(
@@ -495,7 +548,7 @@ fun FormScreen(
                                     descripcion = ""
                                     direccion = ""
                                     evidenciaSubida = false
-                                    imageUrl = null
+                                    imageBytes = null
                                     isAnonymous = false
                                 },
                                 modifier = Modifier
@@ -541,11 +594,12 @@ fun FormScreen(
                                         try {
                                             val result = reportRepository.createReportBridge(
                                                 description = descripcion,
-                                                imageUrl = imageUrl,
+                                                imageBytes = imageBytes,
                                                 isAnonymous = isAnonymous,
                                                 reportLocation = direccion,
                                                 affairId = affairSeleccionado!!.id
                                             )
+
 
                                             result.fold(
                                                 onSuccess = {
@@ -556,7 +610,7 @@ fun FormScreen(
                                                     descripcion = ""
                                                     direccion = ""
                                                     evidenciaSubida = false
-                                                    imageUrl = null
+                                                    imageBytes = null
                                                     isAnonymous = false
                                                 },
                                                 onFailure = { error ->
