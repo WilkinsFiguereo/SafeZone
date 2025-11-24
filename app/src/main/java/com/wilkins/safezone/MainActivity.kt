@@ -30,23 +30,21 @@ import androidx.navigation.navArgument
 import com.wilkins.safezone.GenericUserUi.SplashScreen
 import com.wilkins.safezone.backend.network.AppUser
 import com.wilkins.safezone.backend.network.SupabaseService
-import com.wilkins.safezone.bridge.User.Form.ReportRepository
 import com.wilkins.safezone.frontend.ui.Admin.CrudUser.CreateUserScreen
 import com.wilkins.safezone.frontend.ui.Admin.CrudUser.CrudUsuarios
 import com.wilkins.safezone.frontend.ui.Admin.CrudUser.UserProfileCrud
 import com.wilkins.safezone.frontend.ui.Admin.Dasbhoard.AdminDashboard
-import com.wilkins.safezone.frontend.ui.Map.GoogleMapScreen
 import com.wilkins.safezone.frontend.ui.Moderator.Dashboard.ModeratorDashboard
-import com.wilkins.safezone.frontend.ui.NavigationDrawer.NavigationDrawer
-import com.wilkins.safezone.frontend.ui.NavigationDrawer.Profile
-import com.wilkins.safezone.frontend.ui.NavigationDrawer.SettingsScreen
+import com.wilkins.safezone.frontend.ui.user.NavigationDrawer.NavigationDrawer
+import com.wilkins.safezone.frontend.ui.user.NavigationDrawer.Profile
+import com.wilkins.safezone.frontend.ui.user.NavigationDrawer.SettingsScreen
 import com.wilkins.safezone.frontend.ui.screens.auth.LoginScreen
 import com.wilkins.safezone.frontend.ui.screens.auth.RegisterScreen
 import com.wilkins.safezone.frontend.ui.screens.auth.VerificationScreen
+import com.wilkins.safezone.frontend.ui.screens.auth.AccountDisabledScreen
 import com.wilkins.safezone.frontend.ui.user.Form.FormScreen
 import com.wilkins.safezone.frontend.ui.user.Homepage.UserHomeScreen
 import com.wilkins.safezone.frontend.ui.user.News.NewsScreen
-import com.wilkins.safezone.frontend.ui.user.Notification.Notification
 import com.wilkins.safezone.frontend.ui.user.Notification.NotificationsScreen
 import com.wilkins.safezone.ui.theme.SafeZoneTheme
 import com.wilkins.safezone.ui.theme.PrimaryColor
@@ -110,7 +108,7 @@ class MainActivity : ComponentActivity() {
                                             }
                                         }
                                         3 -> {
-                                            Log.i("MainActivity", "✅ Rol 2 → DashboardMod")
+                                            Log.i("MainActivity", "✅ Rol 3 → DashboardMod")
                                             navController.navigate("DashboardMod") {
                                                 popUpTo("login") { inclusive = true }
                                             }
@@ -158,6 +156,24 @@ class MainActivity : ComponentActivity() {
                                     val userId = supabase.auth.currentUserOrNull()?.id ?: ""
                                     navController.navigate("userHome/$userId") {
                                         popUpTo("verification") { inclusive = true }
+                                    }
+                                }
+                            )
+                        }
+
+                        // 🚫 CUENTA DESHABILITADA/BANEADA
+                        composable(
+                            route = "accountDisabled/{statusId}",
+                            arguments = listOf(navArgument("statusId") { type = NavType.IntType })
+                        ) { backStackEntry ->
+                            val statusId = backStackEntry.arguments?.getInt("statusId") ?: 0
+                            Log.i("MainActivity", "🚫 Navegando a AccountDisabled con statusId: $statusId")
+
+                            AccountDisabledScreen(
+                                statusId = statusId,
+                                onBackToLogin = {
+                                    navController.navigate("login") {
+                                        popUpTo("accountDisabled/{statusId}") { inclusive = true }
                                     }
                                 }
                             )
@@ -304,7 +320,7 @@ class MainActivity : ComponentActivity() {
 
                         composable("FormUser") {
                             if (!hasActiveSession()) {
-                                Log.w("MainActivity", "⚠️ Intento de acceso sin sesión a Notification")
+                                Log.w("MainActivity", "⚠️ Intento de acceso sin sesión a FormUser")
                                 navController.navigate("login") {
                                     popUpTo(0) { inclusive = true }
                                 }
@@ -317,7 +333,7 @@ class MainActivity : ComponentActivity() {
 
                         composable("DashboardMod") {
                             if (!hasActiveSession()) {
-                                Log.w("MainActivity", "⚠️ Intento de acceso sin sesión a Notification")
+                                Log.w("MainActivity", "⚠️ Intento de acceso sin sesión a DashboardMod")
                                 navController.navigate("login") {
                                     popUpTo(0) { inclusive = true }
                                 }

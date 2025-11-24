@@ -8,6 +8,7 @@ import com.wilkins.safezone.backend.network.SupabaseService
 import com.wilkins.safezone.backend.network.User.Form.Report
 import io.github.jan.supabase.postgrest.from
 import io.github.jan.supabase.postgrest.postgrest
+import io.github.jan.supabase.storage.storage
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 
@@ -35,14 +36,14 @@ class ReportRepository(private val context: Context) {
     }
 
     // ============================================================================
-    // 🔥 BRIDGE: Frontend → valida → crea el modelo → envía al backend (Supabase)
+    // 🔥 BRIDGE: Valida → Subir imagen → Crear modelo → Insertar en Supabase
     // ============================================================================
     suspend fun createReportBridge(
         description: String,
-        imageUrl: String?,
+        imageBytes: ByteArray?,    // <- Recibe BYTEARRAY
         isAnonymous: Boolean,
         reportLocation: String?,
-        affairId: Int       // 👈 YA RECIBE EL ID SELECCIONADO
+        affairId: Int
     ): Result<Boolean> = withContext(Dispatchers.IO) {
 
         Log.d("ReportRepository", "🔄 Iniciando creación de reporte...")
@@ -51,7 +52,7 @@ class ReportRepository(private val context: Context) {
         Log.d("ReportRepository", "  - Description: $description")
         Log.d("ReportRepository", "  - Location: $reportLocation")
         Log.d("ReportRepository", "  - Is Anonymous: $isAnonymous")
-        Log.d("ReportRepository", "  - Image URL: $imageUrl")
+        Log.d("ReportRepository", "  - ImageBytes: ${imageBytes != null}")
 
         // ---- Validación ----
         if (description.isBlank()) {
@@ -65,23 +66,48 @@ class ReportRepository(private val context: Context) {
             return@withContext Result.failure(Exception("No hay sesión activa"))
         }
 
-        val userName = if (isAnonymous) {
-            Log.d("ReportRepository", "🕵️ Reporte anónimo, userName será null")
-            null
-        } else {
-            getUserName()
+        val userName = if (isAnonymous) null else getUserName()
+
+        // ================================================================
+        // 📸 1. SUBIR LA IMAGEN AL STORAGE Y OBTENER URL
+        // ================================================================
+        var finalImageUrl: String? = null
+
+        if (imageBytes != null) {
+            try {
+                Log.d("ReportRepository", "📤 Subiendo imagen a Supabase Storage...")
+
+                val bucket = client.storage.from("report")
+                val fileName = "${System.currentTimeMillis()}_${userId}.jpg"
+
+                bucket.upload(
+                    path = fileName,
+                    data = imageBytes,
+                    upsert = false
+                )
+
+                finalImageUrl = bucket.publicUrl(fileName)
+
+                Log.d("ReportRepository", "✅ Imagen subida correctamente")
+                Log.d("ReportRepository", "🌐 URL generada: $finalImageUrl")
+
+            } catch (e: Exception) {
+                Log.e("ReportRepository", "❌ Error al subir imagen: ${e.message}")
+            }
         }
 
-        // ---- Crear objeto Report EXACTO ----
+        // ================================================================
+        // 📝 2. CREAR OBJETO REPORT
+        // ================================================================
         val report = Report(
             id_affair = affairId,
             description = description,
-            image_url = imageUrl,
+            image_url = finalImageUrl,  // 👈 SOLO LA URL
             user_id = userId,
             is_anonymous = isAnonymous,
             user_name = userName,
             report_location = reportLocation,
-            id_reporting_status = 1 // estado inicial
+            id_reporting_status = 1
         )
 
         Log.d("ReportRepository", "📦 Objeto Report creado:")
@@ -91,15 +117,20 @@ class ReportRepository(private val context: Context) {
         Log.d("ReportRepository", "  - user_name: ${report.user_name}")
         Log.d("ReportRepository", "  - report_location: ${report.report_location}")
         Log.d("ReportRepository", "  - id_reporting_status: ${report.id_reporting_status}")
+        Log.d("ReportRepository", "  - image_url: $finalImageUrl")
 
+        // ================================================================
+        // 🚀 3. INSERTAR REPORTE EN SUPABASE
+        // ================================================================
         try {
             Log.d("ReportRepository", "🚀 Enviando reporte a Supabase...")
+
             val result = client.postgrest
                 .from("reports")
                 .insert(report)
 
             Log.d("ReportRepository", "✅ Reporte insertado exitosamente")
-            Log.d("ReportRepository", "📊 Resultado: ${result.data}")
+            Log.d("ReportRepository", "📊 Resultado Supabase: ${result.data}")
 
             Result.success(true)
 
