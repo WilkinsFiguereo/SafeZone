@@ -5,6 +5,7 @@ import io.github.jan.supabase.postgrest.from
 import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
 import io.github.jan.supabase.postgrest.query.Columns
+import kotlinx.coroutines.selects.select
 
 // 🔹 Modelo de datos para Roles
 @Serializable
@@ -112,13 +113,38 @@ class CrudUser {
         return try {
             supabase
                 .from("profiles")
-                .select(Columns.raw("*, roles(name)"))
+                .select(Columns.raw("*, roles(name)")) {
+                    filter {
+                        eq("status_id", 1)
+                    }
+                }
                 .decodeList<Profile>()
         } catch (e: Exception) {
             println("Error al obtener perfiles: ${e.message}")
             emptyList()
         }
     }
+
+    suspend fun getAllProfilesDisabled (): List<Profile> {
+        return try {
+            supabase
+                .from("profiles")
+                .select(Columns.raw("*, roles(name)")) {
+                    filter {
+                        neq("status_id", 1)
+                    }
+                }
+                .decodeList<Profile>()
+        } catch (e: Exception) {
+            println("Error al obtener perfiles: ${e.message}")
+            emptyList()
+        }
+    }
+
+
+
+
+
 
     /**
      * Obtener perfil por ID (incluye email y rol)

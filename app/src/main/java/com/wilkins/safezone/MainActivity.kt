@@ -34,6 +34,7 @@ import com.wilkins.safezone.frontend.ui.Admin.Affair.AffairScreen
 import com.wilkins.safezone.frontend.ui.Admin.Affair.IncidentCategoryScreen
 import com.wilkins.safezone.frontend.ui.Admin.CrudUser.CreateUserScreen
 import com.wilkins.safezone.frontend.ui.Admin.CrudUser.CrudUsuarios
+import com.wilkins.safezone.frontend.ui.Admin.CrudUser.CrudUsuariosDisabled
 import com.wilkins.safezone.frontend.ui.Admin.CrudUser.UserProfileCrud
 import com.wilkins.safezone.frontend.ui.Admin.Dasbhoard.AdminDashboard
 import com.wilkins.safezone.frontend.ui.Moderator.Dashboard.ModeratorDashboard
@@ -222,6 +223,17 @@ class MainActivity : ComponentActivity() {
                             }
                         }
 
+                        composable("crudUsuariosDisabled") {
+                            if (!hasActiveSession()) {
+                                Log.w("MainActivity", "⚠️ Intento de acceso sin sesión a crudUsuarios")
+                                navController.navigate("login") {
+                                    popUpTo(0) { inclusive = true }
+                                }
+                            } else {
+                                CrudUsuariosDisabled(navController)
+                            }
+                        }
+
                         // 🧭 Navigation Drawer
                         composable("navigationDrawer") {
                             if (!hasActiveSession()) {
@@ -327,7 +339,7 @@ class MainActivity : ComponentActivity() {
                                     popUpTo(0) { inclusive = true }
                                 }
                             } else {
-                                AffairScreen(navController)
+                                AffairScreen(navController, context=context)
                             }
                         }
 

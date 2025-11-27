@@ -1,6 +1,6 @@
 package com.wilkins.safezone.GenericUserUi
 
-import android.util.Log
+import android.content.Context
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.core.tween
 import androidx.compose.animation.slideInHorizontally
@@ -8,7 +8,9 @@ import androidx.compose.animation.slideOutHorizontally
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.*
 import androidx.compose.material3.*
@@ -24,6 +26,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.navigation.NavController
 import com.wilkins.safezone.backend.network.SupabaseService
+import com.wilkins.safezone.ui.theme.NameApp
 import com.wilkins.safezone.ui.theme.PrimaryColor
 import kotlinx.coroutines.launch
 
@@ -33,33 +36,61 @@ fun AdminMenu(
     modifier: Modifier = Modifier,
     showHeader: Boolean = true,
     isMenuOpen: Boolean,
-    onMenuToggle: () -> Unit,
+    onMenuToggle: (Boolean) -> Unit,
+    currentRoute: String = "",
     content: @Composable () -> Unit = {}
 ) {
     val context = LocalContext.current
     val scope = rememberCoroutineScope()
     val supabaseClient = SupabaseService.getInstance()
 
-    // Estado para mostrar diálogo de confirmación
-    var showLogoutDialog by remember { mutableStateOf(false) }
+    var isOpen by remember { mutableStateOf(isMenuOpen) }
+    LaunchedEffect(isMenuOpen) {
+        isOpen = isMenuOpen
+    }
 
-    // Menú específico para administrador
-    val menuItems = listOf(
-        AdminMenuItem(Icons.Default.Dashboard, "Dashboard", "DashboardAdmin"),
-        AdminMenuItem(Icons.Default.People, "Lista de Usuarios", "crudUsuarios"),
-        AdminMenuItem(Icons.Default.PersonOff, "Usuarios Deshabilitados", "disabled_users"),
-        AdminMenuItem(Icons.Default.Assessment, "Generar Reportes", "generate_reports"),
-        AdminMenuItem(Icons.Default.Pending, "Reportes Pendientes", "pending_reports"),
-        AdminMenuItem(Icons.Default.Update, "Reportes en Proceso", "in_progress_reports"),
-        AdminMenuItem(Icons.Default.CheckCircle, "Reportes Completados", "completed_reports"),
-        AdminMenuItem(Icons.Default.Cancel, "Reportes Cancelados", "cancelled_reports"),
-        AdminMenuItem(Icons.Default.Category, "Categorías de Incidencias", "incident_categories"),
-        AdminMenuItem(Icons.Default.BusinessCenter, "Categorías de Affairs", "affair_categories"),
-        AdminMenuItem(Icons.Default.Settings, "Configuración", "admin_settings")
+    // Menú específico para administrador organizado en secciones
+    val menuSections = listOf(
+        MenuSection(
+            title = "Dashboard",
+            items = listOf(
+                MenuItem(Icons.Default.Dashboard, "Dashboard", "DashboardAdmin")
+            )
+        ),
+        MenuSection(
+            title = "Gestión de Usuarios",
+            items = listOf(
+                MenuItem(Icons.Default.People, "Lista de Usuarios", "crudUsuarios"),
+                MenuItem(Icons.Default.PersonOff, "Usuarios Deshabilitados", "crudUsuariosDisabled")
+            )
+        ),
+        MenuSection(
+            title = "Reportes",
+            items = listOf(
+                MenuItem(Icons.Default.Assessment, "Generar Reportes PDF", "generate_reports"),
+                MenuItem(Icons.Default.Pending, "Reportes Pendientes", "pending_reports"),
+                MenuItem(Icons.Default.Update, "Reportes en Proceso", "in_progress_reports"),
+                MenuItem(Icons.Default.CheckCircle, "Reportes Completados", "completed_reports"),
+                MenuItem(Icons.Default.Cancel, "Reportes Cancelados", "cancelled_reports")
+            )
+        ),
+        MenuSection(
+            title = "Categorías",
+            items = listOf(
+                MenuItem(Icons.Default.Category, "Categorías de Incidencias", "incident_categories"),
+                MenuItem(Icons.Default.BusinessCenter, "Categorías de Affairs", "affair_categories")
+            )
+        ),
+        MenuSection(
+            title = "Configuración",
+            items = listOf(
+                MenuItem(Icons.Default.Settings, "Configuración", "admin_settings"),
+                MenuItem(Icons.Default.Logout, "Cerrar Sesión", "logout")
+            )
+        )
     )
 
     Box(modifier = modifier.fillMaxSize()) {
-        // Contenido principal proporcionado por el caller
         Column(modifier = Modifier.fillMaxSize()) {
             if (showHeader) {
                 // Header Principal
@@ -71,8 +102,11 @@ fun AdminMenu(
                     horizontalArrangement = Arrangement.SpaceBetween,
                     verticalAlignment = Alignment.CenterVertically
                 ) {
-                    // Botón de menú (3 líneas)
-                    IconButton(onClick = onMenuToggle) {
+                    // Botón de menú
+                    IconButton(onClick = {
+                        isOpen = !isOpen
+                        onMenuToggle(isOpen)
+                    }) {
                         Icon(
                             imageVector = Icons.Default.Menu,
                             contentDescription = "Menu",
@@ -80,13 +114,15 @@ fun AdminMenu(
                             modifier = Modifier.size(28.dp)
                         )
                     }
+
                     // Logo/Nombre
                     Text(
-                        text = "Panel Admin",
+                        text = NameApp,
                         color = Color.White,
                         fontSize = 22.sp,
                         fontWeight = FontWeight.Bold
                     )
+
                     // Botón de perfil
                     IconButton(onClick = {
                         navController.navigate("admin_profile")
@@ -113,9 +149,9 @@ fun AdminMenu(
             content()
         }
 
-        // Menú lateral animado con overlay
+        // Menú lateral animado
         AnimatedVisibility(
-            visible = isMenuOpen,
+            visible = isOpen,
             enter = slideInHorizontally(
                 initialOffsetX = { -it },
                 animationSpec = tween(300)
@@ -126,100 +162,93 @@ fun AdminMenu(
             )
         ) {
             Row(modifier = Modifier.fillMaxSize()) {
-                // Panel del menú lateral
                 Column(
                     modifier = Modifier
-                        .width(280.dp)
+                        .width(300.dp)
                         .fillMaxHeight()
                         .background(PrimaryColor)
                 ) {
-                    // Header del menú lateral
-                    Row(
+                    // Header del menú con título de administrador
+                    Column(
                         modifier = Modifier
                             .fillMaxWidth()
-                            .padding(20.dp),
-                        horizontalArrangement = Arrangement.Start,
-                        verticalAlignment = Alignment.CenterVertically
+                            .padding(20.dp)
                     ) {
-                        Icon(
-                            imageVector = Icons.Default.Menu,
-                            contentDescription = "Menu",
-                            tint = Color.White,
-                            modifier = Modifier.size(28.dp)
-                        )
-                        Spacer(modifier = Modifier.width(12.dp))
-                        Text(
-                            text = "Admin Panel",
-                            color = Color.White,
-                            fontSize = 22.sp,
-                            fontWeight = FontWeight.Bold
-                        )
+                        Row(
+                            horizontalArrangement = Arrangement.Start,
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            Box(
+                                modifier = Modifier
+                                    .size(48.dp)
+                                    .clip(CircleShape)
+                                    .background(Color.White.copy(alpha = 0.2f)),
+                                contentAlignment = Alignment.Center
+                            ) {
+                                Icon(
+                                    imageVector = Icons.Default.AdminPanelSettings,
+                                    contentDescription = null,
+                                    tint = Color.White,
+                                    modifier = Modifier.size(28.dp)
+                                )
+                            }
+                            Spacer(modifier = Modifier.width(12.dp))
+                            Column {
+                                Text(
+                                    text = "Panel Admin",
+                                    color = Color.White,
+                                    fontSize = 18.sp,
+                                    fontWeight = FontWeight.Bold
+                                )
+                                Text(
+                                    text = "Administrador",
+                                    color = Color.White.copy(alpha = 0.8f),
+                                    fontSize = 14.sp
+                                )
+                            }
+                        }
                     }
-                    Divider(
+
+                    HorizontalDivider(
                         color = Color.White.copy(alpha = 0.2f),
                         thickness = 1.dp,
                         modifier = Modifier.padding(horizontal = 16.dp)
                     )
-                    Spacer(modifier = Modifier.height(8.dp))
 
-                    // Items del menú
-                    menuItems.forEach { item ->
-                        Row(
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .clickable {
-                                    onMenuToggle()
-                                    navController.navigate(item.route)
+                    Spacer(modifier = Modifier.height(12.dp))
+
+                    // Secciones del menú con scroll
+                    Column(
+                        modifier = Modifier
+                            .weight(1f)
+                            .fillMaxWidth()
+                            .verticalScroll(rememberScrollState())
+                    ) {
+                        menuSections.forEach { section ->
+                            MenuSectionComponent(
+                                section = section,
+                                currentRoute = currentRoute,
+                                onItemClick = { route ->
+                                    isOpen = false
+                                    onMenuToggle(false)
+
+                                    if (route == "logout") {
+                                        scope.launch {
+                                            try {
+                                                SessionManager.logout(context, supabaseClient)
+                                                navController.navigate("login") {
+                                                    popUpTo(0) { inclusive = true }
+                                                }
+                                            } catch (e: Exception) {
+                                                // Manejar error de logout
+                                            }
+                                        }
+                                    } else {
+                                        navController.navigate(route)
+                                    }
                                 }
-                                .padding(horizontal = 20.dp, vertical = 14.dp),
-                            verticalAlignment = Alignment.CenterVertically
-                        ) {
-                            Icon(
-                                imageVector = item.icon,
-                                contentDescription = item.label,
-                                tint = Color.White,
-                                modifier = Modifier.size(24.dp)
-                            )
-                            Spacer(modifier = Modifier.width(20.dp))
-                            Text(
-                                text = item.label,
-                                color = Color.White,
-                                fontSize = 16.sp
                             )
                         }
-                    }
-
-                    Spacer(modifier = Modifier.weight(1f))
-
-                    // Botón de cerrar sesión
-                    Divider(
-                        color = Color.White.copy(alpha = 0.2f),
-                        thickness = 1.dp,
-                        modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp)
-                    )
-
-                    Row(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .clickable {
-                                showLogoutDialog = true
-                            }
-                            .padding(horizontal = 20.dp, vertical = 14.dp),
-                        verticalAlignment = Alignment.CenterVertically
-                    ) {
-                        Icon(
-                            imageVector = Icons.Default.Logout,
-                            contentDescription = "Cerrar sesión",
-                            tint = Color(0xFFFFFFFF),
-                            modifier = Modifier.size(24.dp)
-                        )
-                        Spacer(modifier = Modifier.width(20.dp))
-                        Text(
-                            text = "Cerrar Sesión",
-                            color = Color(0xFFFFFFFF),
-                            fontSize = 16.sp,
-                            fontWeight = FontWeight.Medium
-                        )
                     }
 
                     // Footer
@@ -228,90 +257,50 @@ fun AdminMenu(
                             .fillMaxWidth()
                             .padding(16.dp)
                     ) {
-                        Divider(
+                        HorizontalDivider(
                             color = Color.White.copy(alpha = 0.2f),
                             thickness = 1.dp,
                             modifier = Modifier.padding(bottom = 12.dp)
                         )
-                        Text(
-                            text = "Admin Versión 1.0",
-                            color = Color.White.copy(alpha = 0.7f),
-                            fontSize = 12.sp
-                        )
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.SpaceBetween,
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            Column {
+                                Text(
+                                    text = "SafeZone Admin",
+                                    color = Color.White.copy(alpha = 0.7f),
+                                    fontSize = 12.sp,
+                                    fontWeight = FontWeight.Medium
+                                )
+                                Text(
+                                    text = "Versión 1.0.0",
+                                    color = Color.White.copy(alpha = 0.5f),
+                                    fontSize = 10.sp
+                                )
+                            }
+                            Icon(
+                                imageVector = Icons.Default.Security,
+                                contentDescription = null,
+                                tint = Color.White.copy(alpha = 0.5f),
+                                modifier = Modifier.size(20.dp)
+                            )
+                        }
                     }
                 }
 
-                // Overlay para cerrar el menú
+                // Área de cierre (click fuera del menú)
                 Box(
                     modifier = Modifier
                         .fillMaxSize()
-                        .clickable { onMenuToggle() }
-                        .background(Color.Black.copy(alpha = 0.3f))
+                        .background(Color.Black.copy(alpha = 0.5f))
+                        .clickable {
+                            isOpen = false
+                            onMenuToggle(false)
+                        }
                 )
             }
         }
-
-        // Diálogo de confirmación de logout
-        if (showLogoutDialog) {
-            AlertDialog(
-                onDismissRequest = { showLogoutDialog = false },
-                icon = {
-                    Icon(
-                        imageVector = Icons.Default.Logout,
-                        contentDescription = null,
-                        tint = PrimaryColor
-                    )
-                },
-                title = {
-                    Text(
-                        text = "Cerrar Sesión",
-                        fontWeight = FontWeight.Bold
-                    )
-                },
-                text = {
-                    Text("¿Estás seguro de que deseas cerrar sesión?")
-                },
-                confirmButton = {
-                    TextButton(
-                        onClick = {
-                            showLogoutDialog = false
-                            scope.launch {
-                                try {
-                                    Log.i("AdminMenu", "🚪 Iniciando logout...")
-                                    SessionManager.logout(context, supabaseClient)
-                                    Log.i("AdminMenu", "✅ Logout exitoso, navegando a login")
-
-                                    onMenuToggle() // Cerrar menú
-
-                                    navController.navigate("login") {
-                                        popUpTo(0) { inclusive = true }
-                                    }
-                                } catch (e: Exception) {
-                                    Log.e("AdminMenu", "❌ Error durante logout: ${e.message}", e)
-                                }
-                            }
-                        },
-                        colors = ButtonDefaults.textButtonColors(
-                            contentColor = Color(0xFFFF6B6B)
-                        )
-                    ) {
-                        Text("Cerrar Sesión")
-                    }
-                },
-                dismissButton = {
-                    TextButton(
-                        onClick = { showLogoutDialog = false }
-                    ) {
-                        Text("Cancelar")
-                    }
-                }
-            )
-        }
     }
 }
-
-data class AdminMenuItem(
-    val icon: ImageVector,
-    val label: String,
-    val route: String
-)

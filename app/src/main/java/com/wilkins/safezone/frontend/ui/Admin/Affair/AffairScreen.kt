@@ -1,5 +1,7 @@
 package com.wilkins.safezone.frontend.ui.Admin.Affair
 
+import SessionManager.getUserProfile
+import android.content.Context
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
@@ -16,19 +18,25 @@ import androidx.navigation.NavController
 import com.wilkins.safezone.GenericUserUi.AdminMenu
 import com.wilkins.safezone.backend.network.Admin.Affair.Affair
 import com.wilkins.safezone.backend.network.Admin.Affair.AffairViewModel
+import com.wilkins.safezone.backend.network.AppUser
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun AffairScreen(
     navController: NavController,
-    viewModel: AffairViewModel = viewModel()
+    viewModel: AffairViewModel = viewModel(),
+    context: Context
 ) {
     val uiState by viewModel.uiState.collectAsState()
     var showDialog by remember { mutableStateOf(false) }
     var editingAffair by remember { mutableStateOf<Affair?>(null) }
     var showDeleteDialog by remember { mutableStateOf<Affair?>(null) }
     var isMenuOpen by remember { mutableStateOf(false) }
+    val userState = produceState<AppUser?>(initialValue = null) {
+        value = getUserProfile(context)
+    }
 
+    val user = userState.value
     // Cargar categorías y affairs al iniciar
     LaunchedEffect(Unit) {
         viewModel.loadCategories()
@@ -38,7 +46,7 @@ fun AffairScreen(
     AdminMenu(
         navController = navController,
         isMenuOpen = isMenuOpen,
-        onMenuToggle = { isMenuOpen = !isMenuOpen }
+        onMenuToggle = { isMenuOpen = !isMenuOpen },
     ) {
         Column(modifier = Modifier.fillMaxSize()) {
             Box(
