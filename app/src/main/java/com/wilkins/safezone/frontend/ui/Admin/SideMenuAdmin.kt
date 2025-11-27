@@ -53,6 +53,8 @@ fun AdminMenu(
         AdminMenuItem(Icons.Default.Update, "Reportes en Proceso", "in_progress_reports"),
         AdminMenuItem(Icons.Default.CheckCircle, "Reportes Completados", "completed_reports"),
         AdminMenuItem(Icons.Default.Cancel, "Reportes Cancelados", "cancelled_reports"),
+        AdminMenuItem(Icons.Default.Category, "Categorías de Incidencias", "incident_categories"),
+        AdminMenuItem(Icons.Default.BusinessCenter, "Categorías de Affairs", "affair_categories"),
         AdminMenuItem(Icons.Default.Settings, "Configuración", "admin_settings")
     )
 
@@ -208,7 +210,7 @@ fun AdminMenu(
                         Icon(
                             imageVector = Icons.Default.Logout,
                             contentDescription = "Cerrar sesión",
-                            tint = Color(0xFFFFFFFF), // Rojo suave
+                            tint = Color(0xFFFFFFFF),
                             modifier = Modifier.size(24.dp)
                         )
                         Spacer(modifier = Modifier.width(20.dp))

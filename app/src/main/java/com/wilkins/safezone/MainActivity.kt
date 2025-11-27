@@ -30,6 +30,8 @@ import androidx.navigation.navArgument
 import com.wilkins.safezone.GenericUserUi.SplashScreen
 import com.wilkins.safezone.backend.network.AppUser
 import com.wilkins.safezone.backend.network.SupabaseService
+import com.wilkins.safezone.frontend.ui.Admin.Affair.AffairCategoryScreen
+import com.wilkins.safezone.frontend.ui.Admin.Affair.IncidentCategoryScreen
 import com.wilkins.safezone.frontend.ui.Admin.CrudUser.CreateUserScreen
 import com.wilkins.safezone.frontend.ui.Admin.CrudUser.CrudUsuarios
 import com.wilkins.safezone.frontend.ui.Admin.CrudUser.UserProfileCrud
@@ -318,6 +320,27 @@ class MainActivity : ComponentActivity() {
                             }
                         }
 
+                        composable("affair_categories") {
+                            if (!hasActiveSession()) {
+                                Log.w("MainActivity", "⚠️ Intento de acceso sin sesión a FormUser")
+                                navController.navigate("login") {
+                                    popUpTo(0) { inclusive = true }
+                                }
+                            } else {
+                                AffairCategoryScreen(navController)
+                            }
+                        }
+
+                        composable("incident_categories") {
+                            if (!hasActiveSession()) {
+                                Log.w("MainActivity", "⚠️ Intento de acceso sin sesión a FormUser")
+                                navController.navigate("login") {
+                                    popUpTo(0) { inclusive = true }
+                                }
+                            } else {
+                                IncidentCategoryScreen(navController)
+                            }
+                        }
                         composable("FormUser") {
                             if (!hasActiveSession()) {
                                 Log.w("MainActivity", "⚠️ Intento de acceso sin sesión a FormUser")
