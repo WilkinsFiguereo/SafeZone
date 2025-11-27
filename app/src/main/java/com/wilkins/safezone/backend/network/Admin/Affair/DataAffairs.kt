@@ -21,6 +21,6 @@ data class AffairCategory(
 data class Affair(
     val id: Int? = null,
     val type: String,
-    @SerialName("categories_id")
+    @SerialName("category_id")
     val categoriesId: Int
 )

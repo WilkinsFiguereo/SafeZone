@@ -30,7 +30,7 @@ import androidx.navigation.navArgument
 import com.wilkins.safezone.GenericUserUi.SplashScreen
 import com.wilkins.safezone.backend.network.AppUser
 import com.wilkins.safezone.backend.network.SupabaseService
-import com.wilkins.safezone.frontend.ui.Admin.Affair.AffairCategoryScreen
+import com.wilkins.safezone.frontend.ui.Admin.Affair.AffairScreen
 import com.wilkins.safezone.frontend.ui.Admin.Affair.IncidentCategoryScreen
 import com.wilkins.safezone.frontend.ui.Admin.CrudUser.CreateUserScreen
 import com.wilkins.safezone.frontend.ui.Admin.CrudUser.CrudUsuarios
@@ -327,7 +327,7 @@ class MainActivity : ComponentActivity() {
                                     popUpTo(0) { inclusive = true }
                                 }
                             } else {
-                                AffairCategoryScreen(navController)
+                                AffairScreen(navController)
                             }
                         }
 

@@ -14,25 +14,41 @@ data class AffairUiState(
     val error: String? = null
 )
 
-class AffairViewModel(
-    private val repository: CategoryRepository = CategoryRepository()
-) : ViewModel() {
+class AffairViewModel : ViewModel() {
+    private val repository = CategoryRepository()
 
     private val _uiState = MutableStateFlow(AffairUiState())
     val uiState: StateFlow<AffairUiState> = _uiState.asStateFlow()
 
     init {
-        loadData()
+        loadCategories()
+        loadAffairs()
     }
 
-    private fun loadData() {
-        loadAffairs()
-        loadCategories()
+    fun loadCategories() {
+        viewModelScope.launch {
+            _uiState.value = _uiState.value.copy(isLoading = true, error = null)
+
+            repository.getAffairCategories()
+                .onSuccess { categories ->
+                    _uiState.value = _uiState.value.copy(
+                        categories = categories,
+                        isLoading = false
+                    )
+                }
+                .onFailure { error ->
+                    _uiState.value = _uiState.value.copy(
+                        isLoading = false,
+                        error = error.message ?: "Error al cargar categorías"
+                    )
+                }
+        }
     }
 
     fun loadAffairs() {
         viewModelScope.launch {
             _uiState.value = _uiState.value.copy(isLoading = true, error = null)
+
             repository.getAffairs()
                 .onSuccess { affairs ->
                     _uiState.value = _uiState.value.copy(
@@ -40,26 +56,11 @@ class AffairViewModel(
                         isLoading = false
                     )
                 }
-                .onFailure { e ->
+                .onFailure { error ->
                     _uiState.value = _uiState.value.copy(
                         isLoading = false,
-                        error = e.message
+                        error = error.message ?: "Error al cargar affairs"
                     )
-                }
-        }
-    }
-
-    private fun loadCategories() {
-        viewModelScope.launch {
-            repository.getAffairCategories()
-                .onSuccess { categories ->
-                    _uiState.value = _uiState.value.copy(categories = categories)
-                }
-                .onFailure { e ->
-                    // Mantenemos el error si no hay affairs cargados
-                    if (_uiState.value.affairs.isEmpty()) {
-                        _uiState.value = _uiState.value.copy(error = e.message)
-                    }
                 }
         }
     }
@@ -67,14 +68,15 @@ class AffairViewModel(
     fun createAffair(type: String, categoryId: Int) {
         viewModelScope.launch {
             _uiState.value = _uiState.value.copy(isLoading = true, error = null)
+
             repository.createAffair(type, categoryId)
                 .onSuccess {
-                    loadAffairs()
+                    loadAffairs() // Recargar la lista
                 }
-                .onFailure { e ->
+                .onFailure { error ->
                     _uiState.value = _uiState.value.copy(
                         isLoading = false,
-                        error = e.message
+                        error = error.message ?: "Error al crear affair"
                     )
                 }
         }
@@ -83,14 +85,15 @@ class AffairViewModel(
     fun updateAffair(id: Int, type: String, categoryId: Int) {
         viewModelScope.launch {
             _uiState.value = _uiState.value.copy(isLoading = true, error = null)
+
             repository.updateAffair(id, type, categoryId)
                 .onSuccess {
-                    loadAffairs()
+                    loadAffairs() // Recargar la lista
                 }
-                .onFailure { e ->
+                .onFailure { error ->
                     _uiState.value = _uiState.value.copy(
                         isLoading = false,
-                        error = e.message
+                        error = error.message ?: "Error al actualizar affair"
                     )
                 }
         }
@@ -99,21 +102,21 @@ class AffairViewModel(
     fun deleteAffair(id: Int) {
         viewModelScope.launch {
             _uiState.value = _uiState.value.copy(isLoading = true, error = null)
+
             repository.deleteAffair(id)
                 .onSuccess {
-                    loadAffairs()
+                    loadAffairs() // Recargar la lista
                 }
-                .onFailure { e ->
+                .onFailure { error ->
                     _uiState.value = _uiState.value.copy(
                         isLoading = false,
-                        error = e.message
+                        error = error.message ?: "Error al eliminar affair"
                     )
                 }
         }
     }
 
-    // Función helper para obtener el nombre de una categoría por su ID
-    fun getCategoryName(categoryId: Int): String {
-        return _uiState.value.categories.find { it.id == categoryId }?.name ?: "Sin categoría"
+    fun setError(message: String) {
+        _uiState.value = _uiState.value.copy(error = message)
     }
 }

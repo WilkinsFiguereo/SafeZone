@@ -10,7 +10,7 @@ class CategoryRepository {
     // ========== INCIDENT CATEGORIES ==========
     suspend fun getIncidentCategories(): Result<List<IncidentCategory>> {
         return try {
-            val categories = supabase.from("incident_categories")
+            val categories = supabase.from("affair_categories")
                 .select()
                 .decodeList<IncidentCategory>()
             Result.success(categories)
@@ -21,7 +21,7 @@ class CategoryRepository {
 
     suspend fun createIncidentCategory(name: String): Result<IncidentCategory> {
         return try {
-            val category = supabase.from("incident_categories")
+            val category = supabase.from("affair_categories")
                 .insert(IncidentCategory(name = name))
                 .decodeSingle<IncidentCategory>()
             Result.success(category)
@@ -32,7 +32,7 @@ class CategoryRepository {
 
     suspend fun updateIncidentCategory(id: Int, name: String): Result<Unit> {
         return try {
-            supabase.from("incident_categories")
+            supabase.from("affair_categories")
                 .update({ IncidentCategory::name setTo name }) {
                     filter { IncidentCategory::id eq id }
                 }
@@ -44,7 +44,7 @@ class CategoryRepository {
 
     suspend fun deleteIncidentCategory(id: Int): Result<Unit> {
         return try {
-            supabase.from("incident_categories")
+            supabase.from("affair_categories")
                 .delete {
                     filter { IncidentCategory::id eq id }
                 }
@@ -104,7 +104,7 @@ class CategoryRepository {
     // ========== AFFAIRS ==========
     suspend fun getAffairs(): Result<List<Affair>> {
         return try {
-            val affairs = supabase.from("affairs")
+            val affairs = supabase.from("affair")
                 .select()
                 .decodeList<Affair>()
             Result.success(affairs)
@@ -115,7 +115,7 @@ class CategoryRepository {
 
     suspend fun createAffair(type: String, categoriesId: Int): Result<Affair> {
         return try {
-            val affair = supabase.from("affairs")
+            val affair = supabase.from("affair")
                 .insert(Affair(type = type, categoriesId = categoriesId))
                 .decodeSingle<Affair>()
             Result.success(affair)
@@ -126,7 +126,7 @@ class CategoryRepository {
 
     suspend fun updateAffair(id: Int, type: String, categoriesId: Int): Result<Unit> {
         return try {
-            supabase.from("affairs")
+            supabase.from("affair")
                 .update({
                     Affair::type setTo type
                     Affair::categoriesId setTo categoriesId
@@ -141,7 +141,7 @@ class CategoryRepository {
 
     suspend fun deleteAffair(id: Int): Result<Unit> {
         return try {
-            supabase.from("affairs")
+            supabase.from("affair")
                 .delete {
                     filter { Affair::id eq id }
                 }

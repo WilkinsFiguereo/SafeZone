@@ -14,20 +14,26 @@ import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.NavController
 import com.wilkins.safezone.GenericUserUi.AdminMenu
-import com.wilkins.safezone.backend.network.Admin.Affair.AffairCategory
-import com.wilkins.safezone.backend.network.Admin.Affair.AffairCategoryViewModel
+import com.wilkins.safezone.backend.network.Admin.Affair.Affair
+import com.wilkins.safezone.backend.network.Admin.Affair.AffairViewModel
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun AffairCategoryScreen(
+fun AffairScreen(
     navController: NavController,
-    viewModel: AffairCategoryViewModel = viewModel()
+    viewModel: AffairViewModel = viewModel()
 ) {
     val uiState by viewModel.uiState.collectAsState()
     var showDialog by remember { mutableStateOf(false) }
-    var editingCategory by remember { mutableStateOf<AffairCategory?>(null) }
-    var showDeleteDialog by remember { mutableStateOf<AffairCategory?>(null) }
+    var editingAffair by remember { mutableStateOf<Affair?>(null) }
+    var showDeleteDialog by remember { mutableStateOf<Affair?>(null) }
     var isMenuOpen by remember { mutableStateOf(false) }
+
+    // Cargar categorías y affairs al iniciar
+    LaunchedEffect(Unit) {
+        viewModel.loadCategories()
+        viewModel.loadAffairs()
+    }
 
     AdminMenu(
         navController = navController,
@@ -59,12 +65,15 @@ fun AffairCategoryScreen(
                                 style = MaterialTheme.typography.bodyLarge
                             )
                             Spacer(modifier = Modifier.height(16.dp))
-                            Button(onClick = { viewModel.loadCategories() }) {
+                            Button(onClick = {
+                                viewModel.loadCategories()
+                                viewModel.loadAffairs()
+                            }) {
                                 Text("Reintentar")
                             }
                         }
                     }
-                    uiState.categories.isEmpty() -> {
+                    uiState.affairs.isEmpty() -> {
                         Column(
                             modifier = Modifier
                                 .align(Alignment.Center)
@@ -72,18 +81,18 @@ fun AffairCategoryScreen(
                             horizontalAlignment = Alignment.CenterHorizontally
                         ) {
                             Icon(
-                                imageVector = Icons.Default.Business,
+                                imageVector = Icons.Default.Assignment,
                                 contentDescription = null,
                                 modifier = Modifier.size(64.dp),
-                                tint = MaterialTheme.colorScheme.secondary.copy(alpha = 0.5f)
+                                tint = MaterialTheme.colorScheme.primary.copy(alpha = 0.5f)
                             )
                             Spacer(modifier = Modifier.height(16.dp))
                             Text(
-                                text = "No hay categorías de affairs",
+                                text = "No hay affairs registrados",
                                 style = MaterialTheme.typography.titleMedium
                             )
                             Text(
-                                text = "Presiona + para agregar una",
+                                text = "Presiona + para agregar uno",
                                 style = MaterialTheme.typography.bodyMedium,
                                 color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.6f)
                             )
@@ -95,15 +104,16 @@ fun AffairCategoryScreen(
                             contentPadding = PaddingValues(16.dp),
                             verticalArrangement = Arrangement.spacedBy(12.dp)
                         ) {
-                            items(uiState.categories, key = { it.id ?: 0 }) { category ->
-                                AffairCategoryItem(
-                                    category = category,
+                            items(uiState.affairs, key = { it.id ?: 0 }) { affair ->
+                                AffairItem(
+                                    affair = affair,
+                                    categoryName = uiState.categories.find { it.id == affair.categoriesId }?.name ?: "Sin categoría",
                                     onEdit = {
-                                        editingCategory = category
+                                        editingAffair = affair
                                         showDialog = true
                                     },
                                     onDelete = {
-                                        showDeleteDialog = category
+                                        showDeleteDialog = affair
                                     }
                                 )
                             }
@@ -114,14 +124,19 @@ fun AffairCategoryScreen(
                 // Botón flotante
                 FloatingActionButton(
                     onClick = {
-                        editingCategory = null
-                        showDialog = true
+                        if (uiState.categories.isEmpty()) {
+                            // Mostrar mensaje si no hay categorías
+                            viewModel.setError("Primero debes crear categorías")
+                        } else {
+                            editingAffair = null
+                            showDialog = true
+                        }
                     },
                     modifier = Modifier
                         .align(Alignment.BottomEnd)
                         .padding(16.dp)
                 ) {
-                    Icon(Icons.Default.Add, "Agregar categoría")
+                    Icon(Icons.Default.Add, "Agregar incidente")
                 }
             }
         }
@@ -129,14 +144,15 @@ fun AffairCategoryScreen(
 
     // Dialog para crear/editar
     if (showDialog) {
-        AffairCategoryDialog(
-            category = editingCategory,
+        AffairDialog(
+            affair = editingAffair,
+            categories = uiState.categories,
             onDismiss = { showDialog = false },
-            onConfirm = { name ->
-                if (editingCategory != null) {
-                    viewModel.updateCategory(editingCategory!!.id!!, name)
+            onConfirm = { type, categoryId ->
+                if (editingAffair != null) {
+                    viewModel.updateAffair(editingAffair!!.id!!, type, categoryId)
                 } else {
-                    viewModel.createCategory(name)
+                    viewModel.createAffair(type, categoryId)
                 }
                 showDialog = false
             }
@@ -144,15 +160,15 @@ fun AffairCategoryScreen(
     }
 
     // Dialog de confirmación de eliminación
-    showDeleteDialog?.let { category ->
+    showDeleteDialog?.let { affair ->
         AlertDialog(
             onDismissRequest = { showDeleteDialog = null },
-            title = { Text("Eliminar categoría") },
-            text = { Text("¿Estás seguro de que deseas eliminar '${category.name}'?") },
+            title = { Text("Eliminar incidente") },
+            text = { Text("¿Estás seguro de que deseas eliminar '${affair.type}'?") },
             confirmButton = {
                 TextButton(
                     onClick = {
-                        viewModel.deleteCategory(category.id!!)
+                        viewModel.deleteAffair(affair.id!!)
                         showDeleteDialog = null
                     },
                     colors = ButtonDefaults.textButtonColors(
@@ -172,8 +188,9 @@ fun AffairCategoryScreen(
 }
 
 @Composable
-private fun AffairCategoryItem(
-    category: AffairCategory,
+private fun AffairItem(
+    affair: Affair,
+    categoryName: String,
     onEdit: () -> Unit,
     onDelete: () -> Unit
 ) {
@@ -182,7 +199,7 @@ private fun AffairCategoryItem(
         elevation = CardDefaults.cardElevation(defaultElevation = 2.dp),
         shape = RoundedCornerShape(12.dp),
         colors = CardDefaults.cardColors(
-            containerColor = MaterialTheme.colorScheme.secondaryContainer.copy(alpha = 0.3f)
+            containerColor = MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.3f)
         )
     ) {
         Row(
@@ -192,28 +209,44 @@ private fun AffairCategoryItem(
             horizontalArrangement = Arrangement.SpaceBetween,
             verticalAlignment = Alignment.CenterVertically
         ) {
-            Row(
-                verticalAlignment = Alignment.CenterVertically,
+            Column(
                 modifier = Modifier.weight(1f)
             ) {
-                Icon(
-                    imageVector = Icons.Default.BusinessCenter,
-                    contentDescription = null,
-                    tint = MaterialTheme.colorScheme.secondary,
-                    modifier = Modifier.size(24.dp)
-                )
-                Spacer(modifier = Modifier.width(12.dp))
-                Text(
-                    text = category.name,
-                    style = MaterialTheme.typography.bodyLarge
-                )
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Icon(
+                        imageVector = Icons.Default.Assignment,
+                        contentDescription = null,
+                        tint = MaterialTheme.colorScheme.primary,
+                        modifier = Modifier.size(24.dp)
+                    )
+                    Spacer(modifier = Modifier.width(12.dp))
+                    Text(
+                        text = affair.type,
+                        style = MaterialTheme.typography.bodyLarge
+                    )
+                }
+                Spacer(modifier = Modifier.height(4.dp))
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Icon(
+                        imageVector = Icons.Default.BusinessCenter,
+                        contentDescription = null,
+                        tint = MaterialTheme.colorScheme.secondary,
+                        modifier = Modifier.size(16.dp)
+                    )
+                    Spacer(modifier = Modifier.width(8.dp))
+                    Text(
+                        text = categoryName,
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.7f)
+                    )
+                }
             }
             Row {
                 IconButton(onClick = onEdit) {
                     Icon(
                         imageVector = Icons.Default.Edit,
                         contentDescription = "Editar",
-                        tint = MaterialTheme.colorScheme.secondary
+                        tint = MaterialTheme.colorScheme.primary
                     )
                 }
                 IconButton(onClick = onDelete) {
@@ -230,48 +263,100 @@ private fun AffairCategoryItem(
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-private fun AffairCategoryDialog(
-    category: AffairCategory?,
+private fun AffairDialog(
+    affair: Affair?,
+    categories: List<com.wilkins.safezone.backend.network.Admin.Affair.AffairCategory>,
     onDismiss: () -> Unit,
-    onConfirm: (String) -> Unit
+    onConfirm: (String, Int) -> Unit
 ) {
-    var name by remember { mutableStateOf(category?.name ?: "") }
-    var isError by remember { mutableStateOf(false) }
+    var type by remember { mutableStateOf(affair?.type ?: "") }
+    var selectedCategoryId by remember { mutableStateOf(affair?.categoriesId ?: categories.firstOrNull()?.id ?: 0) }
+    var expanded by remember { mutableStateOf(false) }
+    var isTypeError by remember { mutableStateOf(false) }
 
     AlertDialog(
         onDismissRequest = onDismiss,
         title = {
-            Text(if (category == null) "Nueva Categoría de Affair" else "Editar Categoría")
+            Text(if (affair == null) "Nuevo incidente" else "Editar incidente")
         },
         text = {
-            Column {
+            Column(
+                modifier = Modifier.fillMaxWidth()
+            ) {
                 OutlinedTextField(
-                    value = name,
+                    value = type,
                     onValueChange = {
-                        name = it
-                        isError = it.isBlank()
+                        type = it
+                        isTypeError = it.isBlank()
                     },
-                    label = { Text("Nombre") },
-                    isError = isError,
-                    supportingText = if (isError) {
-                        { Text("El nombre no puede estar vacío") }
+                    label = { Text("Tipo de incidente") },
+                    isError = isTypeError,
+                    supportingText = if (isTypeError) {
+                        { Text("El tipo no puede estar vacío") }
                     } else null,
                     singleLine = true,
                     modifier = Modifier.fillMaxWidth()
                 )
+
+                Spacer(modifier = Modifier.height(16.dp))
+
+                // Dropdown para categorías
+                ExposedDropdownMenuBox(
+                    expanded = expanded,
+                    onExpandedChange = { expanded = !expanded }
+                ) {
+                    OutlinedTextField(
+                        value = categories.find { it.id == selectedCategoryId }?.name ?: "Seleccionar categoría",
+                        onValueChange = {},
+                        readOnly = true,
+                        label = { Text("Categoría") },
+                        trailingIcon = {
+                            ExposedDropdownMenuDefaults.TrailingIcon(expanded = expanded)
+                        },
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .menuAnchor()
+                    )
+
+                    ExposedDropdownMenu(
+                        expanded = expanded,
+                        onDismissRequest = { expanded = false }
+                    ) {
+                        categories.forEach { category ->
+                            DropdownMenuItem(
+                                text = {
+                                    Row(verticalAlignment = Alignment.CenterVertically) {
+                                        Icon(
+                                            imageVector = Icons.Default.BusinessCenter,
+                                            contentDescription = null,
+                                            modifier = Modifier.size(20.dp),
+                                            tint = MaterialTheme.colorScheme.secondary
+                                        )
+                                        Spacer(modifier = Modifier.width(8.dp))
+                                        Text(category.name)
+                                    }
+                                },
+                                onClick = {
+                                    selectedCategoryId = category.id!!
+                                    expanded = false
+                                }
+                            )
+                        }
+                    }
+                }
             }
         },
         confirmButton = {
             Button(
                 onClick = {
-                    if (name.isNotBlank()) {
-                        onConfirm(name)
+                    if (type.isNotBlank()) {
+                        onConfirm(type, selectedCategoryId)
                     } else {
-                        isError = true
+                        isTypeError = true
                     }
                 }
             ) {
-                Text(if (category == null) "Crear" else "Guardar")
+                Text(if (affair == null) "Crear" else "Guardar")
             }
         },
         dismissButton = {
