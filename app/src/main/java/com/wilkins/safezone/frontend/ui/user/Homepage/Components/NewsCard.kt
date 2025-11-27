@@ -1,6 +1,5 @@
-package com.wilkins.safezone.frontend.ui.user.Homepage
+package com.wilkins.safezone.frontend.ui.user.Homepage.Components
 
-import androidx.compose.animation.core.*
 import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background

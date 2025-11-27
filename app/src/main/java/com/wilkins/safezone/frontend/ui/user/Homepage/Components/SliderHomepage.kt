@@ -1,5 +1,6 @@
-package com.wilkins.safezone.frontend.ui.user.Homepage
+package com.wilkins.safezone.frontend.ui.user.Homepage.Components
 
+import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
@@ -221,7 +222,7 @@ fun WelcomeScreen(
                                 contentColor = Color.White
                             ),
                             shape = RoundedCornerShape(16.dp),
-                            border = androidx.compose.foundation.BorderStroke(
+                            border = BorderStroke(
                                 2.dp,
                                 Color.White.copy(alpha = 0.5f)
                             ),

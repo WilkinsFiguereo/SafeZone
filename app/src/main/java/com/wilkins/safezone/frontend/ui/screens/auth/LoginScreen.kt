@@ -1,5 +1,6 @@
 package com.wilkins.safezone.frontend.ui.screens.auth
 
+import android.util.Log
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
@@ -32,7 +33,9 @@ import com.wilkins.safezone.backend.network.AppUser
 import com.wilkins.safezone.bridge.auth.LoginBridge
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.ui.platform.LocalContext
+import com.wilkins.safezone.bridge.auth.AccountDisabledException
 import com.wilkins.safezone.ui.theme.NameApp
+import com.wilkins.safezone.frontend.ui.screens.auth.AccountDisabledScreen
 
 @Composable
 fun LoginScreen(
@@ -173,56 +176,107 @@ fun LoginScreen(
 
                 val context = LocalContext.current
                 // Botón principal compacto
+                // En el Button del LoginScreen, cambia esto:
+
+                // Reemplaza el botón de login con este código actualizado:
+
+                // ✅ REEMPLAZA EL BOTÓN DE LOGIN CON ESTE CÓDIGO
+
                 Button(
                     onClick = {
                         scope.launch {
                             if (email.isNotEmpty() && password.isNotEmpty()) {
-                                isLoading = true // Iniciar carga
+                                isLoading = true
                                 try {
                                     val result = LoginBridge.performLogin(context, email, password)
+
                                     result.onSuccess { user ->
+                                        // ✅ Login exitoso
+                                        Log.i("LoginScreen", "✅ Login exitoso para: ${user.email}")
                                         onLoginSuccess(user)
-                                    }.onFailure { e ->
-                                        snackbarHostState.showSnackbar(e.message ?: "Error en login")
+                                        // La navegación se maneja en el NavGraph
+
+                                    }.onFailure { exception ->
+                                        isLoading = false // ⚠️ Importante: desactivar loading en caso de fallo
+
+                                        when (exception) {
+                                            is AccountDisabledException -> {
+                                                // ✅ Cuenta deshabilitada o baneada
+                                                Log.w("LoginScreen", "⚠️ Cuenta no activa: statusId=${exception.statusId}")
+                                                navController.navigate("accountDisabled/${exception.statusId}") {
+                                                    popUpTo("login") { inclusive = false }
+                                                }
+                                            }
+                                            else -> {
+                                                // ❌ Otro tipo de error
+                                                Log.e("LoginScreen", "❌ Error en login: ${exception.message}")
+                                                snackbarHostState.showSnackbar(
+                                                    exception.message ?: "Error al iniciar sesión"
+                                                )
+                                            }
+                                        }
                                     }
-                                } finally {
-                                    isLoading = false // Finalizar carga
+
+                                } catch (e: Exception) {
+                                    isLoading = false
+                                    Log.e("LoginScreen", "❌ Excepción inesperada: ${e.message}", e)
+                                    snackbarHostState.showSnackbar("Error inesperado: ${e.message}")
                                 }
                             } else {
-                                snackbarHostState.showSnackbar("Credenciales vacías")
+                                snackbarHostState.showSnackbar("Por favor completa todos los campos")
                             }
                         }
                     },
                     colors = ButtonDefaults.buttonColors(
-                        containerColor = PrimaryColor
+                        containerColor = PrimaryColor,
+                        disabledContainerColor = PrimaryColor.copy(alpha = 0.6f)
                     ),
                     modifier = Modifier
                         .fillMaxWidth()
                         .height(getResponsiveSize(screenHeight, 40.dp, 48.dp, 52.dp)),
                     shape = RoundedCornerShape(12.dp),
-                    enabled = !isLoading // Deshabilitar botón cuando está cargando
+                    enabled = !isLoading
                 ) {
                     if (isLoading) {
-                        // Mostrar indicador de carga en el botón
-                        CircularProgressIndicator(
-                            modifier = Modifier.size(getResponsiveSize(screenHeight, 16.dp, 18.dp, 20.dp)),
-                            color = Color.White,
-                            strokeWidth = 2.dp
-                        )
+                        Row(
+                            horizontalArrangement = Arrangement.Center,
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            CircularProgressIndicator(
+                                modifier = Modifier.size(getResponsiveSize(screenHeight, 16.dp, 18.dp, 20.dp)),
+                                color = Color.White,
+                                strokeWidth = 2.dp
+                            )
+                            Spacer(modifier = Modifier.width(8.dp))
+                            Text(
+                                "Iniciando sesión...",
+                                fontSize = getResponsiveFontSize(screenHeight, 13.sp, 15.sp, 17.sp),
+                                fontWeight = FontWeight.SemiBold,
+                                color = Color.White
+                            )
+                        }
                     } else {
-                        Icon(
-                            Icons.Default.Login,
-                            contentDescription = null,
-                            modifier = Modifier.size(getResponsiveSize(screenHeight, 16.dp, 18.dp, 20.dp))
-                        )
+                        Row(
+                            horizontalArrangement = Arrangement.Center,
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            Icon(
+                                Icons.Default.Login,
+                                contentDescription = null,
+                                modifier = Modifier.size(getResponsiveSize(screenHeight, 16.dp, 18.dp, 20.dp))
+                            )
+                            Spacer(modifier = Modifier.width(8.dp))
+                            Text(
+                                "Iniciar sesión",
+                                fontSize = getResponsiveFontSize(screenHeight, 13.sp, 15.sp, 17.sp),
+                                fontWeight = FontWeight.SemiBold
+                            )
+                        }
                     }
-                    Spacer(modifier = Modifier.width(verticalSpacing * 0.5f))
-                    Text(
-                        if (isLoading) "Iniciando sesión..." else "Iniciar sesión",
-                        fontSize = getResponsiveFontSize(screenHeight, 13.sp, 15.sp, 17.sp),
-                        fontWeight = FontWeight.SemiBold
-                    )
                 }
+
+// ⚠️ NO OLVIDES IMPORTAR:
+// import com.wilkins.safezone.bridge.auth.AccountDisabledException
 
                 Spacer(modifier = Modifier.height(verticalSpacing * 1.5f))
 

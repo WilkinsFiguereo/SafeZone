@@ -1,7 +1,9 @@
 package com.wilkins.safezone
 
+import SessionManager.getUserProfile
 import android.os.Build
 import android.os.Bundle
+import android.util.Log
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.compose.foundation.layout.fillMaxSize
@@ -11,6 +13,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.produceState
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
@@ -25,17 +28,24 @@ import androidx.navigation.compose.composable
 import androidx.navigation.compose.rememberNavController
 import androidx.navigation.navArgument
 import com.wilkins.safezone.GenericUserUi.SplashScreen
+import com.wilkins.safezone.backend.network.AppUser
 import com.wilkins.safezone.backend.network.SupabaseService
-import com.wilkins.safezone.frontend.ui.Admin.CreateUserScreen
-import com.wilkins.safezone.frontend.ui.Admin.CrudUsuarios
-import com.wilkins.safezone.frontend.ui.Admin.UserProfileCrud
-import com.wilkins.safezone.frontend.ui.NavigationDrawer.NavigationDrawer
-import com.wilkins.safezone.frontend.ui.NavigationDrawer.Profile
-import com.wilkins.safezone.frontend.ui.NavigationDrawer.SettingsScreen
+import com.wilkins.safezone.frontend.ui.Admin.CrudUser.CreateUserScreen
+import com.wilkins.safezone.frontend.ui.Admin.CrudUser.CrudUsuarios
+import com.wilkins.safezone.frontend.ui.Admin.CrudUser.UserProfileCrud
+import com.wilkins.safezone.frontend.ui.Admin.Dasbhoard.AdminDashboard
+import com.wilkins.safezone.frontend.ui.Moderator.Dashboard.ModeratorDashboard
+import com.wilkins.safezone.frontend.ui.user.NavigationDrawer.NavigationDrawer
+import com.wilkins.safezone.frontend.ui.user.NavigationDrawer.Profile
+import com.wilkins.safezone.frontend.ui.user.NavigationDrawer.SettingsScreen
 import com.wilkins.safezone.frontend.ui.screens.auth.LoginScreen
 import com.wilkins.safezone.frontend.ui.screens.auth.RegisterScreen
 import com.wilkins.safezone.frontend.ui.screens.auth.VerificationScreen
+import com.wilkins.safezone.frontend.ui.screens.auth.AccountDisabledScreen
+import com.wilkins.safezone.frontend.ui.user.Form.FormScreen
 import com.wilkins.safezone.frontend.ui.user.Homepage.UserHomeScreen
+import com.wilkins.safezone.frontend.ui.user.News.NewsScreen
+import com.wilkins.safezone.frontend.ui.user.Notification.NotificationsScreen
 import com.wilkins.safezone.ui.theme.SafeZoneTheme
 import com.wilkins.safezone.ui.theme.PrimaryColor
 import io.github.jan.supabase.gotrue.auth
@@ -51,121 +61,294 @@ class MainActivity : ComponentActivity() {
                     val navController = rememberNavController()
                     var savedEmail by remember { mutableStateOf("") }
                     var savedPassword by remember { mutableStateOf("") }
-                    CreateUserScreen(navController)
-//                    NavHost(
-//                        navController = navController,
-//                        startDestination = "splash"
-//                    ) {
-//                        composable("splash") {
-//                            SplashScreen(navController)
-//                        }
-//
-//                        // 🔐 LOGIN
-//                        composable("login") {
-//                            LoginScreen(
-//                                navController = navController,
-//                                onLoginSuccess = { user ->
-//                                    when (user.role_id) {
-//                                        2 -> { // 🔹 Admin
-//                                            navController.navigate("crudUsuarios") {
-//                                                popUpTo("login") { inclusive = true }
-//                                            }
-//                                        }
-//                                        1 -> { // 🔹 user
-//                                            navController.navigate("userHome/${user.id}") {
-//                                                popUpTo("login") { inclusive = true }
-//                                            }
-//                                        }
-//                                    }
-//                                },
-//                                onNavigateToRegister = { navController.navigate("register") }
-//                            )
-//                        }
-//
-//                        // 📝 REGISTRO
-//                        composable("register") {
-//                            RegisterScreen(
-//                                onNavigateToLogin = {
-//                                    navController.navigate("login") {
-//                                        popUpTo("register") { inclusive = true }
-//                                    }
-//                                },
-//                                onNavigateToVerification = { email, password ->
-//                                    savedEmail = email
-//                                    savedPassword = password
-//                                    navController.navigate("verification") {
-//                                        popUpTo("register") { inclusive = true }
-//                                    }
-//                                }
-//                            )
-//                        }
-//
-//                        // ✅ VERIFICACIÓN
-//                        composable("verification") {
-//                            VerificationScreen(
-//                                savedEmail = savedEmail,
-//                                savedPassword = savedPassword,
-//                                primaryColor = PrimaryColor,
-//                                onBackClick = {
-//                                    navController.navigate("login") {
-//                                        popUpTo("verification") { inclusive = true }
-//                                    }
-//                                },
-//                                onVerified = {
-//                                    val supabase = SupabaseService.getInstance()
-//                                    val userId = supabase.auth.currentUserOrNull()?.id ?: ""
-//                                    navController.navigate("userHome/$userId") {
-//                                        popUpTo("verification") { inclusive = true }
-//                                    }
-//                                }
-//                            )
-//                        }
-//
-//                        // 👤 PANTALLA DE USUARIO
-//                        composable("userHome/{userId}") {
-//                            UserHomeScreen(navController)
-//                        }
-//
-//                        // ⚙️ ADMIN - CRUD DE USUARIOS
-//                        composable("crudUsuarios") {
-//                            CrudUsuarios(navController)
-//                        }
-//
-//                        // 🧭 Navigation Drawer
-//                        composable("navigationDrawer") {
-//                            val context = LocalContext.current
-//                            val supabaseClient = SupabaseService.getInstance()
-//                            NavigationDrawer(navController, context, supabaseClient)
-//                        }
-//
-//                        // 👤 PERFIL
-//                        composable("profile") { Profile(navController) }
-//
-//                        // ⚙️ CONFIGURACIÓN
-//                        composable("settings") {
-//                            SettingsScreen(
-//                                navcontroller = navController,
-//                                onBackClick = {
-//                                    navController.navigate("navigationDrawer") {
-//                                        popUpTo("settings") { inclusive = true }
-//                                    }
-//                                }
-//                            )
-//                        }
-//
-//                        // 📋 PERFIL DETALLE DE USUARIO (Admin)
-//                        composable(
-//                            route = "userProfileCrud/{uuid}",
-//                            arguments = listOf(navArgument("uuid") { type = NavType.StringType })
-//                        ) { backStackEntry ->
-//                            val uuid = backStackEntry.arguments?.getString("uuid") ?: ""
-//                            UserProfileCrud(userId = uuid, navController = navController)
-//                        }
-//
-//                        composable("CreateUserCrud"){
-//                            CreateUserScreen(navController)
-//                        }
-//                    }
+                    val context = LocalContext.current
+                    val userState = produceState<AppUser?>(initialValue = null) {
+                        value = getUserProfile(context)
+                    }
+
+                    val user = userState.value
+
+                    // Función helper para verificar si hay sesión activa
+                    fun hasActiveSession(): Boolean {
+                        val session = SessionManager.loadSession(context)
+                        val hasSession = session != null
+                        Log.i("MainActivity", "🔐 Verificando sesión: ${if (hasSession) "Activa" else "Inactiva"}")
+                        return hasSession
+                    }
+
+                    NavHost(
+                        navController = navController,
+                        startDestination = "splash"
+                    ) {
+                        // ════════════════════════════════════════════
+                        // RUTAS PÚBLICAS (Sin autenticación requerida)
+                        // ════════════════════════════════════════════
+
+                        composable("splash") {
+                            SplashScreen(navController)
+                        }
+
+                        composable("login") {
+                            LoginScreen(
+                                navController = navController,
+                                onLoginSuccess = { user ->
+                                    Log.i("MainActivity", "🔍 Usuario logueado: id=${user.id}, role=${user.role_id}")
+
+                                    when (user.role_id) {
+                                        1 -> {
+                                            Log.i("MainActivity", "✅ Rol 1 → UserHome")
+                                            navController.navigate("userHome/${user.id}") {
+                                                popUpTo("login") { inclusive = true }
+                                            }
+                                        }
+                                        2 -> {
+                                            Log.i("MainActivity", "✅ Rol 2 → DashboardAdmin")
+                                            navController.navigate("DashboardAdmin") {
+                                                popUpTo("login") { inclusive = true }
+                                            }
+                                        }
+                                        3 -> {
+                                            Log.i("MainActivity", "✅ Rol 3 → DashboardMod")
+                                            navController.navigate("DashboardMod") {
+                                                popUpTo("login") { inclusive = true }
+                                            }
+                                        }
+                                        else -> {
+                                            Log.e("MainActivity", "❌ Rol desconocido: ${user.role_id}")
+                                        }
+                                    }
+                                },
+                                onNavigateToRegister = {
+                                    navController.navigate("register")
+                                }
+                            )
+                        }
+
+                        composable("register") {
+                            RegisterScreen(
+                                onNavigateToLogin = {
+                                    navController.navigate("login") {
+                                        popUpTo("register") { inclusive = true }
+                                    }
+                                },
+                                onNavigateToVerification = { email, password ->
+                                    savedEmail = email
+                                    savedPassword = password
+                                    navController.navigate("verification") {
+                                        popUpTo("register") { inclusive = true }
+                                    }
+                                }
+                            )
+                        }
+
+                        composable("verification") {
+                            VerificationScreen(
+                                savedEmail = savedEmail,
+                                savedPassword = savedPassword,
+                                primaryColor = PrimaryColor,
+                                onBackClick = {
+                                    navController.navigate("login") {
+                                        popUpTo("verification") { inclusive = true }
+                                    }
+                                },
+                                onVerified = {
+                                    val supabase = SupabaseService.getInstance()
+                                    val userId = supabase.auth.currentUserOrNull()?.id ?: ""
+                                    navController.navigate("userHome/$userId") {
+                                        popUpTo("verification") { inclusive = true }
+                                    }
+                                }
+                            )
+                        }
+
+                        // 🚫 CUENTA DESHABILITADA/BANEADA
+                        composable(
+                            route = "accountDisabled/{statusId}",
+                            arguments = listOf(navArgument("statusId") { type = NavType.IntType })
+                        ) { backStackEntry ->
+                            val statusId = backStackEntry.arguments?.getInt("statusId") ?: 0
+                            Log.i("MainActivity", "🚫 Navegando a AccountDisabled con statusId: $statusId")
+
+                            AccountDisabledScreen(
+                                statusId = statusId,
+                                onBackToLogin = {
+                                    navController.navigate("login") {
+                                        popUpTo("accountDisabled/{statusId}") { inclusive = true }
+                                    }
+                                }
+                            )
+                        }
+
+                        // ═══════════════════════════════════════════
+                        // RUTAS PROTEGIDAS (Requieren autenticación)
+                        // ═══════════════════════════════════════════
+
+                        // 👤 PANTALLA DE USUARIO
+                        composable("userHome/{userId}") {
+                            if (!hasActiveSession()) {
+                                Log.w("MainActivity", "⚠️ Intento de acceso sin sesión a userHome")
+                                navController.navigate("login") {
+                                    popUpTo(0) { inclusive = true }
+                                }
+                            } else {
+                                val supabaseClient = SupabaseService.getInstance()
+                                UserHomeScreen(navController, context, supabaseClient)
+                            }
+                        }
+
+                        // 🎯 ADMIN - DASHBOARD
+                        composable("DashboardAdmin") {
+                            if (!hasActiveSession()) {
+                                Log.w("MainActivity", "⚠️ Intento de acceso sin sesión a DashboardAdmin")
+                                navController.navigate("login") {
+                                    popUpTo(0) { inclusive = true }
+                                }
+                            } else {
+                                AdminDashboard(navController)
+                            }
+                        }
+
+                        // ⚙️ ADMIN - CRUD DE USUARIOS
+                        composable("crudUsuarios") {
+                            if (!hasActiveSession()) {
+                                Log.w("MainActivity", "⚠️ Intento de acceso sin sesión a crudUsuarios")
+                                navController.navigate("login") {
+                                    popUpTo(0) { inclusive = true }
+                                }
+                            } else {
+                                CrudUsuarios(navController)
+                            }
+                        }
+
+                        // 🧭 Navigation Drawer
+                        composable("navigationDrawer") {
+                            if (!hasActiveSession()) {
+                                Log.w("MainActivity", "⚠️ Intento de acceso sin sesión a navigationDrawer")
+                                navController.navigate("login") {
+                                    popUpTo(0) { inclusive = true }
+                                }
+                            } else {
+                                val supabaseClient = SupabaseService.getInstance()
+                                NavigationDrawer(navController, context, supabaseClient)
+                            }
+                        }
+
+                        // 👤 PERFIL
+                        composable("profile") {
+                            if (!hasActiveSession()) {
+                                Log.w("MainActivity", "⚠️ Intento de acceso sin sesión a profile")
+                                navController.navigate("login") {
+                                    popUpTo(0) { inclusive = true }
+                                }
+                            } else {
+                                val supabaseClient = SupabaseService.getInstance()
+                                Profile(navController, context, supabaseClient, )
+                            }
+                        }
+
+                        // ⚙️ CONFIGURACIÓN
+                        composable("settings") {
+                            if (!hasActiveSession()) {
+                                Log.w("MainActivity", "⚠️ Intento de acceso sin sesión a settings")
+                                navController.navigate("login") {
+                                    popUpTo(0) { inclusive = true }
+                                }
+                            } else {
+                                SettingsScreen(
+                                    navcontroller = navController,
+                                    onBackClick = {
+                                        navController.navigate("navigationDrawer") {
+                                            popUpTo("settings") { inclusive = true }
+                                        }
+                                    }
+                                )
+                            }
+                        }
+
+                        // 📋 PERFIL DETALLE DE USUARIO (Admin)
+                        composable(
+                            route = "userProfileCrud/{uuid}",
+                            arguments = listOf(navArgument("uuid") { type = NavType.StringType })
+                        ) { backStackEntry ->
+                            if (!hasActiveSession()) {
+                                Log.w("MainActivity", "⚠️ Intento de acceso sin sesión a userProfileCrud")
+                                navController.navigate("login") {
+                                    popUpTo(0) { inclusive = true }
+                                }
+                            } else {
+                                val uuid = backStackEntry.arguments?.getString("uuid") ?: ""
+                                UserProfileCrud(userId = uuid, navController = navController)
+                            }
+                        }
+
+                        composable("CreateUserCrud") {
+                            if (!hasActiveSession()) {
+                                Log.w("MainActivity", "⚠️ Intento de acceso sin sesión a CreateUserCrud")
+                                navController.navigate("login") {
+                                    popUpTo(0) { inclusive = true }
+                                }
+                            } else {
+                                CreateUserScreen(navController)
+                            }
+                        }
+
+                        composable("NewsUser") {
+                            if (!hasActiveSession()) {
+                                Log.w("MainActivity", "⚠️ Intento de acceso sin sesión a NewsUser")
+                                navController.navigate("login") {
+                                    popUpTo(0) { inclusive = true }
+                                }
+                            } else {
+                                val supabase = SupabaseService.getInstance()
+                                val userId = supabase.auth.currentUserOrNull()?.id ?: ""
+                                val supabaseClient = SupabaseService.getInstance()
+                                NewsScreen(navController, userId = userId, context, supabaseClient)
+                            }
+                        }
+
+                        composable("Notification") {
+                            if (!hasActiveSession()) {
+                                Log.w("MainActivity", "⚠️ Intento de acceso sin sesión a Notification")
+                                navController.navigate("login") {
+                                    popUpTo(0) { inclusive = true }
+                                }
+                            } else {
+                                val supabaseClient = SupabaseService.getInstance()
+                                NotificationsScreen(navController, context, supabaseClient)
+                            }
+                        }
+
+                        composable("FormUser") {
+                            if (!hasActiveSession()) {
+                                Log.w("MainActivity", "⚠️ Intento de acceso sin sesión a FormUser")
+                                navController.navigate("login") {
+                                    popUpTo(0) { inclusive = true }
+                                }
+                            } else {
+                                val supabaseClient = SupabaseService.getInstance()
+                                val userId = supabaseClient.auth.currentUserOrNull()?.id ?: ""
+                                FormScreen(navController, userId, user?.name ?: "Usuario", supabaseClient)
+                            }
+                        }
+
+                        composable("DashboardMod") {
+                            if (!hasActiveSession()) {
+                                Log.w("MainActivity", "⚠️ Intento de acceso sin sesión a DashboardMod")
+                                navController.navigate("login") {
+                                    popUpTo(0) { inclusive = true }
+                                }
+                            } else {
+                                val supabaseClient = SupabaseService.getInstance()
+
+                                ModeratorDashboard(
+                                    navController = navController,
+                                    moderatorId = "MOD001",
+                                    context = context,
+                                    supabaseClient = supabaseClient
+                                )
+                            }
+                        }
+                    }
                 }
             }
         }

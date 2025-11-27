@@ -1,7 +1,8 @@
-package com.wilkins.safezone.backend.network
+package com.wilkins.safezone.backend.network.auth
 
 import android.content.Context
 import android.util.Log
+import com.wilkins.safezone.backend.network.SupabaseService
 import io.github.jan.supabase.gotrue.auth
 import io.github.jan.supabase.gotrue.providers.builtin.Email
 import kotlinx.serialization.Serializable
@@ -26,7 +27,7 @@ suspend fun registerUser(
     phone: String? = null,
     photoProfile: String? = null
 ): Boolean {
-    val supabase = SupabaseService.getInstance()
+    val supabase = SupabaseService.Companion.getInstance()
 
     return try {
         val metadata = buildJsonObject {

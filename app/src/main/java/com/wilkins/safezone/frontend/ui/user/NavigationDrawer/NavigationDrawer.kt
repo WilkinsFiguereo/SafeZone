@@ -1,5 +1,6 @@
-package com.wilkins.safezone.frontend.ui.NavigationDrawer
+package com.wilkins.safezone.frontend.ui.user.NavigationDrawer
 
+import SessionManager.getUserProfile
 import SessionManager.logout
 import android.content.Context
 import androidx.compose.foundation.background
@@ -13,6 +14,7 @@ import androidx.compose.material.icons.automirrored.filled.KeyboardArrowRight
 import androidx.compose.material.icons.filled.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.produceState
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -23,6 +25,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.navigation.NavController
+import com.wilkins.safezone.backend.network.AppUser
 import io.github.jan.supabase.SupabaseClient
 import kotlinx.coroutines.launch
 
@@ -34,6 +37,13 @@ fun NavigationDrawer(navController: NavController, context: Context, supabaseCli
     val cardColor = Color.White
     val textPrimary = Color(0xFF1F1F1F)
     val textSecondary = Color(0xFF6B7280)
+    // 🔥 Cargar perfil de usuario de forma segura
+    val userState = produceState<AppUser?>(initialValue = null) {
+        value = getUserProfile(context)
+    }
+
+    val user = userState.value
+
 
     Scaffold(
         topBar = {
@@ -109,7 +119,7 @@ fun NavigationDrawer(navController: NavController, context: Context, supabaseCli
                     // Nombre y texto "ver perfil"
                     Column(modifier = Modifier.weight(1f)) {
                         Text(
-                            text = "Wilkins Badhames Figuereo Jimenez",
+                            text = user?.name ?: "Usuario",
                             fontSize = 15.sp,
                             fontWeight = FontWeight.SemiBold,
                             color = textPrimary,

@@ -1,5 +1,6 @@
 package com.wilkins.safezone.GenericUserUi
 
+import android.util.Log
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.core.tween
 import androidx.compose.animation.slideInHorizontally
@@ -17,24 +18,34 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.navigation.NavController
+import com.wilkins.safezone.backend.network.SupabaseService
 import com.wilkins.safezone.ui.theme.PrimaryColor
+import kotlinx.coroutines.launch
 
 @Composable
 fun AdminMenu(
     navController: NavController,
     modifier: Modifier = Modifier,
     showHeader: Boolean = true,
-    isMenuOpen: Boolean, // ✅ Estado controlado desde fuera
-    onMenuToggle: () -> Unit, // ✅ Callback para toggle del menú
+    isMenuOpen: Boolean,
+    onMenuToggle: () -> Unit,
     content: @Composable () -> Unit = {}
 ) {
+    val context = LocalContext.current
+    val scope = rememberCoroutineScope()
+    val supabaseClient = SupabaseService.getInstance()
+
+    // Estado para mostrar diálogo de confirmación
+    var showLogoutDialog by remember { mutableStateOf(false) }
+
     // Menú específico para administrador
     val menuItems = listOf(
-        AdminMenuItem(Icons.Default.Dashboard, "Dashboard", "admin_dashboard"),
+        AdminMenuItem(Icons.Default.Dashboard, "Dashboard", "DashboardAdmin"),
         AdminMenuItem(Icons.Default.People, "Lista de Usuarios", "crudUsuarios"),
         AdminMenuItem(Icons.Default.PersonOff, "Usuarios Deshabilitados", "disabled_users"),
         AdminMenuItem(Icons.Default.Assessment, "Generar Reportes", "generate_reports"),
@@ -48,7 +59,6 @@ fun AdminMenu(
     Box(modifier = modifier.fillMaxSize()) {
         // Contenido principal proporcionado por el caller
         Column(modifier = Modifier.fillMaxSize()) {
-            // ✅ Solo mostrar header si showHeader es true
             if (showHeader) {
                 // Header Principal
                 Row(
@@ -60,7 +70,7 @@ fun AdminMenu(
                     verticalAlignment = Alignment.CenterVertically
                 ) {
                     // Botón de menú (3 líneas)
-                    IconButton(onClick = onMenuToggle) { // ✅ Usar el callback
+                    IconButton(onClick = onMenuToggle) {
                         Icon(
                             imageVector = Icons.Default.Menu,
                             contentDescription = "Menu",
@@ -103,7 +113,7 @@ fun AdminMenu(
 
         // Menú lateral animado con overlay
         AnimatedVisibility(
-            visible = isMenuOpen, // ✅ Usar el estado controlado
+            visible = isMenuOpen,
             enter = slideInHorizontally(
                 initialOffsetX = { -it },
                 animationSpec = tween(300)
@@ -156,7 +166,7 @@ fun AdminMenu(
                             modifier = Modifier
                                 .fillMaxWidth()
                                 .clickable {
-                                    onMenuToggle() // ✅ Cerrar menú al seleccionar
+                                    onMenuToggle()
                                     navController.navigate(item.route)
                                 }
                                 .padding(horizontal = 20.dp, vertical = 14.dp),
@@ -178,6 +188,37 @@ fun AdminMenu(
                     }
 
                     Spacer(modifier = Modifier.weight(1f))
+
+                    // Botón de cerrar sesión
+                    Divider(
+                        color = Color.White.copy(alpha = 0.2f),
+                        thickness = 1.dp,
+                        modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp)
+                    )
+
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .clickable {
+                                showLogoutDialog = true
+                            }
+                            .padding(horizontal = 20.dp, vertical = 14.dp),
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Icon(
+                            imageVector = Icons.Default.Logout,
+                            contentDescription = "Cerrar sesión",
+                            tint = Color(0xFFFFFFFF), // Rojo suave
+                            modifier = Modifier.size(24.dp)
+                        )
+                        Spacer(modifier = Modifier.width(20.dp))
+                        Text(
+                            text = "Cerrar Sesión",
+                            color = Color(0xFFFFFFFF),
+                            fontSize = 16.sp,
+                            fontWeight = FontWeight.Medium
+                        )
+                    }
 
                     // Footer
                     Column(
@@ -202,10 +243,67 @@ fun AdminMenu(
                 Box(
                     modifier = Modifier
                         .fillMaxSize()
-                        .clickable { onMenuToggle() } // ✅ Cerrar menú al hacer clic fuera
+                        .clickable { onMenuToggle() }
                         .background(Color.Black.copy(alpha = 0.3f))
                 )
             }
+        }
+
+        // Diálogo de confirmación de logout
+        if (showLogoutDialog) {
+            AlertDialog(
+                onDismissRequest = { showLogoutDialog = false },
+                icon = {
+                    Icon(
+                        imageVector = Icons.Default.Logout,
+                        contentDescription = null,
+                        tint = PrimaryColor
+                    )
+                },
+                title = {
+                    Text(
+                        text = "Cerrar Sesión",
+                        fontWeight = FontWeight.Bold
+                    )
+                },
+                text = {
+                    Text("¿Estás seguro de que deseas cerrar sesión?")
+                },
+                confirmButton = {
+                    TextButton(
+                        onClick = {
+                            showLogoutDialog = false
+                            scope.launch {
+                                try {
+                                    Log.i("AdminMenu", "🚪 Iniciando logout...")
+                                    SessionManager.logout(context, supabaseClient)
+                                    Log.i("AdminMenu", "✅ Logout exitoso, navegando a login")
+
+                                    onMenuToggle() // Cerrar menú
+
+                                    navController.navigate("login") {
+                                        popUpTo(0) { inclusive = true }
+                                    }
+                                } catch (e: Exception) {
+                                    Log.e("AdminMenu", "❌ Error durante logout: ${e.message}", e)
+                                }
+                            }
+                        },
+                        colors = ButtonDefaults.textButtonColors(
+                            contentColor = Color(0xFFFF6B6B)
+                        )
+                    ) {
+                        Text("Cerrar Sesión")
+                    }
+                },
+                dismissButton = {
+                    TextButton(
+                        onClick = { showLogoutDialog = false }
+                    ) {
+                        Text("Cancelar")
+                    }
+                }
+            )
         }
     }
 }
