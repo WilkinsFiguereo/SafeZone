@@ -37,6 +37,8 @@ import com.wilkins.safezone.frontend.ui.Admin.CrudUser.CrudUsuarios
 import com.wilkins.safezone.frontend.ui.Admin.CrudUser.CrudUsuariosDisabled
 import com.wilkins.safezone.frontend.ui.Admin.CrudUser.UserProfileCrud
 import com.wilkins.safezone.frontend.ui.Admin.Dasbhoard.AdminDashboard
+import com.wilkins.safezone.frontend.ui.GlobalAssociation.ReportSent.ReportDetailScreen
+import com.wilkins.safezone.frontend.ui.GlobalAssociation.ReportSent.ReportsSentScreen
 import com.wilkins.safezone.frontend.ui.Moderator.Dashboard.ModeratorDashboard
 import com.wilkins.safezone.frontend.ui.user.NavigationDrawer.NavigationDrawer
 import com.wilkins.safezone.frontend.ui.user.NavigationDrawer.Profile
@@ -113,6 +115,12 @@ class MainActivity : ComponentActivity() {
                                         3 -> {
                                             Log.i("MainActivity", "✅ Rol 3 → DashboardMod")
                                             navController.navigate("DashboardMod") {
+                                                popUpTo("login") { inclusive = true }
+                                            }
+                                        }
+                                        4 -> {
+                                            Log.i("MainActivity", "✅ Rol 4 → DashboardMod")
+                                            navController.navigate("ReportSentList") {
                                                 popUpTo("login") { inclusive = true }
                                             }
                                         }
@@ -380,6 +388,34 @@ class MainActivity : ComponentActivity() {
                                     moderatorId = "MOD001",
                                     context = context,
                                     supabaseClient = supabaseClient
+                                )
+                            }
+                        }
+
+                        composable("ReportSent") {
+                            if (!hasActiveSession()) {
+                                Log.w("MainActivity", "⚠️ Intento de acceso sin sesión a DashboardMod")
+                                navController.navigate("login") {
+                                    popUpTo(0) { inclusive = true }
+                                }
+                            } else {
+
+                                ReportDetailScreen(
+                                    navController = navController
+                                )
+                            }
+                        }
+
+                        composable("ReportSentList") {
+                            if (!hasActiveSession()) {
+                                Log.w("MainActivity", "⚠️ Intento de acceso sin sesión a DashboardMod")
+                                navController.navigate("login") {
+                                    popUpTo(0) { inclusive = true }
+                                }
+                            } else {
+
+                                ReportsSentScreen(
+                                    navController = navController
                                 )
                             }
                         }

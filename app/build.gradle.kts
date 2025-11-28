@@ -73,6 +73,7 @@ dependencies {
     implementation("androidx.compose.material:material-icons-core:1.6.1")
     implementation("androidx.compose.material:material-icons-extended:1.6.1")
     implementation("io.ktor:ktor-client-cio:2.3.7")
+    implementation("io.coil-kt:coil-compose:2.5.0")
 
     // ===== ACCOMPANIST =====
     implementation("com.google.accompanist:accompanist-pager:0.32.0")

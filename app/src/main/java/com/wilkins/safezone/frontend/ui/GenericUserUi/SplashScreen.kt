@@ -71,6 +71,12 @@ fun SplashScreen(navController: NavController) {
                                 popUpTo("login") { inclusive = true }
                             }
                         }
+                        4 -> {
+                            Log.i("MainActivity", "✅ Rol 2 → DashboardMod")
+                            navController.navigate("ReportSentList") {
+                                popUpTo("login") { inclusive = true }
+                            }
+                        }
                         else -> {
                             Log.e("SplashScreen", "❌ Rol no encontrado en SharedPreferences, consultando base de datos...")
                             // Si no hay rol guardado, consultar la base de datos
