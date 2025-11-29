@@ -7,16 +7,14 @@ plugins {
 
 android {
     namespace = "com.wilkins.safezone"
-    compileSdk = 36
+    compileSdk = 34
 
     defaultConfig {
         applicationId = "com.wilkins.safezone"
         minSdk = 24
-        targetSdk = 36
+        targetSdk = 34
         versionCode = 1
         versionName = "1.0"
-
-        testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
     }
 
     buildTypes {
@@ -28,81 +26,40 @@ android {
             )
         }
     }
+
     compileOptions {
         sourceCompatibility = JavaVersion.VERSION_11
         targetCompatibility = JavaVersion.VERSION_11
     }
+
     kotlinOptions {
         jvmTarget = "11"
     }
+
     buildFeatures {
         compose = true
     }
-    buildToolsVersion = "36.0.0"
 }
 
 dependencies {
-    // ===== SUPABASE =====
+    // ----- SUPABASE -----
     implementation("io.github.jan-tennert.supabase:postgrest-kt:2.5.4")
     implementation("io.github.jan-tennert.supabase:gotrue-kt:2.5.4")
     implementation("io.github.jan-tennert.supabase:realtime-kt:2.5.4")
     implementation("io.github.jan-tennert.supabase:storage-kt:2.5.4")
-    implementation(libs.androidx.datastore.core)
 
-
-    // ===== KTOR CLIENT =====
-    val ktorVersion = "2.3.7"
-    implementation("io.ktor:ktor-client-core:$ktorVersion")
-    implementation("io.ktor:ktor-client-android:$ktorVersion")
-    implementation("io.ktor:ktor-client-content-negotiation:$ktorVersion")
-    implementation("io.ktor:ktor-serialization-kotlinx-json:$ktorVersion")
-    implementation("io.ktor:ktor-client-logging:$ktorVersion")
-
-    // ===== SERIALIZACIÓN =====
+    // ----- Serialización -----
     implementation("org.jetbrains.kotlinx:kotlinx-serialization-json:1.6.3")
 
-    // ===== COROUTINES =====
+    // ----- Corrutinas -----
     implementation("org.jetbrains.kotlinx:kotlinx-coroutines-android:1.7.3")
 
-    // ===== NAVEGACIÓN =====
-    implementation("androidx.navigation:navigation-compose:2.7.7")
+    // ----- Compose -----
+    implementation(platform("androidx.compose:compose-bom:2024.02.00"))
+    implementation("androidx.compose.material3:material3")
+    implementation("androidx.compose.ui:ui")
+    implementation("androidx.compose.ui:ui-tooling-preview")
 
-    // ===== COMPOSE MATERIAL =====
-    implementation("androidx.compose.material:material:1.6.1")
-    implementation("androidx.compose.material:material-icons-core:1.6.1")
-    implementation("androidx.compose.material:material-icons-extended:1.6.1")
-    implementation("io.ktor:ktor-client-cio:2.3.7")
-
-    // ===== ACCOMPANIST =====
-    implementation("com.google.accompanist:accompanist-pager:0.32.0")
-    implementation("com.google.accompanist:accompanist-pager-indicators:0.32.0")
-
-    // ===== LIFECYCLE =====
-    implementation("androidx.lifecycle:lifecycle-runtime-ktx:2.7.0")
+    // ----- ViewModel -----
     implementation("androidx.lifecycle:lifecycle-viewmodel-compose:2.7.0")
-
-    //Google
-    implementation("com.google.maps.android:maps-compose:4.4.1")
-    implementation("com.google.android.gms:play-services-maps:19.0.0")
-    implementation("com.google.android.gms:play-services-location:21.3.0")
-    // ===== ANDROIDX CORE =====
-    implementation(libs.androidx.core.ktx)
-    implementation(libs.androidx.lifecycle.runtime.ktx)
-    implementation(libs.androidx.activity.compose)
-    implementation(platform(libs.androidx.compose.bom))
-    implementation(libs.androidx.ui)
-    implementation(libs.androidx.ui.graphics)
-    implementation(libs.androidx.ui.tooling.preview)
-    implementation(libs.androidx.material3)
-    implementation(libs.androidx.foundation)
-    implementation(libs.firebase.crashlytics.buildtools)
-
-    // ===== TESTING =====
-    testImplementation(libs.junit)
-    androidTestImplementation(libs.androidx.junit)
-    androidTestImplementation(libs.androidx.espresso.core)
-    androidTestImplementation(platform(libs.androidx.compose.bom))
-    androidTestImplementation(libs.androidx.ui.test.junit4)
-    debugImplementation(libs.androidx.ui.tooling)
-    debugImplementation(libs.androidx.ui.test.manifest)
 }
