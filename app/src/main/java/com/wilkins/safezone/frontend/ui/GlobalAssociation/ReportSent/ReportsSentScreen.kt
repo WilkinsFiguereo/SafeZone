@@ -21,9 +21,18 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.navigation.NavController
+import com.wilkins.safezone.backend.GlobalAssociation.DateUtils
+import com.wilkins.safezone.backend.GlobalAssociation.ReportDto
+import com.wilkins.safezone.backend.GlobalAssociation.ReportUtils
+import com.wilkins.safezone.backend.GlobalAssociation.ReportsRepository
+import com.wilkins.safezone.frontend.ui.GlobalAssociation.GovernmentMenu
 import com.wilkins.safezone.ui.theme.PrimaryColor
+import kotlinx.coroutines.launch
 
-// Data class para el reporte en lista
+// ============================================
+// MODELOS UI
+// ============================================
+
 data class ReportItem(
     val id: String,
     val title: String,
@@ -34,22 +43,65 @@ data class ReportItem(
     val status: ReportStatus,
     val priority: ReportPriority,
     val reporterName: String,
-    val description: String
+    val description: String,
+    val imageUrl: String?
 )
 
-enum class ReportStatus(val label: String, val color: Color, val icon: ImageVector) {
-    PENDING("Pendiente", Color(0xFFFFA726), Icons.Default.Pending),
-    IN_PROGRESS("En Proceso", Color(0xFF2196F3), Icons.Default.Update),
-    COMPLETED("Finalizado", Color(0xFF4CAF50), Icons.Default.CheckCircle),
-    CANCELLED("Cancelado", Color(0xFFE53935), Icons.Default.Cancel)
+enum class ReportStatus(val id: Int, val label: String, val color: Color, val icon: ImageVector) {
+    PENDING(1, "Pendiente", Color(0xFFFFA726), Icons.Default.Pending),
+    IN_PROGRESS(2, "En Proceso", Color(0xFF2196F3), Icons.Default.Update),
+    COMPLETED(3, "Finalizado", Color(0xFF4CAF50), Icons.Default.CheckCircle),
+    CANCELLED(4, "Cancelado", Color(0xFFE53935), Icons.Default.Cancel);
+
+    companion object {
+        fun fromId(id: Int): ReportStatus {
+            return entries.find { it.id == id } ?: PENDING
+        }
+    }
 }
 
 enum class ReportPriority(val label: String, val color: Color) {
     LOW("Baja", Color(0xFF66BB6A)),
     MEDIUM("Media", Color(0xFFFFA726)),
     HIGH("Alta", Color(0xFFEF5350)),
-    CRITICAL("Crítica", Color(0xFFB71C1C))
+    CRITICAL("Crítica", Color(0xFFB71C1C));
+
+    companion object {
+        fun fromAffairId(affairId: Int?): ReportPriority {
+            return when (affairId) {
+                1 -> CRITICAL  // Emergencia
+                2 -> HIGH      // Seguridad
+                3 -> MEDIUM    // Infraestructura
+                4 -> MEDIUM    // Servicios
+                else -> LOW
+            }
+        }
+    }
 }
+
+// ============================================
+// CONVERTIDOR DE DATOS
+// ============================================
+
+fun convertToReportItem(dto: ReportDto, affairName: String?): ReportItem {
+    return ReportItem(
+        id = dto.id,
+        title = ReportUtils.generateTitle(affairName, dto.description),
+        incidentType = affairName ?: "Sin categoría",
+        location = dto.reportLocation ?: "Ubicación no especificada",
+        date = DateUtils.formatDate(dto.createdAt),
+        time = DateUtils.formatTime(dto.createdAt),
+        status = ReportStatus.fromId(dto.idReportingStatus),
+        priority = ReportPriority.fromAffairId(dto.idAffair),
+        reporterName = ReportUtils.getReporterName(dto.isAnonymous, dto.userName),
+        description = dto.description ?: "Sin descripción",
+        imageUrl = dto.imageUrl
+    )
+}
+
+// ============================================
+// PANTALLA PRINCIPAL
+// ============================================
 
 @Composable
 fun ReportsSentScreen(
@@ -58,120 +110,61 @@ fun ReportsSentScreen(
     var isMenuOpen by remember { mutableStateOf(false) }
     var searchQuery by remember { mutableStateOf("") }
     var selectedFilter by remember { mutableStateOf<ReportStatus?>(null) }
-    var showFilterMenu by remember { mutableStateOf(false) }
 
-    // Datos de ejemplo
-    val allReports = remember {
-        listOf(
-            ReportItem(
-                id = "001",
-                title = "Vandalismo en Parque Central",
-                incidentType = "Vandalismo",
-                location = "Parque Central, Calle Principal #123",
-                date = "28 Nov 2025",
-                time = "10:30 AM",
-                status = ReportStatus.PENDING,
-                priority = ReportPriority.HIGH,
-                reporterName = "Juan Pérez",
-                description = "Grafitis y bancas destruidas en el parque municipal"
-            ),
-            ReportItem(
-                id = "002",
-                title = "Bache Peligroso en Avenida",
-                incidentType = "Infraestructura",
-                location = "Av. Independencia #456",
-                date = "27 Nov 2025",
-                time = "03:15 PM",
-                status = ReportStatus.IN_PROGRESS,
-                priority = ReportPriority.CRITICAL,
-                reporterName = "María González",
-                description = "Bache de gran tamaño que causa accidentes"
-            ),
-            ReportItem(
-                id = "003",
-                title = "Alumbrado Público Dañado",
-                incidentType = "Servicios Públicos",
-                location = "Calle 5 de Mayo #789",
-                date = "26 Nov 2025",
-                time = "08:45 PM",
-                status = ReportStatus.COMPLETED,
-                priority = ReportPriority.MEDIUM,
-                reporterName = "Carlos Ramírez",
-                description = "Postes de luz sin funcionar en la zona"
-            ),
-            ReportItem(
-                id = "004",
-                title = "Basura Acumulada",
-                incidentType = "Limpieza",
-                location = "Mercado Municipal",
-                date = "26 Nov 2025",
-                time = "07:00 AM",
-                status = ReportStatus.PENDING,
-                priority = ReportPriority.MEDIUM,
-                reporterName = "Ana López",
-                description = "Acumulación de basura por falta de recolección"
-            ),
-            ReportItem(
-                id = "005",
-                title = "Semáforo Descompuesto",
-                incidentType = "Seguridad Vial",
-                location = "Cruce Av. Juárez y Calle 10",
-                date = "25 Nov 2025",
-                time = "12:20 PM",
-                status = ReportStatus.IN_PROGRESS,
-                priority = ReportPriority.HIGH,
-                reporterName = "Roberto Silva",
-                description = "Semáforo intermitente causando confusión"
-            ),
-            ReportItem(
-                id = "006",
-                title = "Fuga de Agua",
-                incidentType = "Infraestructura",
-                location = "Colonia Jardines #234",
-                date = "25 Nov 2025",
-                time = "09:10 AM",
-                status = ReportStatus.CANCELLED,
-                priority = ReportPriority.LOW,
-                reporterName = "Laura Martínez",
-                description = "Reporte duplicado - ya fue atendido"
-            ),
-            ReportItem(
-                id = "007",
-                title = "Árbol Caído",
-                incidentType = "Emergencia",
-                location = "Bosque Municipal",
-                date = "24 Nov 2025",
-                time = "11:30 AM",
-                status = ReportStatus.COMPLETED,
-                priority = ReportPriority.CRITICAL,
-                reporterName = "José Hernández",
-                description = "Árbol bloqueando camino principal"
-            ),
-            ReportItem(
-                id = "008",
-                title = "Ruido Excesivo",
-                incidentType = "Disturbio",
-                location = "Calle del Sol #567",
-                date = "24 Nov 2025",
-                time = "11:00 PM",
-                status = ReportStatus.PENDING,
-                priority = ReportPriority.LOW,
-                reporterName = "Patricia Ruiz",
-                description = "Construcción nocturna sin permiso"
-            )
-        )
+    // Estados de datos
+    var allReports by remember { mutableStateOf<List<ReportItem>>(emptyList()) }
+    var isLoading by remember { mutableStateOf(true) }
+    var errorMessage by remember { mutableStateOf<String?>(null) }
+
+    val scope = rememberCoroutineScope()
+    val repository = remember { ReportsRepository() }
+
+    // Función para cargar datos
+    fun loadReports() {
+        scope.launch {
+            try {
+                isLoading = true
+                errorMessage = null
+
+                // Cargar affairs
+                val affairsResult = repository.getAllAffairs()
+                val affairs = affairsResult.getOrNull()?.associateBy { it.id } ?: emptyMap()
+
+                // Cargar reportes
+                val reportsResult = repository.getAllReports()
+                val reports = reportsResult.getOrNull() ?: emptyList()
+
+                // Convertir a UI
+                allReports = reports.map { dto ->
+                    convertToReportItem(dto, affairs[dto.idAffair]?.affairName)
+                }
+
+                isLoading = false
+            } catch (e: Exception) {
+                errorMessage = "Error al cargar reportes: ${e.message}"
+                isLoading = false
+            }
+        }
+    }
+
+    // Cargar datos al iniciar
+    LaunchedEffect(Unit) {
+        loadReports()
     }
 
     // Filtrar reportes
-    val filteredReports = allReports.filter { report ->
-        val matchesSearch = searchQuery.isEmpty() ||
-                report.title.contains(searchQuery, ignoreCase = true) ||
-                report.incidentType.contains(searchQuery, ignoreCase = true) ||
-                report.location.contains(searchQuery, ignoreCase = true)
+    val filteredReports = remember(allReports, searchQuery, selectedFilter) {
+        allReports.filter { report ->
+            val matchesSearch = searchQuery.isEmpty() ||
+                    report.title.contains(searchQuery, ignoreCase = true) ||
+                    report.incidentType.contains(searchQuery, ignoreCase = true) ||
+                    report.location.contains(searchQuery, ignoreCase = true) ||
+                    report.description.contains(searchQuery, ignoreCase = true)
 
-        val matchesFilter = selectedFilter == null || report.status == selectedFilter
+            val matchesFilter = selectedFilter == null || report.status == selectedFilter
 
-        matchesSearch && matchesFilter
+            matchesSearch && matchesFilter
+        }
     }
 
     // Estadísticas
@@ -196,216 +189,358 @@ fun ReportsSentScreen(
                 .background(Color(0xFFF5F5F5))
         ) {
             // Header con título y estadísticas
-            Card(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(16.dp),
-                colors = CardDefaults.cardColors(containerColor = Color.White),
-                elevation = CardDefaults.cardElevation(defaultElevation = 4.dp),
-                shape = RoundedCornerShape(16.dp)
-            ) {
-                Column(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(20.dp)
-                ) {
-                    Row(
-                        modifier = Modifier.fillMaxWidth(),
-                        horizontalArrangement = Arrangement.SpaceBetween,
-                        verticalAlignment = Alignment.CenterVertically
-                    ) {
-                        Column {
-                            Text(
-                                text = "Reportes Enviados",
-                                fontSize = 24.sp,
-                                fontWeight = FontWeight.Bold,
-                                color = Color.Black
-                            )
-                            Text(
-                                text = "${allReports.size} reportes totales",
-                                fontSize = 14.sp,
-                                color = Color.Gray
-                            )
-                        }
+            HeaderSection(
+                totalReports = allReports.size,
+                stats = stats,
+                selectedFilter = selectedFilter,
+                onFilterClick = { status ->
+                    selectedFilter = if (selectedFilter == status) null else status
+                },
+                onRefreshClick = { loadReports() }
+            )
 
-                        Box(
-                            modifier = Modifier
-                                .size(48.dp)
-                                .clip(CircleShape)
-                                .background(PrimaryColor.copy(alpha = 0.1f)),
-                            contentAlignment = Alignment.Center
-                        ) {
-                            Icon(
-                                imageVector = Icons.Default.Send,
-                                contentDescription = null,
-                                tint = PrimaryColor,
-                                modifier = Modifier.size(28.dp)
-                            )
-                        }
-                    }
+            // Barra de búsqueda
+            SearchBar(
+                searchQuery = searchQuery,
+                onSearchChange = { searchQuery = it },
+                selectedFilter = selectedFilter,
+                onClearFilter = { selectedFilter = null }
+            )
 
-                    Spacer(modifier = Modifier.height(16.dp))
+            Spacer(modifier = Modifier.height(16.dp))
 
-                    // Mini estadísticas
-                    Row(
-                        modifier = Modifier.fillMaxWidth(),
-                        horizontalArrangement = Arrangement.spacedBy(8.dp)
-                    ) {
-                        ReportStatus.entries.forEach { status ->
-                            MiniStatCard(
-                                status = status,
-                                count = stats[status] ?: 0,
-                                modifier = Modifier.weight(1f),
-                                isSelected = selectedFilter == status,
-                                onClick = {
-                                    selectedFilter = if (selectedFilter == status) null else status
-                                }
-                            )
-                        }
-                    }
+            // Contenido
+            ContentSection(
+                isLoading = isLoading,
+                errorMessage = errorMessage,
+                filteredReports = filteredReports,
+                searchQuery = searchQuery,
+                onReportClick = { reportId ->
+                    navController.navigate("report_detail/$reportId")
                 }
-            }
+            )
+        }
+    }
+}
 
-            // Barra de búsqueda y filtros
-            Card(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(horizontal = 16.dp),
-                colors = CardDefaults.cardColors(containerColor = Color.White),
-                elevation = CardDefaults.cardElevation(defaultElevation = 2.dp),
-                shape = RoundedCornerShape(12.dp)
+// ============================================
+// COMPONENTES
+// ============================================
+
+@Composable
+private fun HeaderSection(
+    totalReports: Int,
+    stats: Map<ReportStatus, Int>,
+    selectedFilter: ReportStatus?,
+    onFilterClick: (ReportStatus) -> Unit,
+    onRefreshClick: () -> Unit
+) {
+    Card(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(16.dp),
+        colors = CardDefaults.cardColors(containerColor = Color.White),
+        elevation = CardDefaults.cardElevation(defaultElevation = 4.dp),
+        shape = RoundedCornerShape(16.dp)
+    ) {
+        Column(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(20.dp)
+        ) {
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically
             ) {
-                Row(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(12.dp),
-                    verticalAlignment = Alignment.CenterVertically,
-                    horizontalArrangement = Arrangement.spacedBy(8.dp)
-                ) {
-                    // Campo de búsqueda
-                    OutlinedTextField(
-                        value = searchQuery,
-                        onValueChange = { searchQuery = it },
-                        modifier = Modifier.weight(1f),
-                        placeholder = { Text("Buscar reportes...") },
-                        leadingIcon = {
-                            Icon(
-                                imageVector = Icons.Default.Search,
-                                contentDescription = null,
-                                tint = Color.Gray
-                            )
-                        },
-                        trailingIcon = {
-                            if (searchQuery.isNotEmpty()) {
-                                IconButton(onClick = { searchQuery = "" }) {
-                                    Icon(
-                                        imageVector = Icons.Default.Close,
-                                        contentDescription = "Limpiar búsqueda",
-                                        tint = Color.Gray
-                                    )
-                                }
-                            }
-                        },
-                        colors = OutlinedTextFieldDefaults.colors(
-                            focusedBorderColor = PrimaryColor,
-                            unfocusedBorderColor = Color.LightGray
-                        ),
-                        shape = RoundedCornerShape(12.dp),
-                        singleLine = true
+                Column {
+                    Text(
+                        text = "Reportes Enviados",
+                        fontSize = 24.sp,
+                        fontWeight = FontWeight.Bold,
+                        color = Color.Black
                     )
+                    Text(
+                        text = "$totalReports reportes totales",
+                        fontSize = 14.sp,
+                        color = Color.Gray
+                    )
+                }
 
-                    // Indicador de filtro activo
-                    if (selectedFilter != null) {
-                        Surface(
-                            shape = RoundedCornerShape(8.dp),
-                            color = selectedFilter!!.color.copy(alpha = 0.1f),
-                            modifier = Modifier.clickable { selectedFilter = null }
-                        ) {
-                            Row(
-                                modifier = Modifier.padding(horizontal = 12.dp, vertical = 8.dp),
-                                verticalAlignment = Alignment.CenterVertically,
-                                horizontalArrangement = Arrangement.spacedBy(4.dp)
-                            ) {
-                                Icon(
-                                    imageVector = selectedFilter!!.icon,
-                                    contentDescription = null,
-                                    tint = selectedFilter!!.color,
-                                    modifier = Modifier.size(16.dp)
-                                )
-                                Text(
-                                    text = selectedFilter!!.label,
-                                    color = selectedFilter!!.color,
-                                    fontSize = 12.sp,
-                                    fontWeight = FontWeight.SemiBold
-                                )
-                                Icon(
-                                    imageVector = Icons.Default.Close,
-                                    contentDescription = "Quitar filtro",
-                                    tint = selectedFilter!!.color,
-                                    modifier = Modifier.size(14.dp)
-                                )
-                            }
-                        }
+                Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                    IconButton(
+                        onClick = onRefreshClick,
+                        modifier = Modifier
+                            .size(40.dp)
+                            .clip(CircleShape)
+                            .background(PrimaryColor.copy(alpha = 0.1f))
+                    ) {
+                        Icon(
+                            imageVector = Icons.Default.Refresh,
+                            contentDescription = "Refrescar",
+                            tint = PrimaryColor
+                        )
+                    }
+
+                    Box(
+                        modifier = Modifier
+                            .size(48.dp)
+                            .clip(CircleShape)
+                            .background(PrimaryColor.copy(alpha = 0.1f)),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        Icon(
+                            imageVector = Icons.Default.Send,
+                            contentDescription = null,
+                            tint = PrimaryColor,
+                            modifier = Modifier.size(28.dp)
+                        )
                     }
                 }
             }
 
             Spacer(modifier = Modifier.height(16.dp))
 
-            // Lista de reportes
-            if (filteredReports.isEmpty()) {
-                // Estado vacío
-                Box(
-                    modifier = Modifier
-                        .fillMaxSize()
-                        .padding(32.dp),
-                    contentAlignment = Alignment.Center
+            // Mini estadísticas
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.spacedBy(8.dp)
+            ) {
+                ReportStatus.entries.forEach { status ->
+                    MiniStatCard(
+                        status = status,
+                        count = stats[status] ?: 0,
+                        modifier = Modifier.weight(1f),
+                        isSelected = selectedFilter == status,
+                        onClick = { onFilterClick(status) }
+                    )
+                }
+            }
+        }
+    }
+}
+
+@Composable
+private fun SearchBar(
+    searchQuery: String,
+    onSearchChange: (String) -> Unit,
+    selectedFilter: ReportStatus?,
+    onClearFilter: () -> Unit
+) {
+    Card(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(horizontal = 16.dp),
+        colors = CardDefaults.cardColors(containerColor = Color.White),
+        elevation = CardDefaults.cardElevation(defaultElevation = 2.dp),
+        shape = RoundedCornerShape(12.dp)
+    ) {
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(12.dp),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(8.dp)
+        ) {
+            OutlinedTextField(
+                value = searchQuery,
+                onValueChange = onSearchChange,
+                modifier = Modifier.weight(1f),
+                placeholder = { Text("Buscar reportes...") },
+                leadingIcon = {
+                    Icon(
+                        imageVector = Icons.Default.Search,
+                        contentDescription = null,
+                        tint = Color.Gray
+                    )
+                },
+                trailingIcon = {
+                    if (searchQuery.isNotEmpty()) {
+                        IconButton(onClick = { onSearchChange("") }) {
+                            Icon(
+                                imageVector = Icons.Default.Close,
+                                contentDescription = "Limpiar búsqueda",
+                                tint = Color.Gray
+                            )
+                        }
+                    }
+                },
+                colors = OutlinedTextFieldDefaults.colors(
+                    focusedBorderColor = PrimaryColor,
+                    unfocusedBorderColor = Color.LightGray
+                ),
+                shape = RoundedCornerShape(12.dp),
+                singleLine = true
+            )
+
+            if (selectedFilter != null) {
+                Surface(
+                    shape = RoundedCornerShape(8.dp),
+                    color = selectedFilter.color.copy(alpha = 0.1f),
+                    modifier = Modifier.clickable(onClick = onClearFilter)
                 ) {
-                    Column(
-                        horizontalAlignment = Alignment.CenterHorizontally,
-                        verticalArrangement = Arrangement.Center
+                    Row(
+                        modifier = Modifier.padding(horizontal = 12.dp, vertical = 8.dp),
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.spacedBy(4.dp)
                     ) {
                         Icon(
-                            imageVector = Icons.Default.SearchOff,
+                            imageVector = selectedFilter.icon,
                             contentDescription = null,
-                            modifier = Modifier.size(80.dp),
-                            tint = Color.Gray.copy(alpha = 0.5f)
-                        )
-                        Spacer(modifier = Modifier.height(16.dp))
-                        Text(
-                            text = "No se encontraron reportes",
-                            fontSize = 18.sp,
-                            fontWeight = FontWeight.SemiBold,
-                            color = Color.Gray
+                            tint = selectedFilter.color,
+                            modifier = Modifier.size(16.dp)
                         )
                         Text(
-                            text = "Intenta cambiar los filtros de búsqueda",
-                            fontSize = 14.sp,
-                            color = Color.Gray.copy(alpha = 0.7f)
+                            text = selectedFilter.label,
+                            color = selectedFilter.color,
+                            fontSize = 12.sp,
+                            fontWeight = FontWeight.SemiBold
                         )
-                    }
-                }
-            } else {
-                LazyColumn(
-                    modifier = Modifier.fillMaxSize(),
-                    contentPadding = PaddingValues(horizontal = 16.dp, vertical = 8.dp),
-                    verticalArrangement = Arrangement.spacedBy(12.dp)
-                ) {
-                    items(filteredReports) { report ->
-                        ReportCard(
-                            report = report,
-                            onClick = {
-                                navController.navigate("report_detail/${report.id}")
-                            }
+                        Icon(
+                            imageVector = Icons.Default.Close,
+                            contentDescription = "Quitar filtro",
+                            tint = selectedFilter.color,
+                            modifier = Modifier.size(14.dp)
                         )
-                    }
-
-                    // Espaciado final
-                    item {
-                        Spacer(modifier = Modifier.height(16.dp))
                     }
                 }
             }
+        }
+    }
+}
+
+@Composable
+private fun ContentSection(
+    isLoading: Boolean,
+    errorMessage: String?,
+    filteredReports: List<ReportItem>,
+    searchQuery: String,
+    onReportClick: (String) -> Unit
+) {
+    Box(modifier = Modifier.fillMaxSize()) {
+        when {
+            isLoading -> {
+                LoadingState()
+            }
+
+            errorMessage != null -> {
+                ErrorState(errorMessage)
+            }
+
+            filteredReports.isEmpty() -> {
+                EmptyState(searchQuery.isEmpty())
+            }
+
+            else -> {
+                ReportsList(
+                    reports = filteredReports,
+                    onReportClick = onReportClick
+                )
+            }
+        }
+    }
+}
+
+@Composable
+private fun LoadingState() {
+    Box(
+        modifier = Modifier.fillMaxSize(),
+        contentAlignment = Alignment.Center
+    ) {
+        Column(horizontalAlignment = Alignment.CenterHorizontally) {
+            CircularProgressIndicator(color = PrimaryColor)
+            Spacer(modifier = Modifier.height(16.dp))
+            Text("Cargando reportes...", color = Color.Gray)
+        }
+    }
+}
+
+@Composable
+private fun ErrorState(message: String) {
+    Box(
+        modifier = Modifier.fillMaxSize(),
+        contentAlignment = Alignment.Center
+    ) {
+        Column(
+            horizontalAlignment = Alignment.CenterHorizontally,
+            modifier = Modifier.padding(32.dp)
+        ) {
+            Icon(
+                imageVector = Icons.Default.Error,
+                contentDescription = null,
+                modifier = Modifier.size(80.dp),
+                tint = Color(0xFFE53935)
+            )
+            Spacer(modifier = Modifier.height(16.dp))
+            Text(
+                text = "Error al cargar",
+                fontSize = 18.sp,
+                fontWeight = FontWeight.Bold,
+                color = Color.Gray
+            )
+            Text(
+                text = message,
+                fontSize = 14.sp,
+                color = Color.Gray
+            )
+        }
+    }
+}
+
+@Composable
+private fun EmptyState(isFilterEmpty: Boolean) {
+    Box(
+        modifier = Modifier
+            .fillMaxSize()
+            .padding(32.dp),
+        contentAlignment = Alignment.Center
+    ) {
+        Column(
+            horizontalAlignment = Alignment.CenterHorizontally,
+            verticalArrangement = Arrangement.Center
+        ) {
+            Icon(
+                imageVector = Icons.Default.SearchOff,
+                contentDescription = null,
+                modifier = Modifier.size(80.dp),
+                tint = Color.Gray.copy(alpha = 0.5f)
+            )
+            Spacer(modifier = Modifier.height(16.dp))
+            Text(
+                text = "No se encontraron reportes",
+                fontSize = 18.sp,
+                fontWeight = FontWeight.SemiBold,
+                color = Color.Gray
+            )
+            Text(
+                text = if (isFilterEmpty) "No hay reportes disponibles"
+                else "Intenta cambiar los filtros",
+                fontSize = 14.sp,
+                color = Color.Gray.copy(alpha = 0.7f)
+            )
+        }
+    }
+}
+
+@Composable
+private fun ReportsList(
+    reports: List<ReportItem>,
+    onReportClick: (String) -> Unit
+) {
+    LazyColumn(
+        modifier = Modifier.fillMaxSize(),
+        contentPadding = PaddingValues(horizontal = 16.dp, vertical = 8.dp),
+        verticalArrangement = Arrangement.spacedBy(12.dp)
+    ) {
+        items(reports, key = { it.id }) { report ->
+            ReportCard(
+                report = report,
+                onClick = { onReportClick(report.id) }
+            )
+        }
+
+        item {
+            Spacer(modifier = Modifier.height(16.dp))
         }
     }
 }
@@ -477,7 +612,6 @@ fun ReportCard(
                 .fillMaxWidth()
                 .padding(16.dp)
         ) {
-            // Header: Título y prioridad
             Row(
                 modifier = Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.SpaceBetween,
@@ -485,7 +619,7 @@ fun ReportCard(
             ) {
                 Column(modifier = Modifier.weight(1f)) {
                     Text(
-                        text = "Reporte #${report.id}",
+                        text = "Reporte #${ReportUtils.getShortId(report.id)}",
                         fontSize = 12.sp,
                         color = Color.Gray,
                         fontWeight = FontWeight.Medium
@@ -503,7 +637,6 @@ fun ReportCard(
 
                 Spacer(modifier = Modifier.width(12.dp))
 
-                // Badge de prioridad
                 Surface(
                     shape = RoundedCornerShape(8.dp),
                     color = report.priority.color.copy(alpha = 0.15f)
@@ -520,7 +653,6 @@ fun ReportCard(
 
             Spacer(modifier = Modifier.height(12.dp))
 
-            // Tipo de incidente
             Row(
                 verticalAlignment = Alignment.CenterVertically,
                 horizontalArrangement = Arrangement.spacedBy(8.dp)
@@ -541,7 +673,6 @@ fun ReportCard(
 
             Spacer(modifier = Modifier.height(8.dp))
 
-            // Descripción
             Text(
                 text = report.description,
                 fontSize = 13.sp,
@@ -553,7 +684,6 @@ fun ReportCard(
 
             Spacer(modifier = Modifier.height(12.dp))
 
-            // Ubicación
             Row(
                 verticalAlignment = Alignment.CenterVertically,
                 horizontalArrangement = Arrangement.spacedBy(6.dp)
@@ -580,7 +710,6 @@ fun ReportCard(
 
             Spacer(modifier = Modifier.height(12.dp))
 
-            // Footer: Fecha, hora, reportero y estado
             Row(
                 modifier = Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.SpaceBetween,
@@ -590,7 +719,6 @@ fun ReportCard(
                     verticalAlignment = Alignment.CenterVertically,
                     horizontalArrangement = Arrangement.spacedBy(12.dp)
                 ) {
-                    // Fecha y hora
                     Row(
                         verticalAlignment = Alignment.CenterVertically,
                         horizontalArrangement = Arrangement.spacedBy(4.dp)
@@ -608,7 +736,6 @@ fun ReportCard(
                         )
                     }
 
-                    // Reportero
                     Row(
                         verticalAlignment = Alignment.CenterVertically,
                         horizontalArrangement = Arrangement.spacedBy(4.dp)
@@ -627,7 +754,6 @@ fun ReportCard(
                     }
                 }
 
-                // Estado
                 Surface(
                     shape = RoundedCornerShape(12.dp),
                     color = report.status.color.copy(alpha = 0.15f)

@@ -264,7 +264,7 @@ class MainActivity : ComponentActivity() {
                                 }
                             } else {
                                 val supabaseClient = SupabaseService.getInstance()
-                                Profile(navController, context, supabaseClient, )
+                                Profile(navController, context, supabaseClient )
                             }
                         }
 
