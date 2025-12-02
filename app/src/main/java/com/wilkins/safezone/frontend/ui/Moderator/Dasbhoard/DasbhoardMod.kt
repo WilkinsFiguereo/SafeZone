@@ -24,7 +24,7 @@ import com.wilkins.safezone.frontend.ui.Moderator.Dasbhoard.Components.ReportIte
 import com.wilkins.safezone.frontend.ui.Moderator.Dasbhoard.Components.ReportPriority
 import com.wilkins.safezone.frontend.ui.Moderator.Dasbhoard.Components.ReportStatus
 import com.wilkins.safezone.frontend.ui.Moderator.Dasbhoard.Components.StatItem
-import com.wilkins.safezone.frontend.ui.Moderator.Dasbhoard.ModeratorSideMenu
+import com.wilkins.safezone.frontend.ui.Moderator.ModeratorSideMenu
 import com.wilkins.safezone.ui.theme.PrimaryColor
 import io.github.jan.supabase.SupabaseClient
 

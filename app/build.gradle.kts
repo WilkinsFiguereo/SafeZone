@@ -12,7 +12,7 @@ android {
     defaultConfig {
         applicationId = "com.wilkins.safezone"
         minSdk = 24
-        targetSdk = 36
+        targetSdk = 34
         versionCode = 1
         versionName = "1.0"
 
@@ -72,6 +72,7 @@ dependencies {
     implementation("androidx.compose.material:material-icons-core:1.6.1")
     implementation("androidx.compose.material:material-icons-extended:1.6.1")
     implementation("io.ktor:ktor-client-cio:2.3.7")
+    implementation("io.coil-kt:coil-compose:2.5.0")
 
     // ===== ACCOMPANIST =====
     implementation("com.google.accompanist:accompanist-pager:0.32.0")

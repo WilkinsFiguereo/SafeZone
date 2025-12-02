@@ -31,6 +31,7 @@ import com.wilkins.safezone.GenericUserUi.SplashScreen
 import com.wilkins.safezone.backend.network.AppUser
 import com.wilkins.safezone.backend.network.SupabaseService
 import com.wilkins.safezone.bridge.User.Form.ReportRepository
+import com.wilkins.safezone.frontend.Moderator.NewsSave.NewsSaveScreen
 import com.wilkins.safezone.frontend.ui.Admin.CrudUser.CreateUserScreen
 import com.wilkins.safezone.frontend.ui.Admin.CrudUser.CrudUsuarios
 import com.wilkins.safezone.frontend.ui.Admin.CrudUser.UserProfileCrud
@@ -312,6 +313,17 @@ class MainActivity : ComponentActivity() {
                                 val supabaseClient = SupabaseService.getInstance()
                                 val userId = supabaseClient.auth.currentUserOrNull()?.id ?: ""
                                 FormScreen(navController, userId, user?.name ?: "Usuario", supabaseClient)
+                            }
+                        }
+
+                        composable("SaveNews") {
+                            if (!hasActiveSession()) {
+                                Log.w("MainActivity", "⚠️ Intento de acceso sin sesión a Notification")
+                                navController.navigate("login") {
+                                    popUpTo(0) { inclusive = true }
+                                }
+                            } else {
+                                NewsSaveScreen(onNavigateBack = { navController.popBackStack() })
                             }
                         }
 

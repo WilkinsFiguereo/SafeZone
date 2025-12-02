@@ -1,4 +1,4 @@
-package com.wilkins.safezone.frontend.ui.Moderator.Dasbhoard
+package com.wilkins.safezone.frontend.ui.Moderator
 
 import SessionManager.logout
 import android.content.Context
@@ -60,7 +60,7 @@ fun ModeratorSideMenu(
             title = "Gestión de Noticias",
             items = listOf(
                 ModeratorMenuItem(Icons.Default.Newspaper, "Ver Noticias", "NewsUser"),
-                ModeratorMenuItem(Icons.Default.Add, "Subir Noticia", "moderatorCreateNews"),
+                ModeratorMenuItem(Icons.Default.Add, "Subir Noticia", "SaveNews"),
                 ModeratorMenuItem(Icons.Default.Edit, "Editar Noticias", "moderatorEditNews")
             )
         ),
