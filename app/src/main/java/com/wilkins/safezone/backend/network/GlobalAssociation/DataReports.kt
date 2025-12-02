@@ -1,4 +1,4 @@
-package com.wilkins.safezone.backend.GlobalAssociation
+package com.wilkins.safezone.backend.network.GlobalAssociation
 
 import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable

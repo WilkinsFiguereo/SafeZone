@@ -152,10 +152,14 @@ fun convertToReportItem(dto: ReportDto, affairName: String?): ReportItem {
 
 @Composable
 fun ReportsSentScreen(
-    navController: NavController
+    navController: NavController,
+    initialStatusId: Int?
 ) {
     var isMenuOpen by remember { mutableStateOf(false) }
 
+    val statusToFilter = remember(initialStatusId) {
+        initialStatusId?.let { ReportStatus.fromId(it) }
+    }
     // Estados de datos
     var allReports by remember { mutableStateOf<List<ReportItem>>(emptyList()) }
     var isLoading by remember { mutableStateOf(true) }
@@ -183,29 +187,35 @@ fun ReportsSentScreen(
                 isLoading = true
                 errorMessage = null
 
-                // Cargar affairs
                 val affairsResult = repository.getAllAffairs()
                 val affairs = affairsResult.getOrNull()?.associateBy { it.id } ?: emptyMap()
 
-                // Cargar reportes
-                val reportsResult = repository.getAllReports()
+                // 3. Lógica Clave: Usar el initialStatusId para llamar al repositorio
+                val reportsResult = if (initialStatusId != null) {
+                    // Si se pasó un ID (ej: 1), llama a la función filtrada
+                    repository.getReportsByStatus(initialStatusId)
+                } else {
+                    // Si no se pasó un ID (o es nulo), trae todos los reportes
+                    repository.getAllReports()
+                }
+
                 val reports = reportsResult.getOrNull() ?: emptyList()
 
-                // Convertir a UI
                 allReports = reports.map { dto ->
                     convertToReportItem(dto, affairs[dto.idAffair]?.affairName)
                 }
 
                 isLoading = false
             } catch (e: Exception) {
-                errorMessage = "Error al cargar reportes: ${e.message}"
+                // Mensaje de error ajustado para el estado
+                val statusLabel = statusToFilter?.label ?: "todos los estados"
+                errorMessage = "Error al cargar reportes de $statusLabel: ${e.message}"
                 isLoading = false
             }
         }
     }
-
     // Cargar datos al iniciar
-    LaunchedEffect(Unit) {
+    LaunchedEffect(initialStatusId) { // Recargar si cambia el ID de estado
         loadReports()
     }
 

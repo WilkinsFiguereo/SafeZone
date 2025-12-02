@@ -392,19 +392,18 @@ class MainActivity : ComponentActivity() {
                             }
                         }
 
-                        composable("ReportSent") {
+                        composable("report_detail/{reportId}") { backStackEntry ->
                             if (!hasActiveSession()) {
                                 Log.w("MainActivity", "⚠️ Intento de acceso sin sesión a DashboardMod")
                                 navController.navigate("login") {
                                     popUpTo(0) { inclusive = true }
                                 }
                             } else {
-
-                                ReportDetailScreen(
-                                    navController = navController
-                                )
+                                val reportId = backStackEntry.arguments?.getString("reportId") ?: return@composable
+                                ReportDetailScreen(navController = navController, reportId)
                             }
                         }
+
 
                         composable("ReportSentList") {
                             if (!hasActiveSession()) {
@@ -415,7 +414,8 @@ class MainActivity : ComponentActivity() {
                             } else {
 
                                 ReportsSentScreen(
-                                    navController = navController
+                                    navController = navController,
+                                    1
                                 )
                             }
                         }

@@ -1,4 +1,4 @@
-package com.wilkins.safezone.backend.GlobalAssociation
+package com.wilkins.safezone.backend.network.GlobalAssociation
 
 
 
@@ -33,6 +33,27 @@ class ReportsRepository {
                 .select {
                     filter {
                         eq("id_reporting_status", statusId)
+                    }
+                }
+                .decodeList<ReportDto>()
+            Result.success(reports)
+        } catch (e: Exception) {
+            Result.failure(e)
+        }
+    }
+
+    suspend fun getReportsByMultipleStatus(
+        statusIds: Set<Int> = setOf(1, 2, 3, 4)
+    ): Result<List<ReportDto>> {
+        return try {
+            val reports = supabase.from("reports")
+                .select {
+                    filter {
+                        or {
+                            statusIds.forEach { id ->
+                                eq("id_reporting_status", id)
+                            }
+                        }
                     }
                 }
                 .decodeList<ReportDto>()

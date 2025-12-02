@@ -49,6 +49,7 @@ dependencies {
     implementation("io.github.jan-tennert.supabase:storage-kt:2.5.4")
     implementation(libs.androidx.datastore.core)
     implementation(libs.androidx.window)
+    implementation(libs.androidx.compose.foundation)
 
 
     // ===== KTOR CLIENT =====
