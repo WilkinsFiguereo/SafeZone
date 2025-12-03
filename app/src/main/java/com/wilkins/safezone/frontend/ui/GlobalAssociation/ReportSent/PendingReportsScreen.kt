@@ -34,128 +34,20 @@ import kotlinx.coroutines.launch
 // MODELOS UI
 // ============================================
 
-data class ReportItem(
-    val id: String,
-    val title: String,
-    val incidentType: String,
-    val location: String,
-    val date: String,
-    val time: String,
-    val status: ReportStatus,
-    val priority: ReportPriority,
-    val reporterName: String,
-    val description: String,
-    val imageUrl: String?,
-    val createdAt: String // Para ordenamiento
-)
-
-enum class ReportStatus(val id: Int, val label: String, val color: Color, val icon: ImageVector) {
-    PENDING(1, "Pendiente", Color(0xFFFFA726), Icons.Default.Pending),
-    IN_PROGRESS(2, "En Proceso", Color(0xFF2196F3), Icons.Default.Update),
-    COMPLETED(3, "Finalizado", Color(0xFF4CAF50), Icons.Default.CheckCircle),
-    CANCELLED(4, "Cancelado", Color(0xFFE53935), Icons.Default.Cancel);
-
-    companion object {
-        fun fromId(id: Int): ReportStatus {
-            return entries.find { it.id == id } ?: PENDING
-        }
-    }
-}
-
-enum class ReportPriority(val label: String, val color: Color) {
-    LOW("Baja", Color(0xFF66BB6A)),
-    MEDIUM("Media", Color(0xFFFFA726)),
-    HIGH("Alta", Color(0xFFEF5350)),
-    CRITICAL("Crítica", Color(0xFFB71C1C));
-
-    companion object {
-        fun fromAffairId(affairId: Int?): ReportPriority {
-            return when (affairId) {
-                1 -> CRITICAL  // Emergencia
-                2 -> HIGH      // Seguridad
-                3 -> MEDIUM    // Infraestructura
-                4 -> MEDIUM    // Servicios
-                else -> LOW
-            }
-        }
-    }
-}
-
-// ============================================
-// FILTROS Y PAGINACIÓN
-// ============================================
-
-data class ReportFilters(
-    val status: ReportStatus? = null,
-    val priority: ReportPriority? = null,
-    val dateRange: Pair<Long, Long>? = null,
-    val sortBy: SortOption = SortOption.DATE_DESC,
-    val searchQuery: String = ""
-)
-
-enum class SortOption(
-    val label: String,
-    val icon: ImageVector,
-    val comparator: Comparator<ReportItem>
-) {
-    DATE_DESC(
-        "Más recientes",
-        Icons.Default.ArrowDownward,
-        Comparator { a, b -> b.createdAt.compareTo(a.createdAt) }
-    ),
-    DATE_ASC(
-        "Más antiguos",
-        Icons.Default.ArrowUpward,
-        Comparator { a, b -> a.createdAt.compareTo(b.createdAt) }
-    ),
-    PRIORITY_HIGH(
-        "Prioridad alta",
-        Icons.Default.Warning,
-        Comparator { a, b -> b.priority.ordinal.compareTo(a.priority.ordinal) }
-    ),
-    PRIORITY_LOW(
-        "Prioridad baja",
-        Icons.Default.LowPriority,
-        Comparator { a, b -> a.priority.ordinal.compareTo(b.priority.ordinal) }
-    ),
-    STATUS(
-        "Por estado",
-        Icons.Default.FilterList,
-        Comparator { a, b -> a.status.ordinal.compareTo(b.status.ordinal) }
-    );
-}
-
-// ============================================
-// CONVERTIDOR DE DATOS
-// ============================================
-
-fun convertToReportItem(dto: ReportDto, affairName: String?): ReportItem {
-    return ReportItem(
-        id = dto.id,
-        title = ReportUtils.generateTitle(affairName, dto.description),
-        incidentType = affairName ?: "Sin categoría",
-        location = dto.reportLocation ?: "Ubicación no especificada",
-        date = DateUtils.formatDate(dto.createdAt),
-        time = DateUtils.formatTime(dto.createdAt),
-        status = ReportStatus.fromId(dto.idReportingStatus),
-        priority = ReportPriority.fromAffairId(dto.idAffair),
-        reporterName = ReportUtils.getReporterName(dto.isAnonymous, dto.userName),
-        description = dto.description ?: "Sin descripción",
-        imageUrl = dto.imageUrl,
-        createdAt = dto.createdAt
-    )
-}
-
 // ============================================
 // PANTALLA PRINCIPAL
 // ============================================
 
 @Composable
-fun ReportsSentScreen(
-    navController: NavController
+fun PendingReportsScreen(
+    navController: NavController,
+    initialStatusId: Int?
 ) {
     var isMenuOpen by remember { mutableStateOf(false) }
 
+    val statusToFilter = remember(initialStatusId) {
+        initialStatusId?.let { ReportStatus.fromId(it) }
+    }
     // Estados de datos
     var allReports by remember { mutableStateOf<List<ReportItem>>(emptyList()) }
     var isLoading by remember { mutableStateOf(true) }
@@ -183,29 +75,35 @@ fun ReportsSentScreen(
                 isLoading = true
                 errorMessage = null
 
-                // Cargar affairs
                 val affairsResult = repository.getAllAffairs()
                 val affairs = affairsResult.getOrNull()?.associateBy { it.id } ?: emptyMap()
 
-                // Cargar reportes
-                val reportsResult = repository.getAllReports()
+                // 3. Lógica Clave: Usar el initialStatusId para llamar al repositorio
+                val reportsResult = if (initialStatusId != null) {
+                    // Si se pasó un ID (ej: 1), llama a la función filtrada
+                    repository.getReportsByStatus(initialStatusId)
+                } else {
+                    // Si no se pasó un ID (o es nulo), trae todos los reportes
+                    repository.getAllReports()
+                }
+
                 val reports = reportsResult.getOrNull() ?: emptyList()
 
-                // Convertir a UI
                 allReports = reports.map { dto ->
                     convertToReportItem(dto, affairs[dto.idAffair]?.affairName)
                 }
 
                 isLoading = false
             } catch (e: Exception) {
-                errorMessage = "Error al cargar reportes: ${e.message}"
+                // Mensaje de error ajustado para el estado
+                val statusLabel = statusToFilter?.label ?: "todos los estados"
+                errorMessage = "Error al cargar reportes de $statusLabel: ${e.message}"
                 isLoading = false
             }
         }
     }
-
     // Cargar datos al iniciar
-    LaunchedEffect(Unit) {
+    LaunchedEffect(initialStatusId) { // Recargar si cambia el ID de estado
         loadReports()
     }
 
@@ -1282,371 +1180,6 @@ private fun AdvancedFiltersDialog(
     }
 }
 
-@Composable
-fun MiniStatCard(
-    status: ReportStatus,
-    count: Int,
-    modifier: Modifier = Modifier,
-    isSelected: Boolean = false,
-    onClick: () -> Unit,
-    isTablet: Boolean
-) {
-    val padding = if (isTablet) 16.dp else 12.dp
-    val iconSize = if (isTablet) 24.dp else 20.dp
-    val countSize = if (isTablet) 22.sp else 18.sp
-    val labelSize = if (isTablet) 12.sp else 10.sp
-
-    Card(
-        modifier = modifier.clickable(onClick = onClick),
-        colors = CardDefaults.cardColors(
-            containerColor = if (isSelected) status.color.copy(alpha = 0.15f) else Color.White
-        ),
-        elevation = CardDefaults.cardElevation(
-            defaultElevation = if (isSelected) 4.dp else 2.dp
-        ),
-        shape = RoundedCornerShape(if (isTablet) 16.dp else 12.dp),
-        border = if (isSelected) androidx.compose.foundation.BorderStroke(
-            width = if (isTablet) 2.dp else 1.5.dp,
-            color = status.color
-        ) else null
-    ) {
-        Column(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(padding),
-            horizontalAlignment = Alignment.CenterHorizontally,
-            verticalArrangement = Arrangement.Center
-        ) {
-            Icon(
-                imageVector = status.icon,
-                contentDescription = null,
-                tint = status.color,
-                modifier = Modifier.size(iconSize)
-            )
-            Spacer(modifier = Modifier.height(if (isTablet) 8.dp else 4.dp))
-            Text(
-                text = count.toString(),
-                fontSize = countSize,
-                fontWeight = FontWeight.Bold,
-                color = if (isSelected) status.color else Color(0xFF1A1A1A)
-            )
-            Text(
-                text = status.label,
-                fontSize = labelSize,
-                color = if (isSelected) status.color else Color(0xFF666666),
-                maxLines = 1,
-                overflow = TextOverflow.Ellipsis
-            )
-        }
-    }
-}
-
-@Composable
-fun ReportCard(
-    report: ReportItem,
-    onClick: () -> Unit,
-    modifier: Modifier = Modifier,
-    isTablet: Boolean
-) {
-    val padding = if (isTablet) 20.dp else 16.dp
-    val cornerRadius = if (isTablet) 20.dp else 16.dp
-    val titleSize = if (isTablet) 18.sp else 16.sp
-    val descriptionSize = if (isTablet) 15.sp else 13.sp
-    val infoSize = if (isTablet) 13.sp else 11.sp
-
-    Card(
-        modifier = modifier
-            .fillMaxWidth()
-            .clickable(onClick = onClick),
-        colors = CardDefaults.cardColors(containerColor = Color.White),
-        elevation = CardDefaults.cardElevation(defaultElevation = 2.dp),
-        shape = RoundedCornerShape(cornerRadius)
-    ) {
-        Column(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(padding)
-        ) {
-            // Primera fila: ID, Título y Prioridad
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.SpaceBetween,
-                verticalAlignment = Alignment.Top
-            ) {
-                Column(modifier = Modifier.weight(1f)) {
-                    Text(
-                        text = "Reporte #${ReportUtils.getShortId(report.id)}",
-                        fontSize = infoSize,
-                        color = Color(0xFF666666),
-                        fontWeight = FontWeight.Medium
-                    )
-                    Spacer(modifier = Modifier.height(if (isTablet) 8.dp else 4.dp))
-                    Text(
-                        text = report.title,
-                        fontSize = titleSize,
-                        fontWeight = FontWeight.Bold,
-                        color = Color(0xFF1A1A1A),
-                        maxLines = 2,
-                        overflow = TextOverflow.Ellipsis,
-                        lineHeight = if (isTablet) 24.sp else 20.sp
-                    )
-                }
-
-                Spacer(modifier = Modifier.width(12.dp))
-
-                Surface(
-                    shape = RoundedCornerShape(8.dp),
-                    color = report.priority.color.copy(alpha = 0.15f)
-                ) {
-                    Text(
-                        text = report.priority.label,
-                        modifier = Modifier.padding(
-                            horizontal = if (isTablet) 12.dp else 8.dp,
-                            vertical = if (isTablet) 6.dp else 4.dp
-                        ),
-                        fontSize = if (isTablet) 13.sp else 11.sp,
-                        fontWeight = FontWeight.Bold,
-                        color = report.priority.color
-                    )
-                }
-            }
-
-            Spacer(modifier = Modifier.height(if (isTablet) 16.dp else 12.dp))
-
-            // Tipo de incidente
-            Row(
-                verticalAlignment = Alignment.CenterVertically,
-                horizontalArrangement = Arrangement.spacedBy(8.dp)
-            ) {
-                Icon(
-                    imageVector = Icons.Default.Category,
-                    contentDescription = null,
-                    tint = PrimaryColor,
-                    modifier = Modifier.size(if (isTablet) 20.dp else 16.dp)
-                )
-                Text(
-                    text = report.incidentType,
-                    fontSize = descriptionSize,
-                    color = PrimaryColor,
-                    fontWeight = FontWeight.Medium,
-                    maxLines = 1,
-                    overflow = TextOverflow.Ellipsis
-                )
-            }
-
-            Spacer(modifier = Modifier.height(if (isTablet) 12.dp else 8.dp))
-
-            // Descripción
-            Text(
-                text = report.description,
-                fontSize = descriptionSize,
-                color = Color(0xFF666666),
-                maxLines = 2,
-                overflow = TextOverflow.Ellipsis,
-                lineHeight = if (isTablet) 22.sp else 18.sp
-            )
-
-            Spacer(modifier = Modifier.height(if (isTablet) 16.dp else 12.dp))
-
-            // Ubicación
-            Row(
-                verticalAlignment = Alignment.CenterVertically,
-                horizontalArrangement = Arrangement.spacedBy(6.dp)
-            ) {
-                Icon(
-                    imageVector = Icons.Default.LocationOn,
-                    contentDescription = null,
-                    tint = Color(0xFF888888),
-                    modifier = Modifier.size(if (isTablet) 20.dp else 16.dp)
-                )
-                Text(
-                    text = report.location,
-                    fontSize = infoSize,
-                    color = Color(0xFF666666),
-                    maxLines = 1,
-                    overflow = TextOverflow.Ellipsis,
-                    modifier = Modifier.weight(1f)
-                )
-            }
-
-            Spacer(modifier = Modifier.height(if (isTablet) 16.dp else 12.dp))
-
-            // Divisor
-            HorizontalDivider(
-                color = Color(0xFFEEEEEE),
-                thickness = 1.dp
-            )
-
-            Spacer(modifier = Modifier.height(if (isTablet) 16.dp else 12.dp))
-
-            // Fila inferior: Fecha, Reportero y Estado
-            if (isTablet) {
-                // Layout para tablet: 3 columnas
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.SpaceBetween,
-                    verticalAlignment = Alignment.CenterVertically
-                ) {
-                    // Fecha y hora
-                    Column {
-                        Row(
-                            verticalAlignment = Alignment.CenterVertically,
-                            horizontalArrangement = Arrangement.spacedBy(6.dp)
-                        ) {
-                            Icon(
-                                imageVector = Icons.Default.CalendarToday,
-                                contentDescription = null,
-                                tint = Color(0xFF888888),
-                                modifier = Modifier.size(16.dp)
-                            )
-                            Text(
-                                text = report.date,
-                                fontSize = infoSize,
-                                color = Color(0xFF666666)
-                            )
-                        }
-                        Spacer(modifier = Modifier.height(4.dp))
-                        Text(
-                            text = report.time,
-                            fontSize = (infoSize.value - 1).sp,
-                            color = Color(0xFF888888)
-                        )
-                    }
-
-                    // Reportero
-                    Column {
-                        Row(
-                            verticalAlignment = Alignment.CenterVertically,
-                            horizontalArrangement = Arrangement.spacedBy(6.dp)
-                        ) {
-                            Icon(
-                                imageVector = Icons.Default.Person,
-                                contentDescription = null,
-                                tint = Color(0xFF888888),
-                                modifier = Modifier.size(16.dp)
-                            )
-                            Text(
-                                text = report.reporterName,
-                                fontSize = infoSize,
-                                color = Color(0xFF666666),
-                                maxLines = 1,
-                                overflow = TextOverflow.Ellipsis,
-                                modifier = Modifier.widthIn(max = 120.dp)
-                            )
-                        }
-                    }
-
-                    // Estado
-                    Surface(
-                        shape = RoundedCornerShape(12.dp),
-                        color = report.status.color.copy(alpha = 0.15f)
-                    ) {
-                        Row(
-                            modifier = Modifier.padding(
-                                horizontal = 14.dp,
-                                vertical = 8.dp
-                            ),
-                            verticalAlignment = Alignment.CenterVertically,
-                            horizontalArrangement = Arrangement.spacedBy(6.dp)
-                        ) {
-                            Icon(
-                                imageVector = report.status.icon,
-                                contentDescription = null,
-                                tint = report.status.color,
-                                modifier = Modifier.size(16.dp)
-                            )
-                            Text(
-                                text = report.status.label,
-                                fontSize = infoSize,
-                                fontWeight = FontWeight.Bold,
-                                color = report.status.color
-                            )
-                        }
-                    }
-                }
-            } else {
-                // Layout para móvil: 2 filas
-                Column {
-                    // Primera fila: Fecha y Reportero
-                    Row(
-                        modifier = Modifier.fillMaxWidth(),
-                        horizontalArrangement = Arrangement.SpaceBetween,
-                        verticalAlignment = Alignment.CenterVertically
-                    ) {
-                        Row(
-                            verticalAlignment = Alignment.CenterVertically,
-                            horizontalArrangement = Arrangement.spacedBy(8.dp)
-                        ) {
-                            Icon(
-                                imageVector = Icons.Default.CalendarToday,
-                                contentDescription = null,
-                                tint = Color(0xFF888888),
-                                modifier = Modifier.size(14.dp)
-                            )
-                            Text(
-                                text = "${report.date} • ${report.time}",
-                                fontSize = infoSize,
-                                color = Color(0xFF666666)
-                            )
-                        }
-
-                        Row(
-                            verticalAlignment = Alignment.CenterVertically,
-                            horizontalArrangement = Arrangement.spacedBy(4.dp)
-                        ) {
-                            Icon(
-                                imageVector = Icons.Default.Person,
-                                contentDescription = null,
-                                tint = Color(0xFF888888),
-                                modifier = Modifier.size(14.dp)
-                            )
-                            Text(
-                                text = report.reporterName,
-                                fontSize = infoSize,
-                                color = Color(0xFF666666),
-                                maxLines = 1,
-                                overflow = TextOverflow.Ellipsis,
-                                modifier = Modifier.widthIn(max = 100.dp)
-                            )
-                        }
-                    }
-
-                    Spacer(modifier = Modifier.height(12.dp))
-
-                    // Segunda fila: Estado
-                    Row(
-                        modifier = Modifier.fillMaxWidth(),
-                        horizontalArrangement = Arrangement.End
-                    ) {
-                        Surface(
-                            shape = RoundedCornerShape(12.dp),
-                            color = report.status.color.copy(alpha = 0.15f)
-                        ) {
-                            Row(
-                                modifier = Modifier.padding(horizontal = 10.dp, vertical = 6.dp),
-                                verticalAlignment = Alignment.CenterVertically,
-                                horizontalArrangement = Arrangement.spacedBy(4.dp)
-                            ) {
-                                Icon(
-                                    imageVector = report.status.icon,
-                                    contentDescription = null,
-                                    tint = report.status.color,
-                                    modifier = Modifier.size(14.dp)
-                                )
-                                Text(
-                                    text = report.status.label,
-                                    fontSize = infoSize,
-                                    fontWeight = FontWeight.Bold,
-                                    color = report.status.color
-                                )
-                            }
-                        }
-                    }
-                }
-            }
-        }
-    }
-}
 
 // Función auxiliar para contar filtros activos
 private fun countActiveFilters(filters: ReportFilters): Int {

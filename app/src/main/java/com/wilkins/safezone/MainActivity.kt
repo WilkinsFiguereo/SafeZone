@@ -37,7 +37,11 @@ import com.wilkins.safezone.frontend.ui.Admin.CrudUser.CrudUsuarios
 import com.wilkins.safezone.frontend.ui.Admin.CrudUser.CrudUsuariosDisabled
 import com.wilkins.safezone.frontend.ui.Admin.CrudUser.UserProfileCrud
 import com.wilkins.safezone.frontend.ui.Admin.Dasbhoard.AdminDashboard
+import com.wilkins.safezone.frontend.ui.GlobalAssociation.ReportSent.PendingReportsScreen
 import com.wilkins.safezone.frontend.ui.GlobalAssociation.ReportSent.ReportDetailScreen
+import com.wilkins.safezone.frontend.ui.GlobalAssociation.ReportSent.ReportsCancelledScreen
+import com.wilkins.safezone.frontend.ui.GlobalAssociation.ReportSent.ReportsCompletedScreen
+import com.wilkins.safezone.frontend.ui.GlobalAssociation.ReportSent.ReportsProgressScreen
 import com.wilkins.safezone.frontend.ui.GlobalAssociation.ReportSent.ReportsSentScreen
 import com.wilkins.safezone.frontend.ui.Moderator.Dashboard.ModeratorDashboard
 import com.wilkins.safezone.frontend.ui.user.NavigationDrawer.NavigationDrawer
@@ -264,7 +268,7 @@ class MainActivity : ComponentActivity() {
                                 }
                             } else {
                                 val supabaseClient = SupabaseService.getInstance()
-                                Profile(navController, context, supabaseClient, )
+                                Profile(navController, context, supabaseClient )
                             }
                         }
 
@@ -392,19 +396,18 @@ class MainActivity : ComponentActivity() {
                             }
                         }
 
-                        composable("ReportSent") {
+                        composable("report_detail/{reportId}") { backStackEntry ->
                             if (!hasActiveSession()) {
                                 Log.w("MainActivity", "⚠️ Intento de acceso sin sesión a DashboardMod")
                                 navController.navigate("login") {
                                     popUpTo(0) { inclusive = true }
                                 }
                             } else {
-
-                                ReportDetailScreen(
-                                    navController = navController
-                                )
+                                val reportId = backStackEntry.arguments?.getString("reportId") ?: return@composable
+                                ReportDetailScreen(navController = navController, reportId)
                             }
                         }
+
 
                         composable("ReportSentList") {
                             if (!hasActiveSession()) {
@@ -416,6 +419,81 @@ class MainActivity : ComponentActivity() {
 
                                 ReportsSentScreen(
                                     navController = navController
+                                )
+                            }
+                        }
+
+                        composable("PendingReports") {
+                            if (!hasActiveSession()) {
+                                Log.w("MainActivity", "⚠️ Intento de acceso sin sesión a DashboardMod")
+                                navController.navigate("login") {
+                                    popUpTo(0) { inclusive = true }
+                                }
+                            } else {
+
+                                PendingReportsScreen(
+                                    navController = navController,
+                                    1
+                                )
+                            }
+                        }
+
+                        composable("ReportsProgress") {
+                            if (!hasActiveSession()) {
+                                Log.w("MainActivity", "⚠️ Intento de acceso sin sesión a DashboardMod")
+                                navController.navigate("login") {
+                                    popUpTo(0) { inclusive = true }
+                                }
+                            } else {
+
+                                ReportsProgressScreen(
+                                    navController = navController,
+                                    2
+                                )
+                            }
+                        }
+
+                        composable("ReportsCompleted") {
+                            if (!hasActiveSession()) {
+                                Log.w("MainActivity", "⚠️ Intento de acceso sin sesión a DashboardMod")
+                                navController.navigate("login") {
+                                    popUpTo(0) { inclusive = true }
+                                }
+                            } else {
+
+                                ReportsCompletedScreen(
+                                    navController = navController,
+                                    3
+                                )
+                            }
+                        }
+
+                        composable("ReportsCancelled") {
+                            if (!hasActiveSession()) {
+                                Log.w("MainActivity", "⚠️ Intento de acceso sin sesión a DashboardMod")
+                                navController.navigate("login") {
+                                    popUpTo(0) { inclusive = true }
+                                }
+                            } else {
+
+                                ReportsCancelledScreen(
+                                    navController = navController,
+                                    4
+                                )
+                            }
+                        }
+
+                        composable("PendingReports") {
+                            if (!hasActiveSession()) {
+                                Log.w("MainActivity", "⚠️ Intento de acceso sin sesión a DashboardMod")
+                                navController.navigate("login") {
+                                    popUpTo(0) { inclusive = true }
+                                }
+                            } else {
+
+                                PendingReportsScreen(
+                                    navController = navController,
+                                    1
                                 )
                             }
                         }
