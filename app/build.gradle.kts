@@ -49,7 +49,6 @@ dependencies {
     implementation("io.github.jan-tennert.supabase:storage-kt:2.5.4")
     implementation(libs.androidx.datastore.core)
 
-
     // ===== KTOR CLIENT =====
     val ktorVersion = "2.3.7"
     implementation("io.ktor:ktor-client-core:$ktorVersion")
@@ -57,6 +56,7 @@ dependencies {
     implementation("io.ktor:ktor-client-content-negotiation:$ktorVersion")
     implementation("io.ktor:ktor-serialization-kotlinx-json:$ktorVersion")
     implementation("io.ktor:ktor-client-logging:$ktorVersion")
+    implementation("io.ktor:ktor-client-cio:$ktorVersion")
 
     // ===== SERIALIZACIÓN =====
     implementation("org.jetbrains.kotlinx:kotlinx-serialization-json:1.6.3")
@@ -71,7 +71,8 @@ dependencies {
     implementation("androidx.compose.material:material:1.6.1")
     implementation("androidx.compose.material:material-icons-core:1.6.1")
     implementation("androidx.compose.material:material-icons-extended:1.6.1")
-    implementation("io.ktor:ktor-client-cio:2.3.7")
+
+    // ===== COIL (Carga de imágenes) =====
     implementation("io.coil-kt:coil-compose:2.5.0")
 
     // ===== ACCOMPANIST =====
@@ -82,10 +83,11 @@ dependencies {
     implementation("androidx.lifecycle:lifecycle-runtime-ktx:2.7.0")
     implementation("androidx.lifecycle:lifecycle-viewmodel-compose:2.7.0")
 
-    //Google
+    // ===== GOOGLE MAPS =====
     implementation("com.google.maps.android:maps-compose:4.4.1")
     implementation("com.google.android.gms:play-services-maps:19.0.0")
     implementation("com.google.android.gms:play-services-location:21.3.0")
+
     // ===== ANDROIDX CORE =====
     implementation(libs.androidx.core.ktx)
     implementation(libs.androidx.lifecycle.runtime.ktx)
