@@ -30,16 +30,8 @@ import com.wilkins.safezone.frontend.ui.GlobalAssociation.GovernmentMenu
 import com.wilkins.safezone.ui.theme.PrimaryColor
 import kotlinx.coroutines.launch
 
-// ============================================
-// MODELOS UI
-// ============================================
-
-// ============================================
-// PANTALLA PRINCIPAL
-// ============================================
-
 @Composable
-fun PendingReportsScreen(
+fun ReportsCompletedScreen(
     navController: NavController,
     initialStatusId: Int?
 ) {

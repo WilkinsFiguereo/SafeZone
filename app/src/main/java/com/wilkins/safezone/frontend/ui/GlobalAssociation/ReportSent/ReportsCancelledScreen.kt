@@ -31,15 +31,11 @@ import com.wilkins.safezone.ui.theme.PrimaryColor
 import kotlinx.coroutines.launch
 
 // ============================================
-// MODELOS UI
-// ============================================
-
-// ============================================
 // PANTALLA PRINCIPAL
 // ============================================
 
 @Composable
-fun PendingReportsScreen(
+fun ReportsCancelledScreen(
     navController: NavController,
     initialStatusId: Int?
 ) {

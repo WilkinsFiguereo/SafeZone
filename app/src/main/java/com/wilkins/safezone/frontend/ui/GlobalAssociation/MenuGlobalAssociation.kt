@@ -126,25 +126,6 @@ fun GovernmentMenuSectionComponent(
                     modifier = Modifier.weight(1f)
                 )
 
-                // Badge si existe
-                item.badge?.let { count ->
-                    if (count > 0) {
-                        Box(
-                            modifier = Modifier
-                                .size(24.dp)
-                                .clip(CircleShape)
-                                .background(Color(0xFFE53935)),
-                            contentAlignment = Alignment.Center
-                        ) {
-                            Text(
-                                text = if (count > 99) "99+" else count.toString(),
-                                color = Color.White,
-                                fontSize = 10.sp,
-                                fontWeight = FontWeight.Bold
-                            )
-                        }
-                    }
-                }
             }
         }
     }
@@ -181,11 +162,11 @@ fun GovernmentMenu(
         GovernmentMenuSection(
             title = "REPORTES",
             items = listOf(
-                GovernmentMenuItem(Icons.Default.Send, "Reportes Enviados", "reports_sent", badge = 25),
-                GovernmentMenuItem(Icons.Default.Pending, "Reportes Pendientes", "reports_pending", badge = 12),
-                GovernmentMenuItem(Icons.Default.Update, "Reportes en Proceso", "reports_in_progress", badge = 8),
-                GovernmentMenuItem(Icons.Default.CheckCircle, "Reportes Finalizados", "reports_completed"),
-                GovernmentMenuItem(Icons.Default.Cancel, "Reportes Cancelados", "reports_cancelled")
+                GovernmentMenuItem(Icons.Default.Send, "Reportes Enviados", "ReportSentList", badge = 25),
+                GovernmentMenuItem(Icons.Default.Pending, "Reportes Pendientes", "PendingReports", badge = 12),
+                GovernmentMenuItem(Icons.Default.Update, "Reportes en Proceso", "ReportsProgress", badge = 8),
+                GovernmentMenuItem(Icons.Default.CheckCircle, "Reportes Finalizados", "ReportsCompleted"),
+                GovernmentMenuItem(Icons.Default.Cancel, "Reportes Cancelados", "ReportsCancelled")
             )
         ),
         GovernmentMenuSection(
