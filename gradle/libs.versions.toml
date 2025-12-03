@@ -13,6 +13,8 @@ firebaseCrashlyticsBuildtools = "3.0.6"
 datastoreCore = "1.1.7"
 window = "1.5.1"
 foundationVersion = "1.9.5"
+uiText = "1.9.5"
+uiGraphics = "1.9.5"
 
 [libraries]
 androidx-core-ktx = { group = "androidx.core", name = "core-ktx", version.ref = "coreKtx" }
@@ -34,6 +36,8 @@ firebase-crashlytics-buildtools = { group = "com.google.firebase", name = "fireb
 androidx-datastore-core = { group = "androidx.datastore", name = "datastore-core", version.ref = "datastoreCore" }
 androidx-window = { group = "androidx.window", name = "window", version.ref = "window" }
 androidx-compose-foundation = { group = "androidx.compose.foundation", name = "foundation", version.ref = "foundationVersion" }
+androidx-compose-ui-text = { group = "androidx.compose.ui", name = "ui-text", version.ref = "uiText" }
+androidx-compose-ui-graphics = { group = "androidx.compose.ui", name = "ui-graphics", version.ref = "uiGraphics" }
 
 [plugins]
 android-application = { id = "com.android.application", version.ref = "agp" }

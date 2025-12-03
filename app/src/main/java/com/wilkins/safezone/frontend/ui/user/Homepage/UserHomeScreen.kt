@@ -1,46 +1,32 @@
 package com.wilkins.safezone.frontend.ui.user.Homepage
 
 import SessionManager.getUserProfile
-import android.Manifest
-import android.annotation.SuppressLint
 import android.content.Context
-import android.content.pm.PackageManager
-import android.util.Log
-import androidx.activity.compose.rememberLauncherForActivityResult
-import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
-import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import androidx.core.content.ContextCompat
 import androidx.navigation.NavController
-import com.google.android.gms.maps.model.CameraPosition
-import com.google.android.gms.maps.model.LatLng
-import com.google.maps.android.compose.GoogleMap
-import com.google.maps.android.compose.MapProperties
-import com.google.maps.android.compose.MapUiSettings
-import com.google.maps.android.compose.Marker
-import com.google.maps.android.compose.MarkerState
-import com.google.maps.android.compose.rememberCameraPositionState
 import com.wilkins.safezone.GenericUserUi.BottomNavigationMenu
 import com.wilkins.safezone.GenericUserUi.SideMenu
 import com.wilkins.safezone.R
 import com.wilkins.safezone.backend.network.AppUser
 import com.wilkins.safezone.backend.network.SupabaseService
+import com.wilkins.safezone.frontend.ui.Map.GoogleMapScreen
+import com.wilkins.safezone.frontend.ui.Map.MapConfig
 import com.wilkins.safezone.frontend.ui.user.Homepage.Components.NewsItem
 import com.wilkins.safezone.frontend.ui.user.Homepage.Components.NewsSlider
 import com.wilkins.safezone.frontend.ui.user.Homepage.Components.RecentReportsSection
@@ -96,8 +82,13 @@ fun UserHomeScreen(navController: NavController, context: Context, supabaseClien
             WelcomeBanner()
             Spacer(modifier = Modifier.height(16.dp))
 
-            // 🗺️ Nueva sección: Reportes cercanos con mapa
-            NearbyReportsMapSection()
+            // 🗺️ Sección: Reportes cercanos con mapa
+            NearbyReportsMapCard(
+                onViewAllClick = {
+                    // Navegar a la pantalla de mapa completo
+                    navController.navigate("MapReports")
+                }
+            )
 
             Spacer(modifier = Modifier.height(16.dp))
             RecentReportsSection()
@@ -127,35 +118,13 @@ fun UserHomeScreen(navController: NavController, context: Context, supabaseClien
     }
 }
 
-@SuppressLint("MissingPermission")
+/**
+ * Card que contiene el mapa de reportes cercanos
+ */
 @Composable
-fun NearbyReportsMapSection() {
-    val context = LocalContext.current
-
-    var hasLocationPermission by remember {
-        mutableStateOf(
-            ContextCompat.checkSelfPermission(
-                context,
-                Manifest.permission.ACCESS_FINE_LOCATION
-            ) == PackageManager.PERMISSION_GRANTED
-        )
-    }
-
-    val permissionLauncher = rememberLauncherForActivityResult(
-        contract = ActivityResultContracts.RequestPermission(),
-        onResult = { granted ->
-            Log.i("NearbyReportsMap", "📌 Resultado permiso: $granted")
-            hasLocationPermission = granted
-        }
-    )
-
-    LaunchedEffect(Unit) {
-        if (!hasLocationPermission) {
-            Log.i("NearbyReportsMap", "🚨 Solicitando permiso de ubicación")
-            permissionLauncher.launch(Manifest.permission.ACCESS_FINE_LOCATION)
-        }
-    }
-
+fun NearbyReportsMapCard(
+    onViewAllClick: () -> Unit = {}
+) {
     Card(
         modifier = Modifier
             .fillMaxWidth()
@@ -183,7 +152,7 @@ fun NearbyReportsMapSection() {
                 )
             }
 
-            // Mapa de Google
+            // Mapa integrado
             Box(
                 modifier = Modifier
                     .fillMaxWidth()
@@ -191,69 +160,41 @@ fun NearbyReportsMapSection() {
                     .padding(horizontal = 16.dp)
                     .clip(RoundedCornerShape(12.dp))
             ) {
-                GoogleMapWithReports(hasLocationPermission = hasLocationPermission)
+                GoogleMapScreen(
+                    modifier = Modifier.fillMaxSize(),
+                    config = MapConfig(
+                        showUserLocation = true,
+                        showAllReports = false,
+                        maxDistanceKm = 10f,
+                        initialZoom = 13f,
+                        showDefaultMarker = false
+                    ),
+                    onReportClick = { report ->
+                        // Manejar click en marcador
+                        // Puedes navegar a detalles del reporte o mostrar un dialog
+                        println("Click en reporte: ${report.description}")
+                    }
+                )
             }
 
-            // Información adicional
+            // Botón para ver todos
             Row(
                 modifier = Modifier
                     .fillMaxWidth()
                     .padding(16.dp),
-                horizontalArrangement = Arrangement.SpaceBetween
+                horizontalArrangement = Arrangement.End
             ) {
                 Text(
-                    text = "🔴 5 reportes activos",
-                    fontSize = 14.sp,
-                    color = Color.Gray
-                )
-                Text(
-                    text = "Ver todos →",
+                    text = "Ver mapa completo →",
                     fontSize = 14.sp,
                     fontWeight = FontWeight.SemiBold,
-                    color = Color(0xFF1976D2)
+                    color = Color(0xFF1976D2),
+                    modifier = Modifier
+                        .padding(8.dp)
+                        .clickable { onViewAllClick() }
                 )
+
             }
-        }
-    }
-}
-
-@SuppressLint("MissingPermission")
-@Composable
-fun GoogleMapWithReports(hasLocationPermission: Boolean) {
-    val santoDomingo = LatLng(18.4861, -69.9312)
-
-    // Reportes de ejemplo cercanos
-    val nearbyReports = listOf(
-        LatLng(18.4900, -69.9400) to "Bache en vía principal",
-        LatLng(18.4820, -69.9280) to "Alumbrado público dañado",
-        LatLng(18.4880, -69.9350) to "Basura acumulada",
-        LatLng(18.4840, -69.9320) to "Vandalismo en parque",
-        LatLng(18.4910, -69.9310) to "Árbol caído"
-    )
-
-    val cameraPositionState = rememberCameraPositionState {
-        position = CameraPosition.fromLatLngZoom(santoDomingo, 13f)
-    }
-
-    GoogleMap(
-        modifier = Modifier.fillMaxSize(),
-        cameraPositionState = cameraPositionState,
-        properties = MapProperties(
-            isMyLocationEnabled = hasLocationPermission
-        ),
-        uiSettings = MapUiSettings(
-            zoomControlsEnabled = true,
-            compassEnabled = true,
-            myLocationButtonEnabled = hasLocationPermission
-        )
-    ) {
-        // Marcadores de reportes cercanos
-        nearbyReports.forEach { (position, title) ->
-            Marker(
-                state = MarkerState(position = position),
-                title = title,
-                snippet = "Toca para ver detalles"
-            )
         }
     }
 }

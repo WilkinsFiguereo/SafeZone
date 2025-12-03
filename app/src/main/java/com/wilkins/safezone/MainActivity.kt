@@ -43,6 +43,7 @@ import com.wilkins.safezone.frontend.ui.GlobalAssociation.ReportSent.ReportsCanc
 import com.wilkins.safezone.frontend.ui.GlobalAssociation.ReportSent.ReportsCompletedScreen
 import com.wilkins.safezone.frontend.ui.GlobalAssociation.ReportSent.ReportsProgressScreen
 import com.wilkins.safezone.frontend.ui.GlobalAssociation.ReportSent.ReportsSentScreen
+import com.wilkins.safezone.frontend.ui.Map.GoogleMapScreen
 import com.wilkins.safezone.frontend.ui.Moderator.Dashboard.ModeratorDashboard
 import com.wilkins.safezone.frontend.ui.user.NavigationDrawer.NavigationDrawer
 import com.wilkins.safezone.frontend.ui.user.NavigationDrawer.Profile
@@ -495,6 +496,18 @@ class MainActivity : ComponentActivity() {
                                     navController = navController,
                                     1
                                 )
+                            }
+                        }
+
+                        composable("MapReports") {
+                            if (!hasActiveSession()) {
+                                Log.w("MainActivity", "⚠️ Intento de acceso sin sesión a DashboardMod")
+                                navController.navigate("login") {
+                                    popUpTo(0) { inclusive = true }
+                                }
+                            } else {
+
+                                GoogleMapScreen()
                             }
                         }
                     }
