@@ -44,10 +44,9 @@ fun ModeratorSideMenu(
     var isOpen by remember { mutableStateOf(isMenuOpen) }
     val scope = rememberCoroutineScope()
 
-    LaunchedEffect(isMenuOpen) {
-        isOpen = isMenuOpen
-    }
+    LaunchedEffect(isMenuOpen) { isOpen = isMenuOpen }
 
+    // 🔥 SECCIONES DEL MENÚ (RUTAS CORREGIDAS)
     val menuSections = listOf(
         MenuSection(
             title = "Panel Principal",
@@ -61,7 +60,8 @@ fun ModeratorSideMenu(
             items = listOf(
                 ModeratorMenuItem(Icons.Default.Newspaper, "Ver Noticias", "NewsUser"),
                 ModeratorMenuItem(Icons.Default.Add, "Subir Noticia", "SaveNews"),
-                ModeratorMenuItem(Icons.Default.Edit, "Editar Noticias", "moderatorEditNews")
+                // ❗ CORREGIDO: Editar debe ir a la lista, no a la pantalla directa
+                ModeratorMenuItem(Icons.Default.Edit, "Editar Noticias", "news_list")
             )
         ),
         MenuSection(
@@ -91,8 +91,9 @@ fun ModeratorSideMenu(
     )
 
     Box(modifier = modifier.fillMaxSize()) {
+
+        // 🔹 CONTENIDO DE TOPBAR DEJADO IGUAL
         Column(modifier = Modifier.fillMaxSize()) {
-            // Top Bar
             Row(
                 modifier = Modifier
                     .fillMaxWidth()
@@ -113,133 +114,64 @@ fun ModeratorSideMenu(
                     )
                 }
 
-                Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                    Text(
-                        text = "Panel Moderador",
-                        color = Color.White.copy(alpha = 0.8f),
-                        fontSize = 12.sp
+                Text(
+                    text = "Panel Moderador",
+                    color = Color.White.copy(alpha = 0.8f),
+                    fontSize = 18.sp,
+                    fontWeight = FontWeight.Bold
+                )
+
+                IconButton(onClick = { navController.navigate("moderatorProfile") }) {
+                    Icon(
+                        imageVector = Icons.Default.Person,
+                        contentDescription = "Perfil",
+                        tint = Color.White,
+                        modifier = Modifier.size(28.dp)
                     )
-                }
-
-                Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                    // Badge de notificaciones
-                    BadgedBox(
-                        badge = {
-                            Badge(
-                                containerColor = Color.Red,
-                                contentColor = Color.White
-                            ) {
-                                Text("5", fontSize = 10.sp)
-                            }
-                        }
-                    ) {
-                        IconButton(onClick = {
-                            navController.navigate("moderatorNotifications")
-                        }) {
-                            Icon(
-                                imageVector = Icons.Default.Notifications,
-                                contentDescription = "Notificaciones",
-                                tint = Color.White,
-                                modifier = Modifier.size(24.dp)
-                            )
-                        }
-                    }
-
-                    IconButton(onClick = {
-                        navController.navigate("moderatorProfile")
-                    }) {
-                        Box(
-                            modifier = Modifier
-                                .size(36.dp)
-                                .clip(CircleShape)
-                                .background(Color.White.copy(alpha = 0.3f)),
-                            contentAlignment = Alignment.Center
-                        ) {
-                            Icon(
-                                imageVector = Icons.Default.Person,
-                                contentDescription = "Perfil",
-                                tint = Color.White,
-                                modifier = Modifier.size(24.dp)
-                            )
-                        }
-                    }
                 }
             }
         }
 
-        // Menú lateral animado
+        // 🔥 MENÚ LATERAL ANIMADO
         AnimatedVisibility(
             visible = isOpen,
-            enter = slideInHorizontally(
-                initialOffsetX = { -it },
-                animationSpec = tween(300)
-            ),
-            exit = slideOutHorizontally(
-                targetOffsetX = { -it },
-                animationSpec = tween(300)
-            )
+            enter = slideInHorizontally(initialOffsetX = { -it }, animationSpec = tween(300)),
+            exit = slideOutHorizontally(targetOffsetX = { -it }, animationSpec = tween(300))
         ) {
+
             Row(modifier = Modifier.fillMaxSize()) {
+
+                // CUERPO DEL MENÚ
                 Column(
                     modifier = Modifier
                         .width(300.dp)
                         .fillMaxHeight()
                         .background(PrimaryColor)
                 ) {
-                    // Header del menú
-                    Column(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .padding(20.dp)
-                    ) {
-                        Row(
-                            horizontalArrangement = Arrangement.Start,
-                            verticalAlignment = Alignment.CenterVertically
-                        ) {
-                            Box(
-                                modifier = Modifier
-                                    .size(48.dp)
-                                    .clip(CircleShape)
-                                    .background(Color.White.copy(alpha = 0.2f)),
-                                contentAlignment = Alignment.Center
-                            ) {
-                                Icon(
-                                    imageVector = Icons.Default.Shield,
-                                    contentDescription = null,
-                                    tint = Color.White,
-                                    modifier = Modifier.size(28.dp)
-                                )
-                            }
-                            Spacer(modifier = Modifier.width(12.dp))
-                            Column {
-                                Text(
-                                    text = moderatorName,
-                                    color = Color.White,
-                                    fontSize = 18.sp,
-                                    fontWeight = FontWeight.Bold
-                                )
-                                Text(
-                                    text = "ID: $moderatorId",
-                                    color = Color.White.copy(alpha = 0.7f),
-                                    fontSize = 12.sp
-                                )
-                            }
-                        }
-                    }
 
-                    HorizontalDivider(
-                        color = Color.White.copy(alpha = 0.2f),
-                        thickness = 1.dp,
-                        modifier = Modifier.padding(horizontal = 16.dp)
-                    )
+                    // HEADER DEL MENÚ
+                    Column(
+                        modifier = Modifier.fillMaxWidth().padding(20.dp)
+                    ) {
+                        Text(
+                            text = moderatorName,
+                            color = Color.White,
+                            fontSize = 18.sp,
+                            fontWeight = FontWeight.Bold
+                        )
+                        Text(
+                            text = "ID: $moderatorId",
+                            color = Color.White.copy(alpha = 0.7f),
+                            fontSize = 12.sp
+                        )
+                    }
 
                     Spacer(modifier = Modifier.height(12.dp))
 
-                    // Secciones del menú con scroll
+                    // 🔹 LISTA DE SECCIONES
                     Column(
                         modifier = Modifier
                             .weight(1f)
-                            .fillMaxWidth()
                             .verticalScroll(rememberScrollState())
                     ) {
                         menuSections.forEach { section ->
@@ -251,7 +183,6 @@ fun ModeratorSideMenu(
                                     onMenuToggle(false)
 
                                     if (route == "logout") {
-                                        // Implementar lógica de cerrar sesión
                                         scope.launch {
                                             logout(context, supabaseClient)
                                             navController.navigate("login") {
@@ -259,37 +190,15 @@ fun ModeratorSideMenu(
                                             }
                                         }
                                     } else {
-                                        navController.navigate(route) {
-                                            launchSingleTop = true
-                                        }
+                                        navController.navigate(route) { launchSingleTop = true }
                                     }
                                 }
                             )
                         }
                     }
-
-                    // Footer
-                    Column(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .padding(16.dp)
-                    ) {
-                        HorizontalDivider(
-                            color = Color.White.copy(alpha = 0.2f),
-                            thickness = 1.dp,
-                            modifier = Modifier.padding(bottom = 12.dp)
-                        )
-                        Row(
-                            modifier = Modifier.fillMaxWidth(),
-                            horizontalArrangement = Arrangement.SpaceBetween,
-                            verticalAlignment = Alignment.CenterVertically
-                        ) {
-
-                        }
-                    }
                 }
 
-                // Área de cierre (click fuera del menú)
+                // SOMBRA PARA CERRAR MENU
                 Box(
                     modifier = Modifier
                         .fillMaxSize()
@@ -310,12 +219,8 @@ fun MenuSectionComponent(
     currentRoute: String,
     onItemClick: (String) -> Unit
 ) {
-    Column(
-        modifier = Modifier
-            .fillMaxWidth()
-            .padding(vertical = 8.dp)
-    ) {
-        // Título de la sección
+    Column(modifier = Modifier.fillMaxWidth().padding(vertical = 8.dp)) {
+
         Text(
             text = section.title,
             color = Color.White.copy(alpha = 0.6f),
@@ -324,17 +229,13 @@ fun MenuSectionComponent(
             modifier = Modifier.padding(horizontal = 20.dp, vertical = 8.dp)
         )
 
-        // Items de la sección
         section.items.forEach { item ->
             val isSelected = currentRoute == item.route
 
             Row(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .background(
-                        if (isSelected) Color.White.copy(alpha = 0.15f)
-                        else Color.Transparent
-                    )
+                    .background(if (isSelected) Color.White.copy(alpha = 0.15f) else Color.Transparent)
                     .clickable { onItemClick(item.route) }
                     .padding(horizontal = 20.dp, vertical = 14.dp),
                 verticalAlignment = Alignment.CenterVertically
@@ -342,15 +243,12 @@ fun MenuSectionComponent(
                 Icon(
                     imageVector = item.icon,
                     contentDescription = item.label,
-                    tint = if (isSelected) Color.White else Color.White.copy(alpha = 0.8f),
-                    modifier = Modifier.size(22.dp)
+                    tint = if (isSelected) Color.White else Color.White.copy(alpha = 0.8f)
                 )
                 Spacer(modifier = Modifier.width(16.dp))
                 Text(
                     text = item.label,
-                    color = if (isSelected) Color.White else Color.White.copy(alpha = 0.8f),
-                    fontSize = 15.sp,
-                    fontWeight = if (isSelected) FontWeight.SemiBold else FontWeight.Normal
+                    color = if (isSelected) Color.White else Color.White.copy(alpha = 0.8f)
                 )
             }
         }
