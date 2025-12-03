@@ -405,19 +405,6 @@ fun SimpleGoogleMapScreen(
     )
 }
 
-/**
- * InfoWindow personalizado para los reportes
- */
-/**
- * InfoWindow personalizado para los reportes - Versión Mejorada
- */
-/**
- * InfoWindow personalizado para los reportes - Versión Rediseñada
- */
-// Reemplaza la función CustomReportInfoWindow completa con esta versión:
-
-// Reemplaza la función CustomReportInfoWindow completa con esta versión:
-
 @Composable
 fun CustomReportInfoWindow(marker: ReportMarker) {
     Card(
@@ -517,6 +504,7 @@ fun CustomReportInfoWindow(marker: ReportMarker) {
                             )
                         }
                     }
+                    Log.i("Affair", "✅ affair cargado ${marker.affairName}")
 
                     // Badge de tipo (si existe)
                     marker.affairName?.let { affairName ->
@@ -570,25 +558,44 @@ fun CustomReportInfoWindow(marker: ReportMarker) {
                     }
                 }
 
-                // Tipo de Affair
+                // Tipo de Affair - Más destacado
                 marker.affairName?.let { affairName ->
-                    Row(
-                        verticalAlignment = Alignment.CenterVertically,
-                        modifier = Modifier.padding(bottom = 8.dp)
+                    Card(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(bottom = 8.dp),
+                        shape = RoundedCornerShape(10.dp),
+                        colors = CardDefaults.cardColors(
+                            containerColor = Color(0xFF1976D2).copy(alpha = 0.1f)
+                        ),
+                        border = BorderStroke(1.dp, Color(0xFF1976D2).copy(alpha = 0.3f))
                     ) {
-                        Icon(
-                            imageVector = Icons.Default.Category,
-                            contentDescription = "Tipo",
-                            tint = Color(0xFF1976D2),
-                            modifier = Modifier.size(16.dp)
-                        )
-                        Spacer(modifier = Modifier.width(6.dp))
-                        Text(
-                            text = affairName,
-                            fontSize = 13.sp,
-                            color = Color(0xFF1976D2),
-                            fontWeight = FontWeight.Bold
-                        )
+                        Row(
+                            verticalAlignment = Alignment.CenterVertically,
+                            modifier = Modifier.padding(horizontal = 12.dp, vertical = 8.dp)
+                        ) {
+                            Icon(
+                                imageVector = Icons.Default.Category,
+                                contentDescription = "Tipo de incidente",
+                                tint = Color(0xFF1976D2),
+                                modifier = Modifier.size(18.dp)
+                            )
+                            Spacer(modifier = Modifier.width(8.dp))
+                            Column {
+                                Text(
+                                    text = "Tipo de Incidente",
+                                    fontSize = 10.sp,
+                                    color = Color(0xFF757575),
+                                    fontWeight = FontWeight.Medium
+                                )
+                                Text(
+                                    text = affairName,
+                                    fontSize = 14.sp,
+                                    color = Color(0xFF1976D2),
+                                    fontWeight = FontWeight.Bold
+                                )
+                            }
+                        }
                     }
                 }
 
@@ -706,26 +713,12 @@ fun CustomReportInfoWindow(marker: ReportMarker) {
                         )
                     }
 
-                    // Botón de acción
-                    Box(
-                        modifier = Modifier
-                            .clip(RoundedCornerShape(8.dp))
-                            .background(Color(0xFF1976D2))
-                            .clickable { /* Acción al hacer click */ }
-                            .padding(horizontal = 12.dp, vertical = 6.dp)
-                    ) {
-                        Text(
-                            text = "Ver detalles",
-                            fontSize = 12.sp,
-                            color = Color.White,
-                            fontWeight = FontWeight.Medium
-                        )
-                    }
                 }
             }
         }
     }
 }
+
 /**
  * Formatear fecha y hora de forma más legible
  */
