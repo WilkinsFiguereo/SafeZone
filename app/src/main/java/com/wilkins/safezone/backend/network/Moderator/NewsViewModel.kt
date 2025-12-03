@@ -10,6 +10,9 @@ import io.github.jan.supabase.gotrue.auth
 import io.github.jan.supabase.postgrest.from
 import io.github.jan.supabase.storage.storage
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import java.io.File
@@ -21,6 +24,36 @@ class NewsViewModel : ViewModel() {
     private val supabase = SupabaseService.getInstance()
     private val TAG = "NewsViewModel"
 
+    private val _newsList = MutableStateFlow<List<News>>(emptyList())
+    val newsList: StateFlow<List<News>> = _newsList.asStateFlow()
+
+    private val _isLoading = MutableStateFlow(false)
+    val isLoading: StateFlow<Boolean> = _isLoading.asStateFlow()
+
+    // Cargar todas las noticias
+    fun loadNews() {
+        viewModelScope.launch {
+            try {
+                _isLoading.value = true
+                Log.d(TAG, "📥 Cargando noticias...")
+
+                val news = supabase.from("news")
+                    .select()
+                    .decodeList<News>()
+
+                _newsList.value = news.sortedByDescending { it.createdAt }
+                Log.d(TAG, "✅ ${news.size} noticias cargadas")
+
+            } catch (e: Exception) {
+                Log.e(TAG, "❌ Error al cargar noticias: ${e.message}", e)
+                _newsList.value = emptyList()
+            } finally {
+                _isLoading.value = false
+            }
+        }
+    }
+
+    // Crear noticia
     fun createNews(
         context: Context,
         title: String,
@@ -34,68 +67,148 @@ class NewsViewModel : ViewModel() {
             try {
                 Log.d(TAG, "🔄 Iniciando creación de noticia...")
 
-                // 1. Obtener el ID del usuario actual
                 val currentUser = supabase.auth.currentUserOrNull()
                 if (currentUser == null) {
-                    Log.e(TAG, "❌ No hay usuario autenticado")
                     withContext(Dispatchers.Main) {
-                        onError("No hay usuario autenticado. Por favor inicia sesión.")
+                        onError("No hay usuario autenticado.")
                     }
                     return@launch
                 }
 
-                val userId = currentUser.id
-                Log.d(TAG, "✅ Usuario autenticado: $userId")
-
-                // 2. Subir la imagen a Supabase Storage
-                Log.d(TAG, "📤 Subiendo imagen...")
                 val imageUrl = uploadImage(context, imageUri)
                 if (imageUrl == null) {
-                    Log.e(TAG, "❌ Error al subir la imagen")
                     withContext(Dispatchers.Main) {
-                        onError("Error al subir la imagen. Verifica que el bucket 'news-images' existe y es público.")
+                        onError("Error al subir la imagen.")
                     }
                     return@launch
                 }
 
-                Log.d(TAG, "✅ Imagen subida: $imageUrl")
-
-                // 3. Crear el objeto de noticia
                 val news = News(
                     title = title,
                     description = description,
                     imageUrl = imageUrl,
                     isImportant = isImportant,
-                    userId = userId
+                    userId = currentUser.id
                 )
 
-                Log.d(TAG, "💾 Insertando noticia en BD...")
-
-                // 4. Insertar en la base de datos
                 supabase.from("news").insert(news)
-
                 Log.d(TAG, "✅ Noticia creada exitosamente")
 
-                // 5. Notificar éxito
+                loadNews()
+
                 withContext(Dispatchers.Main) {
                     onSuccess()
                 }
 
             } catch (e: Exception) {
                 Log.e(TAG, "❌ Error en createNews: ${e.message}", e)
-                e.printStackTrace()
                 withContext(Dispatchers.Main) {
-                    val errorMsg = when {
-                        e.message?.contains("404") == true -> "El bucket 'news-images' no existe. Créalo en Supabase Storage."
-                        e.message?.contains("401") == true || e.message?.contains("403") == true ->
-                            "No tienes permisos. Configura las políticas del bucket."
-                        e.message?.contains("network") == true || e.message?.contains("timeout") == true ->
-                            "Error de conexión. Verifica tu internet."
-                        e.message?.contains("duplicate") == true ->
-                            "Ya existe una noticia con estos datos."
-                        else -> "Error: ${e.message ?: "Error desconocido"}"
+                    onError("Error: ${e.message ?: "Error desconocido"}")
+                }
+            }
+        }
+    }
+
+    // Actualizar noticia
+    fun updateNews(
+        context: Context,
+        newsId: Int,
+        title: String,
+        description: String,
+        isImportant: Boolean,
+        newImageUri: Uri?,
+        currentImageUrl: String,
+        onSuccess: () -> Unit,
+        onError: (String) -> Unit
+    ) {
+        viewModelScope.launch {
+            try {
+                Log.d(TAG, "🔄 Actualizando noticia ID: $newsId")
+
+                val currentUser = supabase.auth.currentUserOrNull()
+                if (currentUser == null) {
+                    withContext(Dispatchers.Main) {
+                        onError("No hay usuario autenticado.")
                     }
-                    onError(errorMsg)
+                    return@launch
+                }
+
+                val finalImageUrl = if (newImageUri != null) {
+                    Log.d(TAG, "📤 Subiendo nueva imagen...")
+                    uploadImage(context, newImageUri) ?: currentImageUrl
+                } else {
+                    currentImageUrl
+                }
+
+                val updatedNews = News(
+                    id = newsId,
+                    title = title,
+                    description = description,
+                    imageUrl = finalImageUrl,
+                    isImportant = isImportant,
+                    userId = currentUser.id
+                )
+
+                supabase.from("news")
+                    .update(updatedNews) {
+                        filter {
+                            eq("id", newsId)
+                        }
+                    }
+
+                Log.d(TAG, "✅ Noticia actualizada exitosamente")
+                loadNews()
+
+                withContext(Dispatchers.Main) {
+                    onSuccess()
+                }
+
+            } catch (e: Exception) {
+                Log.e(TAG, "❌ Error al actualizar: ${e.message}", e)
+                withContext(Dispatchers.Main) {
+                    onError("Error: ${e.message}")
+                }
+            }
+        }
+    }
+
+    // Eliminar noticia
+    fun deleteNews(
+        newsId: Int,
+        imageUrl: String,
+        onSuccess: () -> Unit,
+        onError: (String) -> Unit
+    ) {
+        viewModelScope.launch {
+            try {
+                Log.d(TAG, "🗑️ Eliminando noticia ID: $newsId")
+
+                supabase.from("news").delete {
+                    filter {
+                        eq("id", newsId)
+                    }
+                }
+
+                try {
+                    val fileName = imageUrl.substringAfterLast("/")
+                    if (fileName.isNotBlank()) {
+                        supabase.storage.from("news-images").delete(fileName)
+                    }
+                } catch (e: Exception) {
+                    Log.w(TAG, "⚠️ No se pudo eliminar imagen: ${e.message}")
+                }
+
+                Log.d(TAG, "✅ Noticia eliminada")
+                loadNews()
+
+                withContext(Dispatchers.Main) {
+                    onSuccess()
+                }
+
+            } catch (e: Exception) {
+                Log.e(TAG, "❌ Error al eliminar: ${e.message}", e)
+                withContext(Dispatchers.Main) {
+                    onError("Error: ${e.message}")
                 }
             }
         }
@@ -105,63 +218,35 @@ class NewsViewModel : ViewModel() {
         return withContext(Dispatchers.IO) {
             var file: File? = null
             try {
-                Log.d(TAG, "📸 Procesando imagen desde URI: $imageUri")
-
-                // Generar nombre único para la imagen
                 val timestamp = System.currentTimeMillis()
                 val randomId = UUID.randomUUID().toString().take(8)
                 val fileName = "news_${timestamp}_${randomId}.jpg"
-                Log.d(TAG, "📝 Nombre de archivo: $fileName")
 
-                // Leer el archivo de la URI
                 val inputStream = context.contentResolver.openInputStream(imageUri)
-                if (inputStream == null) {
-                    Log.e(TAG, "❌ No se pudo abrir el inputStream de la URI")
-                    return@withContext null
-                }
+                    ?: return@withContext null
 
                 file = File(context.cacheDir, fileName)
                 val outputStream = FileOutputStream(file)
 
-                var bytesCopied = 0L
                 inputStream.use { input ->
                     outputStream.use { output ->
-                        bytesCopied = input.copyTo(output)
-                        Log.d(TAG, "✅ Bytes copiados: $bytesCopied")
+                        input.copyTo(output)
                     }
                 }
 
-                // Verificar que el archivo existe y tiene contenido
-                if (!file.exists()) {
-                    Log.e(TAG, "❌ El archivo no se creó correctamente")
+                if (!file.exists() || file.length() == 0L) {
+                    file?.delete()
                     return@withContext null
                 }
 
-                val fileSize = file.length()
-                Log.d(TAG, "📦 Tamaño del archivo: $fileSize bytes (${fileSize / 1024}KB)")
-
-                if (fileSize == 0L) {
-                    Log.e(TAG, "❌ El archivo está vacío")
+                val maxSize = 5 * 1024 * 1024
+                if (file.length() > maxSize) {
                     file.delete()
                     return@withContext null
                 }
 
-                // Verificar tamaño máximo (5MB)
-                val maxSize = 5 * 1024 * 1024 // 5MB
-                if (fileSize > maxSize) {
-                    Log.e(TAG, "❌ El archivo es muy grande: ${fileSize / 1024 / 1024}MB (máximo 5MB)")
-                    file.delete()
-                    return@withContext null
-                }
-
-                // Subir a Supabase Storage
-                Log.d(TAG, "☁️ Conectando con Supabase Storage bucket: news-images")
                 val bucket = supabase.storage.from("news-images")
-
-                Log.d(TAG, "⬆️ Subiendo archivo al bucket (${fileSize / 1024}KB)...")
-
                 val fileBytes = file.readBytes()
-                Log.d(TAG, "📊 Bytes leídos para upload: ${fileBytes.size}")
 
                 bucket.upload(
                     path = fileName,
@@ -169,40 +254,15 @@ class NewsViewModel : ViewModel() {
                     upsert = false
                 )
 
-                Log.d(TAG, "✅ Archivo subido exitosamente a Supabase")
-
-                // Obtener la URL pública
                 val publicUrl = bucket.publicUrl(fileName)
-                Log.d(TAG, "🔗 URL pública generada: $publicUrl")
 
-                // Limpiar archivo temporal
-                if (file.exists()) {
-                    val deleted = file.delete()
-                    Log.d(TAG, "🧹 Archivo temporal eliminado: $deleted")
-                }
+                file.delete()
 
-                if (publicUrl.isBlank()) {
-                    Log.e(TAG, "❌ La URL pública está vacía")
-                    return@withContext null
-                }
-
-                publicUrl
+                publicUrl.takeIf { it.isNotBlank() }
 
             } catch (e: Exception) {
-                Log.e(TAG, "❌ ERROR DETALLADO al subir imagen:", e)
-                Log.e(TAG, "   Tipo de error: ${e.javaClass.simpleName}")
-                Log.e(TAG, "   Mensaje: ${e.message}")
-                Log.e(TAG, "   Causa: ${e.cause?.message}")
-                e.printStackTrace()
-
-                // Limpiar archivo si existe
-                file?.let {
-                    if (it.exists()) {
-                        val deleted = it.delete()
-                        Log.d(TAG, "🧹 Archivo temporal eliminado después del error: $deleted")
-                    }
-                }
-
+                Log.e(TAG, "❌ Error al subir imagen: ${e.message}", e)
+                file?.delete()
                 null
             }
         }
