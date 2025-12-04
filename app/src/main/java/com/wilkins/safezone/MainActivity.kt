@@ -56,6 +56,8 @@ import com.wilkins.safezone.frontend.ui.user.Form.FormScreen
 import com.wilkins.safezone.frontend.ui.user.Homepage.UserHomeScreen
 import com.wilkins.safezone.frontend.ui.user.News.NewsScreen
 import com.wilkins.safezone.frontend.ui.user.Notification.NotificationsScreen
+import com.wilkins.safezone.frontend.ui.user.profile.ProfileScreen
+import com.wilkins.safezone.frontend.ui.user.profile.ProfileScreenWithMenu
 import com.wilkins.safezone.ui.theme.SafeZoneTheme
 import com.wilkins.safezone.ui.theme.PrimaryColor
 import io.github.jan.supabase.gotrue.auth
@@ -272,6 +274,36 @@ class MainActivity : ComponentActivity() {
                                 Profile(navController, context, supabaseClient )
                             }
                         }
+
+                        composable("MyProfile") {
+                            if (!hasActiveSession()) {
+                                Log.w("MainActivity", "⚠️ Intento de acceso sin sesión a profile")
+                                navController.navigate("login") {
+                                    popUpTo(0) { inclusive = true }
+                                }
+                            } else {
+
+                                val supabase = SupabaseService.getInstance()
+                                val supabaseClient = SupabaseService.getInstance()
+
+                                val userId = supabase.auth.currentUserOrNull()?.id ?: ""
+                                val userName = user?.name ?: "Usuario"
+
+                                ProfileScreenWithMenu(
+                                    userId = userId,
+                                    userName = userName,
+                                    navController = navController,
+                                    supabaseClient = supabaseClient,
+                                    onNavigateToChangePassword = {
+                                        navController.navigate("change_password")
+                                    },
+                                    onNavigateToChangeEmail = {
+                                        navController.navigate("change_email")
+                                    }
+                                )
+                            }
+                        }
+
 
                         // ⚙️ CONFIGURACIÓN
                         composable("settings") {

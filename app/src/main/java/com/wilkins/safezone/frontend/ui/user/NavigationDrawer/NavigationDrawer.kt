@@ -215,7 +215,7 @@ fun NavigationDrawer(navController: NavController, context: Context, supabaseCli
                                 logout(context, supabaseClient)
 
                                 navController.navigate("login") {
-                                    popUpTo("profile") { inclusive = true }
+                                    popUpTo("MyProfile") { inclusive = true }
                                 }
                             }
                         }

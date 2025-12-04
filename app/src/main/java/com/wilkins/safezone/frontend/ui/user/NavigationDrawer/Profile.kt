@@ -20,6 +20,7 @@ import com.wilkins.safezone.GenericUserUi.BottomNavigationMenu
 import com.wilkins.safezone.GenericUserUi.SideMenu
 import com.wilkins.safezone.backend.network.AppUser
 import com.wilkins.safezone.backend.network.SupabaseService
+import com.wilkins.safezone.frontend.ui.user.profile.ProfileScreen
 import io.github.jan.supabase.SupabaseClient
 import io.github.jan.supabase.gotrue.auth
 
@@ -44,7 +45,15 @@ fun Profile(navController: NavController, context: Context, supabaseClient: Supa
             Spacer(modifier = Modifier.height(75.dp))
 
             Spacer(modifier = Modifier.height(12.dp))
-            ProfileSection(isFollowing = true)
+            ProfileScreen(
+                userId = userId,
+                onNavigateToChangePassword = {
+                    navController.navigate("change_password")
+                },
+                onNavigateToChangeEmail = {
+                    navController.navigate("change_email")
+                }
+            )
         }
 
         // 🔸 Menú lateral superior (fijo arriba)

@@ -53,14 +53,14 @@ fun SideMenu(
             title = "Principal",
             items = listOf(
                 MenuItem(Icons.Default.Home, "Inicio", "userHome/$userId"),
-                MenuItem(Icons.Default.Person, "Mi Perfil", "profile")
+                MenuItem(Icons.Default.Person, "Mi Perfil", "MyProfile")
             )
         ),
         MenuSection(
             title = "Información",
             items = listOf(
                 MenuItem(Icons.Default.Newspaper, "Noticias", "NewsUser"),
-                MenuItem(Icons.Default.Place, "Reportes en tu zona", "ReportsUser")
+                MenuItem(Icons.Default.Place, "Reportes en tu zona", "MapReports")
             )
         ),
         MenuSection(
