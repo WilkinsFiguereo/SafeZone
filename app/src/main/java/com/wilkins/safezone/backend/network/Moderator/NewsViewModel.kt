@@ -41,11 +41,17 @@ class NewsViewModel : ViewModel() {
                     .select()
                     .decodeList<News>()
 
-                _newsList.value = news.sortedByDescending { it.createdAt }
+                _newsList.value = news.sortedByDescending { it.createdAt ?: "" }
                 Log.d(TAG, "✅ ${news.size} noticias cargadas")
+
+                // Log detallado de cada noticia para debug
+                news.forEach {
+                    Log.d(TAG, "📰 Noticia: id=${it.id}, title=${it.title}, important=${it.isImportant}")
+                }
 
             } catch (e: Exception) {
                 Log.e(TAG, "❌ Error al cargar noticias: ${e.message}", e)
+                e.printStackTrace()
                 _newsList.value = emptyList()
             } finally {
                 _isLoading.value = false
@@ -102,6 +108,7 @@ class NewsViewModel : ViewModel() {
 
             } catch (e: Exception) {
                 Log.e(TAG, "❌ Error en createNews: ${e.message}", e)
+                e.printStackTrace()
                 withContext(Dispatchers.Main) {
                     onError("Error: ${e.message ?: "Error desconocido"}")
                 }
@@ -112,7 +119,7 @@ class NewsViewModel : ViewModel() {
     // Actualizar noticia
     fun updateNews(
         context: Context,
-        newsId: Int,
+        newsId: String,  // ← CAMBIADO de Int a String
         title: String,
         description: String,
         isImportant: Boolean,
@@ -165,6 +172,7 @@ class NewsViewModel : ViewModel() {
 
             } catch (e: Exception) {
                 Log.e(TAG, "❌ Error al actualizar: ${e.message}", e)
+                e.printStackTrace()
                 withContext(Dispatchers.Main) {
                     onError("Error: ${e.message}")
                 }
@@ -174,7 +182,7 @@ class NewsViewModel : ViewModel() {
 
     // Eliminar noticia
     fun deleteNews(
-        newsId: Int,
+        newsId: String,  // ← CAMBIADO de Int a String
         imageUrl: String,
         onSuccess: () -> Unit,
         onError: (String) -> Unit
@@ -193,6 +201,7 @@ class NewsViewModel : ViewModel() {
                     val fileName = imageUrl.substringAfterLast("/")
                     if (fileName.isNotBlank()) {
                         supabase.storage.from("news-images").delete(fileName)
+                        Log.d(TAG, "🗑️ Imagen eliminada: $fileName")
                     }
                 } catch (e: Exception) {
                     Log.w(TAG, "⚠️ No se pudo eliminar imagen: ${e.message}")
@@ -207,6 +216,7 @@ class NewsViewModel : ViewModel() {
 
             } catch (e: Exception) {
                 Log.e(TAG, "❌ Error al eliminar: ${e.message}", e)
+                e.printStackTrace()
                 withContext(Dispatchers.Main) {
                     onError("Error: ${e.message}")
                 }
@@ -262,6 +272,7 @@ class NewsViewModel : ViewModel() {
 
             } catch (e: Exception) {
                 Log.e(TAG, "❌ Error al subir imagen: ${e.message}", e)
+                e.printStackTrace()
                 file?.delete()
                 null
             }

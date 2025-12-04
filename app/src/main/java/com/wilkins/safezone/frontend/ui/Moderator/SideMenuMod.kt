@@ -46,7 +46,7 @@ fun ModeratorSideMenu(
 
     LaunchedEffect(isMenuOpen) { isOpen = isMenuOpen }
 
-    // 🔥 SECCIONES DEL MENÚ (RUTAS CORREGIDAS)
+    // 🔥 SECCIONES DEL MENÚ
     val menuSections = listOf(
         MenuSection(
             title = "Panel Principal",
@@ -60,7 +60,6 @@ fun ModeratorSideMenu(
             items = listOf(
                 ModeratorMenuItem(Icons.Default.Newspaper, "Ver Noticias", "NewsUser"),
                 ModeratorMenuItem(Icons.Default.Add, "Subir Noticia", "SaveNews"),
-                // ❗ CORREGIDO: Editar debe ir a la lista, no a la pantalla directa
                 ModeratorMenuItem(Icons.Default.Edit, "Editar Noticias", "news_list")
             )
         ),
@@ -92,7 +91,7 @@ fun ModeratorSideMenu(
 
     Box(modifier = modifier.fillMaxSize()) {
 
-        // 🔹 CONTENIDO DE TOPBAR DEJADO IGUAL
+        // 🔹 TOPBAR
         Column(modifier = Modifier.fillMaxSize()) {
             Row(
                 modifier = Modifier
@@ -141,7 +140,6 @@ fun ModeratorSideMenu(
 
             Row(modifier = Modifier.fillMaxSize()) {
 
-                // CUERPO DEL MENÚ
                 Column(
                     modifier = Modifier
                         .width(300.dp)
@@ -149,7 +147,6 @@ fun ModeratorSideMenu(
                         .background(PrimaryColor)
                 ) {
 
-                    // HEADER DEL MENÚ
                     Column(
                         modifier = Modifier.fillMaxWidth().padding(20.dp)
                     ) {
@@ -168,7 +165,6 @@ fun ModeratorSideMenu(
 
                     Spacer(modifier = Modifier.height(12.dp))
 
-                    // 🔹 LISTA DE SECCIONES
                     Column(
                         modifier = Modifier
                             .weight(1f)
@@ -198,7 +194,6 @@ fun ModeratorSideMenu(
                     }
                 }
 
-                // SOMBRA PARA CERRAR MENU
                 Box(
                     modifier = Modifier
                         .fillMaxSize()
