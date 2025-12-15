@@ -25,6 +25,7 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.AccessTime
+import androidx.compose.material.icons.filled.ArrowBack
 import androidx.compose.material.icons.filled.CalendarToday
 import androidx.compose.material.icons.filled.Category
 import androidx.compose.material.icons.filled.Description
@@ -34,12 +35,16 @@ import androidx.compose.material.icons.filled.Photo
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.CircularProgressIndicator
+import androidx.compose.material3.FloatingActionButton
+import androidx.compose.material3.FloatingActionButtonDefaults
 import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
 import androidx.compose.material3.Text
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.toArgb
@@ -114,13 +119,15 @@ data class MapConfig(
  * @param modifier Modificador para el layout
  * @param config Configuración del mapa
  * @param onReportClick Callback cuando se hace click en un marcador
+ * @param onBackClick Callback cuando se presiona el botón de volver
  */
 @SuppressLint("MissingPermission")
 @Composable
 fun GoogleMapScreen(
     modifier: Modifier = Modifier,
     config: MapConfig = MapConfig(),
-    onReportClick: ((ReportDto) -> Unit)? = null
+    onReportClick: ((ReportDto) -> Unit)? = null,
+    onBackClick: (() -> Unit)? = null
 ) {
     Log.i("GoogleMapScreen", "🔵 Composable iniciado")
 
@@ -252,7 +259,7 @@ fun GoogleMapScreen(
                                                 title = report.userName ?: "Usuario anónimo",
                                                 description = reportDescription,
                                                 distance = distance,
-                                                userImageUrl = null, // TODO: Agregar URL de perfil cuando esté disponible
+                                                userImageUrl = null,
                                                 reportImageUrl = report.imageUrl,
                                                 createdAt = report.createdAt,
                                                 affairId = report.idAffair,
@@ -373,6 +380,30 @@ fun GoogleMapScreen(
             }
         }
 
+        // Botón de volver - Posicionado en la esquina superior izquierda
+        onBackClick?.let { backAction ->
+            FloatingActionButton(
+                onClick = backAction,
+                modifier = Modifier
+                    .align(Alignment.TopStart)
+                    .padding(top = 40.dp, start = 16.dp)
+                    .shadow(12.dp, CircleShape)
+                    .size(56.dp),
+                containerColor = Color.White,
+                contentColor = Color(0xFF1976D2),
+                elevation = FloatingActionButtonDefaults.elevation(
+                    defaultElevation = 8.dp,
+                    pressedElevation = 12.dp
+                )
+            ) {
+                Icon(
+                    imageVector = Icons.Default.ArrowBack,
+                    contentDescription = "Volver",
+                    modifier = Modifier.size(28.dp)
+                )
+            }
+        }
+
         // Indicador de carga
         if (isLoading) {
             CircularProgressIndicator(
@@ -390,7 +421,8 @@ fun GoogleMapScreen(
 @Composable
 fun SimpleGoogleMapScreen(
     modifier: Modifier = Modifier,
-    onReportClick: ((ReportDto) -> Unit)? = null
+    onReportClick: ((ReportDto) -> Unit)? = null,
+    onBackClick: (() -> Unit)? = null
 ) {
     GoogleMapScreen(
         modifier = modifier,
@@ -401,7 +433,8 @@ fun SimpleGoogleMapScreen(
             initialZoom = 12f,
             showDefaultMarker = true
         ),
-        onReportClick = onReportClick
+        onReportClick = onReportClick,
+        onBackClick = onBackClick
     )
 }
 
@@ -629,7 +662,7 @@ fun CustomReportInfoWindow(marker: ReportMarker) {
                     )
                 }
 
-                // Imagen del reporte - VERSIÓN CORREGIDA
+                // Imagen del reporte
                 marker.reportImageUrl?.let { imageUrl ->
                     Card(
                         modifier = Modifier
@@ -644,7 +677,6 @@ fun CustomReportInfoWindow(marker: ReportMarker) {
                                 .background(Color(0xFFF5F5F5)),
                             contentAlignment = Alignment.Center
                         ) {
-                            // Usar AsyncImage directamente en lugar de painter
                             coil.compose.AsyncImage(
                                 model = ImageRequest.Builder(LocalContext.current)
                                     .data(imageUrl)
@@ -655,7 +687,6 @@ fun CustomReportInfoWindow(marker: ReportMarker) {
                                 contentDescription = "Imagen del reporte",
                                 modifier = Modifier.fillMaxSize(),
                                 contentScale = ContentScale.Crop,
-                                // Estados de carga manejados por AsyncImage internamente
                             )
 
                             // Overlay de protección
@@ -724,7 +755,6 @@ fun CustomReportInfoWindow(marker: ReportMarker) {
  */
 private fun formatDateTime(dateString: String): String {
     return try {
-        // Intentar parsear diferentes formatos
         val formats = listOf(
             "yyyy-MM-dd HH:mm:ss",
             "yyyy-MM-dd",
@@ -739,7 +769,6 @@ private fun formatDateTime(dateString: String): String {
                     val now = Calendar.getInstance()
                     val reportDate = Calendar.getInstance().apply { time = date }
 
-                    // Si es hoy, mostrar solo la hora
                     return if (now.get(Calendar.YEAR) == reportDate.get(Calendar.YEAR) &&
                         now.get(Calendar.MONTH) == reportDate.get(Calendar.MONTH) &&
                         now.get(Calendar.DAY_OF_MONTH) == reportDate.get(Calendar.DAY_OF_MONTH)) {
@@ -753,12 +782,12 @@ private fun formatDateTime(dateString: String): String {
             }
         }
 
-        // Si no se pudo parsear, devolver el string original
         dateString
     } catch (e: Exception) {
         dateString
     }
 }
+
 /**
  * Componente Badge para mostrar el tipo de asunto
  */
@@ -793,10 +822,9 @@ private fun createCustomMarkerIcon(context: Context, imageUrl: String?): BitmapD
     val bitmap = Bitmap.createBitmap(size, size, Bitmap.Config.ARGB_8888)
     val canvas = Canvas(bitmap)
 
-    // Dibujar círculo de fondo
     val paint = Paint().apply {
         isAntiAlias = true
-        color = android.graphics.Color.parseColor("#E53935") // Rojo para reportes
+        color = android.graphics.Color.parseColor("#E53935")
         style = Paint.Style.FILL
     }
 
@@ -843,7 +871,7 @@ private fun formatDate(dateString: String): String {
     return try {
         val parts = dateString.split(" ")
         if (parts.isNotEmpty()) {
-            parts[0] // Retorna solo la fecha (YYYY-MM-DD)
+            parts[0]
         } else {
             dateString
         }
@@ -856,7 +884,7 @@ private fun formatDate(dateString: String): String {
  * Calcular distancia entre dos puntos usando la fórmula de Haversine
  */
 private fun calculateDistance(lat1: Double, lon1: Double, lat2: Double, lon2: Double): Float {
-    val earthRadius = 6371.0 // Radio de la Tierra en km
+    val earthRadius = 6371.0
 
     val dLat = Math.toRadians(lat2 - lat1)
     val dLon = Math.toRadians(lon2 - lon1)

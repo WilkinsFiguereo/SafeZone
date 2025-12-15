@@ -1,5 +1,6 @@
 package com.wilkins.safezone.GenericUserUi
 
+import SessionManager.getUserProfile
 import SessionManager.logout
 import android.content.Context
 import androidx.compose.animation.AnimatedVisibility
@@ -25,6 +26,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.navigation.NavController
+import com.wilkins.safezone.backend.network.AppUser
 import com.wilkins.safezone.ui.theme.NameApp
 import com.wilkins.safezone.ui.theme.PrimaryColor
 import io.github.jan.supabase.SupabaseClient
@@ -47,6 +49,11 @@ fun SideMenu(
     LaunchedEffect(isMenuOpen) {
         isOpen = isMenuOpen
     }
+    val userState = produceState<AppUser?>(initialValue = null) {
+        value = getUserProfile(context)
+    }
+
+    val user = userState.value
 
     val menuSections = listOf(
         MenuSection(
@@ -67,7 +74,7 @@ fun SideMenu(
             title = "Alertas",
             items = listOf(
                 MenuItem(Icons.Default.Warning, "Alerta una emergencia", "FormUser"),
-                MenuItem(Icons.Default.Visibility, "Mis alertas", "MyAlerts"),
+                MenuItem(Icons.Default.Visibility, "Mis alertas", "RecordReports/${user?.id ?: ""}"),
                 MenuItem(Icons.Default.Notifications, "Notificaciones", "Notification")
             )
         ),

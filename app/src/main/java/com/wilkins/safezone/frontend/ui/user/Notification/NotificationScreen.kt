@@ -8,7 +8,6 @@ import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.CircleShape
-import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.*
 import androidx.compose.material.icons.outlined.*
@@ -27,26 +26,19 @@ import androidx.navigation.NavController
 import com.wilkins.safezone.GenericUserUi.SideMenu
 import com.wilkins.safezone.backend.network.AppUser
 import com.wilkins.safezone.backend.network.SupabaseService
+import com.wilkins.safezone.backend.network.User.Notification.NotificationData
+import com.wilkins.safezone.backend.network.User.Notification.NotificationRepository
 import io.github.jan.supabase.SupabaseClient
 import io.github.jan.supabase.gotrue.auth
-
-data class Notification(
-    val userName: String,
-    val time: String,
-    val message: String,
-    val type: NotificationType = NotificationType.COMMENT,
-    val isRead: Boolean = false
-)
-
-enum class NotificationType {
-    COMMENT, REQUEST, ALERT, SYSTEM
-}
+import kotlinx.coroutines.launch
+import java.text.SimpleDateFormat
+import java.util.*
 
 enum class FilterTab(val label: String, val icon: ImageVector) {
     ALL("Todas", Icons.Outlined.Inbox),
     UNREAD("No leídas", Icons.Outlined.MarkEmailUnread),
-    COMMENTS("Comentarios", Icons.Outlined.Comment),
-    REQUESTS("Solicitudes", Icons.Outlined.Assignment)
+    SYSTEM("Sistema", Icons.Outlined.Notifications),
+    IMPORTANT("Importantes", Icons.Outlined.PriorityHigh)
 }
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -54,70 +46,42 @@ enum class FilterTab(val label: String, val icon: ImageVector) {
 fun NotificationsScreen(navController: NavController, context: Context, subaseClient: SupabaseClient) {
     val supabase = SupabaseService.getInstance()
     val userId = supabase.auth.currentUserOrNull()?.id ?: ""
+    val notificationRepository = remember { NotificationRepository(supabase) }
+    val scope = rememberCoroutineScope()
 
     var searchText by remember { mutableStateOf("") }
     var selectedTab by remember { mutableStateOf(FilterTab.ALL) }
     var isSearchActive by remember { mutableStateOf(false) }
+    var isLoading by remember { mutableStateOf(true) }
+    var notifications by remember { mutableStateOf<List<NotificationData>>(emptyList()) }
+    var showMenu by remember { mutableStateOf(false) }
+
     val userState = produceState<AppUser?>(initialValue = null) {
         value = getUserProfile(context)
     }
-
     val user = userState.value
 
-    val notifications = remember {
-        listOf(
-            Notification(
-                userName = "María González",
-                time = "5 min",
-                message = "Envió un comentario a tu reporte y solicita más información sobre el incidente",
-                type = NotificationType.COMMENT,
-                isRead = false
-            ),
-            Notification(
-                userName = "Juan Pérez",
-                time = "10 min",
-                message = "Solicitó acceso al código de registro de tu reporte #1234",
-                type = NotificationType.REQUEST,
-                isRead = false
-            ),
-            Notification(
-                userName = "Sistema SafeZone",
-                time = "1 h",
-                message = "Nueva alerta de seguridad en tu zona: Mantente alerta",
-                type = NotificationType.ALERT,
-                isRead = true
-            ),
-            Notification(
-                userName = "Ana Martínez",
-                time = "2 h",
-                message = "Te ha enviado un comentario en tu reporte y solicita más detalles",
-                type = NotificationType.COMMENT,
-                isRead = true
-            ),
-            Notification(
-                userName = "Carlos Rodríguez",
-                time = "3 h",
-                message = "Ha solicitado una reunión para discutir el caso reportado",
-                type = NotificationType.REQUEST,
-                isRead = true
-            )
-        )
+    // Cargar notificaciones
+    LaunchedEffect(selectedTab) {
+        isLoading = true
+        notifications = when (selectedTab) {
+            FilterTab.ALL -> notificationRepository.getUserNotifications(userId)
+            FilterTab.UNREAD -> notificationRepository.getUnreadNotifications(userId)
+            FilterTab.SYSTEM -> notificationRepository.getNotificationsByType(userId, "SYSTEM")
+            FilterTab.IMPORTANT -> notificationRepository.getNotificationsByType(userId, "IMPORTANT")
+        }
+        isLoading = false
     }
 
+    // Filtrar por búsqueda
     val filteredNotifications = notifications.filter { notification ->
-        val matchesSearch = if (searchText.isEmpty()) true else {
-            notification.userName.contains(searchText, ignoreCase = true) ||
+        if (searchText.isEmpty()) {
+            true
+        } else {
+            val senderName = notification.senderName ?: "Sistema SafeZone"
+            senderName.contains(searchText, ignoreCase = true) ||
                     notification.message.contains(searchText, ignoreCase = true)
         }
-
-        val matchesFilter = when (selectedTab) {
-            FilterTab.ALL -> true
-            FilterTab.UNREAD -> !notification.isRead
-            FilterTab.COMMENTS -> notification.type == NotificationType.COMMENT
-            FilterTab.REQUESTS -> notification.type == NotificationType.REQUEST
-        }
-
-        matchesSearch && matchesFilter
     }
 
     Box(modifier = Modifier.fillMaxSize()) {
@@ -126,7 +90,7 @@ fun NotificationsScreen(navController: NavController, context: Context, subaseCl
                 .fillMaxSize()
                 .background(Color.White)
         ) {
-            // Top Bar simple
+            // Top Bar
             Surface(
                 modifier = Modifier.fillMaxWidth(),
                 color = Color.White,
@@ -157,12 +121,66 @@ fun NotificationsScreen(navController: NavController, context: Context, subaseCl
                                         tint = Color(0xFF5F6368)
                                     )
                                 }
-                                IconButton(onClick = { /* Más opciones */ }) {
-                                    Icon(
-                                        imageVector = Icons.Outlined.MoreVert,
-                                        contentDescription = "Más",
-                                        tint = Color(0xFF5F6368)
-                                    )
+
+                                Box {
+                                    IconButton(onClick = { showMenu = true }) {
+                                        Icon(
+                                            imageVector = Icons.Outlined.MoreVert,
+                                            contentDescription = "Más",
+                                            tint = Color(0xFF5F6368)
+                                        )
+                                    }
+
+                                    DropdownMenu(
+                                        expanded = showMenu,
+                                        onDismissRequest = { showMenu = false }
+                                    ) {
+                                        DropdownMenuItem(
+                                            text = { Text("Marcar todas como leídas") },
+                                            onClick = {
+                                                scope.launch {
+                                                    notificationRepository.markAllAsRead(userId)
+                                                    // Recargar notificaciones
+                                                    notifications = when (selectedTab) {
+                                                        FilterTab.ALL -> notificationRepository.getUserNotifications(userId)
+                                                        FilterTab.UNREAD -> notificationRepository.getUnreadNotifications(userId)
+                                                        FilterTab.SYSTEM -> notificationRepository.getNotificationsByType(userId, "SYSTEM")
+                                                        FilterTab.IMPORTANT -> notificationRepository.getNotificationsByType(userId, "IMPORTANT")
+                                                    }
+                                                }
+                                                showMenu = false
+                                            },
+                                            leadingIcon = {
+                                                Icon(
+                                                    imageVector = Icons.Outlined.DoneAll,
+                                                    contentDescription = null
+                                                )
+                                            }
+                                        )
+
+                                        DropdownMenuItem(
+                                            text = { Text("Eliminar leídas") },
+                                            onClick = {
+                                                scope.launch {
+                                                    notificationRepository.deleteAllRead(userId)
+                                                    // Recargar notificaciones
+                                                    notifications = when (selectedTab) {
+                                                        FilterTab.ALL -> notificationRepository.getUserNotifications(userId)
+                                                        FilterTab.UNREAD -> notificationRepository.getUnreadNotifications(userId)
+                                                        FilterTab.SYSTEM -> notificationRepository.getNotificationsByType(userId, "SYSTEM")
+                                                        FilterTab.IMPORTANT -> notificationRepository.getNotificationsByType(userId, "IMPORTANT")
+                                                    }
+                                                }
+                                                showMenu = false
+                                            },
+                                            leadingIcon = {
+                                                Icon(
+                                                    imageVector = Icons.Outlined.Delete,
+                                                    contentDescription = null
+                                                )
+                                            }
+                                        )
+                                    }
                                 }
                             }
                         }
@@ -259,8 +277,15 @@ fun NotificationsScreen(navController: NavController, context: Context, subaseCl
                 }
             }
 
-            // Lista de notificaciones
-            if (filteredNotifications.isEmpty()) {
+            // Contenido
+            if (isLoading) {
+                Box(
+                    modifier = Modifier.fillMaxSize(),
+                    contentAlignment = Alignment.Center
+                ) {
+                    CircularProgressIndicator(color = Color(0xFF1A73E8))
+                }
+            } else if (filteredNotifications.isEmpty()) {
                 Box(
                     modifier = Modifier.fillMaxSize(),
                     contentAlignment = Alignment.Center
@@ -276,7 +301,7 @@ fun NotificationsScreen(navController: NavController, context: Context, subaseCl
                         )
                         Spacer(modifier = Modifier.height(16.dp))
                         Text(
-                            text = "No hay notificaciones",
+                            text = if (searchText.isNotEmpty()) "No hay resultados" else "No hay notificaciones",
                             fontSize = 16.sp,
                             color = Color(0xFF5F6368)
                         )
@@ -287,7 +312,35 @@ fun NotificationsScreen(navController: NavController, context: Context, subaseCl
                     modifier = Modifier.fillMaxSize()
                 ) {
                     items(filteredNotifications) { notification ->
-                        NotificationItem(notification = notification)
+                        NotificationItem(
+                            notification = notification,
+                            onMarkAsRead = {
+                                scope.launch {
+                                    if (notificationRepository.markAsRead(notification.id)) {
+                                        // Recargar notificaciones
+                                        notifications = when (selectedTab) {
+                                            FilterTab.ALL -> notificationRepository.getUserNotifications(userId)
+                                            FilterTab.UNREAD -> notificationRepository.getUnreadNotifications(userId)
+                                            FilterTab.SYSTEM -> notificationRepository.getNotificationsByType(userId, "SYSTEM")
+                                            FilterTab.IMPORTANT -> notificationRepository.getNotificationsByType(userId, "IMPORTANT")
+                                        }
+                                    }
+                                }
+                            },
+                            onDelete = {
+                                scope.launch {
+                                    if (notificationRepository.deleteNotification(notification.id)) {
+                                        // Recargar notificaciones
+                                        notifications = when (selectedTab) {
+                                            FilterTab.ALL -> notificationRepository.getUserNotifications(userId)
+                                            FilterTab.UNREAD -> notificationRepository.getUnreadNotifications(userId)
+                                            FilterTab.SYSTEM -> notificationRepository.getNotificationsByType(userId, "SYSTEM")
+                                            FilterTab.IMPORTANT -> notificationRepository.getNotificationsByType(userId, "IMPORTANT")
+                                        }
+                                    }
+                                }
+                            }
+                        )
                         HorizontalDivider(color = Color(0xFFE8EAED), thickness = 1.dp)
                     }
                 }
@@ -306,29 +359,73 @@ fun NotificationsScreen(navController: NavController, context: Context, subaseCl
 }
 
 @Composable
-fun NotificationItem(notification: Notification) {
+fun NotificationItem(
+    notification: NotificationData,
+    onMarkAsRead: () -> Unit,
+    onDelete: () -> Unit
+) {
+    var showMenu by remember { mutableStateOf(false) }
+
+    // Determinar el nombre del remitente
+    val senderName = when {
+        notification.type == "SYSTEM" -> "Sistema SafeZone"
+        notification.senderName != null -> notification.senderName
+        else -> "Usuario"
+    }
+
+    // Determinar el icono según el tipo
+    val typeIcon = when (notification.type) {
+        "SYSTEM" -> Icons.Outlined.Notifications
+        "IMPORTANT" -> Icons.Outlined.PriorityHigh
+        else -> Icons.Outlined.Person
+    }
+
+    val typeColor = when (notification.type) {
+        "SYSTEM" -> Color(0xFF1A73E8)
+        "IMPORTANT" -> Color(0xFFEA4335)
+        else -> Color(0xFF5F6368)
+    }
+
     Row(
         modifier = Modifier
             .fillMaxWidth()
             .background(if (!notification.isRead) Color(0xFFF1F3F4) else Color.White)
-            .clickable { /* Marcar como leído */ }
+            .clickable {
+                if (!notification.isRead) {
+                    onMarkAsRead()
+                }
+            }
             .padding(horizontal = 16.dp, vertical = 12.dp),
         verticalAlignment = Alignment.Top
     ) {
-        // Avatar simple con inicial
+        // Avatar o icono según tipo
         Box(
             modifier = Modifier
                 .size(40.dp)
                 .clip(CircleShape)
-                .background(Color(0xFFE8EAED)),
+                .background(
+                    if (notification.type == "SYSTEM" || notification.type == "IMPORTANT")
+                        typeColor.copy(alpha = 0.1f)
+                    else
+                        Color(0xFFE8EAED)
+                ),
             contentAlignment = Alignment.Center
         ) {
-            Text(
-                text = notification.userName.firstOrNull()?.toString() ?: "?",
-                fontSize = 16.sp,
-                fontWeight = FontWeight.Medium,
-                color = Color(0xFF5F6368)
-            )
+            if (notification.type == "SYSTEM" || notification.type == "IMPORTANT") {
+                Icon(
+                    imageVector = typeIcon,
+                    contentDescription = null,
+                    tint = typeColor,
+                    modifier = Modifier.size(20.dp)
+                )
+            } else {
+                Text(
+                    text = senderName.firstOrNull()?.toString()?.uppercase() ?: "?",
+                    fontSize = 16.sp,
+                    fontWeight = FontWeight.Medium,
+                    color = Color(0xFF5F6368)
+                )
+            }
         }
 
         Spacer(modifier = Modifier.width(16.dp))
@@ -340,14 +437,14 @@ fun NotificationItem(notification: Notification) {
                 verticalAlignment = Alignment.Top
             ) {
                 Text(
-                    text = notification.userName,
+                    text = senderName,
                     fontSize = 14.sp,
                     fontWeight = if (!notification.isRead) FontWeight.Bold else FontWeight.Normal,
                     color = Color(0xFF202124),
                     modifier = Modifier.weight(1f)
                 )
                 Text(
-                    text = notification.time,
+                    text = getTimeAgo(notification.createdAt),
                     fontSize = 12.sp,
                     color = Color(0xFF5F6368)
                 )
@@ -360,20 +457,89 @@ fun NotificationItem(notification: Notification) {
                 fontSize = 13.sp,
                 color = Color(0xFF5F6368),
                 lineHeight = 18.sp,
-                maxLines = 2
+                maxLines = 3
             )
         }
 
         Spacer(modifier = Modifier.width(8.dp))
 
-        // Indicador de no leído
-        if (!notification.isRead) {
-            Box(
-                modifier = Modifier
-                    .size(8.dp)
-                    .clip(CircleShape)
-                    .background(Color(0xFF1A73E8))
-            )
+        // Menú de opciones
+        Box {
+            IconButton(onClick = { showMenu = true }) {
+                Icon(
+                    imageVector = Icons.Outlined.MoreVert,
+                    contentDescription = "Opciones",
+                    tint = Color(0xFF5F6368),
+                    modifier = Modifier.size(20.dp)
+                )
+            }
+
+            DropdownMenu(
+                expanded = showMenu,
+                onDismissRequest = { showMenu = false }
+            ) {
+                if (!notification.isRead) {
+                    DropdownMenuItem(
+                        text = { Text("Marcar como leída") },
+                        onClick = {
+                            onMarkAsRead()
+                            showMenu = false
+                        },
+                        leadingIcon = {
+                            Icon(
+                                imageVector = Icons.Outlined.DoneAll,
+                                contentDescription = null
+                            )
+                        }
+                    )
+                }
+
+                DropdownMenuItem(
+                    text = { Text("Eliminar") },
+                    onClick = {
+                        onDelete()
+                        showMenu = false
+                    },
+                    leadingIcon = {
+                        Icon(
+                            imageVector = Icons.Outlined.Delete,
+                            contentDescription = null
+                        )
+                    }
+                )
+            }
         }
+    }
+}
+
+/**
+ * Convierte un timestamp ISO a formato "hace X tiempo"
+ */
+fun getTimeAgo(timestamp: String): String {
+    return try {
+        val sdf = SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss", Locale.getDefault())
+        sdf.timeZone = TimeZone.getTimeZone("UTC")
+        val date = sdf.parse(timestamp) ?: return "Ahora"
+
+        val now = Date()
+        val diff = now.time - date.time
+
+        val seconds = diff / 1000
+        val minutes = seconds / 60
+        val hours = minutes / 60
+        val days = hours / 24
+
+        when {
+            seconds < 60 -> "Ahora"
+            minutes < 60 -> "${minutes}m"
+            hours < 24 -> "${hours}h"
+            days < 7 -> "${days}d"
+            else -> {
+                val displaySdf = SimpleDateFormat("dd/MM/yyyy", Locale.getDefault())
+                displaySdf.format(date)
+            }
+        }
+    } catch (e: Exception) {
+        "Ahora"
     }
 }

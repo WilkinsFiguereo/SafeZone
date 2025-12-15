@@ -171,7 +171,7 @@ fun SideMenuOverlay(
             title = "Alertas",
             items = listOf(
                 MenuItem(Icons.Default.Warning, "Alerta una emergencia", "FormUser"),
-                MenuItem(Icons.Default.Visibility, "Mis alertas", "MyAlerts"),
+                MenuItem(Icons.Default.Visibility, "Mis alertas", "RecordReports"),
                 MenuItem(Icons.Default.Notifications, "Notificaciones", "Notification")
             )
         ),

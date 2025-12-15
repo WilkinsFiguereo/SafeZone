@@ -44,7 +44,6 @@ fun NavigationDrawer(navController: NavController, context: Context, supabaseCli
 
     val user = userState.value
 
-
     Scaffold(
         topBar = {
             TopAppBar(
