@@ -1,18 +1,16 @@
 package com.wilkins.safezone.frontend.ui.user.profile
 
-import SessionManager.logout
 import android.content.Context
 import android.net.Uri
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
-import androidx.compose.animation.AnimatedVisibility
-import androidx.compose.animation.core.tween
-import androidx.compose.animation.slideInHorizontally
-import androidx.compose.animation.slideOutHorizontally
+import android.util.Log
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -31,16 +29,49 @@ import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.compose.ui.zIndex
 import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.NavController
 import coil.compose.AsyncImage
+import com.wilkins.safezone.backend.network.User.Form.Affair
 import com.wilkins.safezone.backend.network.User.Profile.ProfileViewModel
 import com.wilkins.safezone.ui.theme.NameApp
 import com.wilkins.safezone.ui.theme.PrimaryColor
 import io.github.jan.supabase.SupabaseClient
+import io.github.jan.supabase.postgrest.postgrest
 import kotlinx.coroutines.launch
+import kotlinx.serialization.Serializable
+import java.text.SimpleDateFormat
+import java.util.*
+
+// Data classes para los reportes
+@Serializable
+data class UserReport(
+    val id: String,
+    val id_affair: Int,
+    val description: String,
+    val image_url: String?,
+    val user_id: String,
+    val is_anonymous: Boolean,
+    val user_name: String?,
+    val report_location: String?,
+    val id_reporting_status: Int,
+    val created_at: String
+)
+
+@Serializable
+data class ReportWithAffair(
+    val id: String,
+    val description: String,
+    val id_reporting_status: Int,
+    val created_at: String,
+    val affairType: String,
+    val report_location: String?
+)
+
 
 @Composable
 fun ProfileScreenWithMenu(
@@ -60,338 +91,39 @@ fun ProfileScreenWithMenu(
     Box(modifier = modifier.fillMaxSize()) {
         // Contenido principal del perfil
         Column(modifier = Modifier.fillMaxSize()) {
-            // Top Bar
-            TopBar(
-                userName = userName,
-                onMenuToggle = { isMenuOpen = !isMenuOpen },
-                onProfileClick = { navController.navigate("navigationDrawer") }
-            )
+            // Espaciador para la altura del TopBar del SideMenu
+            Spacer(modifier = Modifier.height(56.dp))
 
             // Profile Content
             ProfileScreen(
                 userId = userId,
+                supabaseClient = supabaseClient,
                 onNavigateToChangePassword = onNavigateToChangePassword,
                 onNavigateToChangeEmail = onNavigateToChangeEmail,
                 viewModel = viewModel
             )
         }
 
-        // Menú lateral superpuesto
-        SideMenuOverlay(
-            isOpen = isMenuOpen,
+        // SideMenu genérico (último, para que quede por encima)
+        com.wilkins.safezone.GenericUserUi.SideMenu(
             navController = navController,
             userId = userId,
             userName = userName,
             currentRoute = currentRoute,
+            isMenuOpen = isMenuOpen,
+            onMenuToggle = { isMenuOpen = it },
             context = context,
             supabaseClient = supabaseClient,
-            onMenuToggle = { isMenuOpen = it }
+            modifier = Modifier.align(Alignment.TopCenter)
         )
     }
 }
-
-@Composable
-fun TopBar(
-    userName: String,
-    onMenuToggle: () -> Unit,
-    onProfileClick: () -> Unit
-) {
-    Row(
-        modifier = Modifier
-            .fillMaxWidth()
-            .background(PrimaryColor)
-            .padding(horizontal = 16.dp, vertical = 12.dp),
-        horizontalArrangement = Arrangement.SpaceBetween,
-        verticalAlignment = Alignment.CenterVertically
-    ) {
-        IconButton(onClick = onMenuToggle) {
-            Icon(
-                imageVector = Icons.Default.Menu,
-                contentDescription = "Menu",
-                tint = Color.White,
-                modifier = Modifier.size(28.dp)
-            )
-        }
-
-        Text(
-            text = NameApp,
-            color = Color.White,
-            fontSize = 22.sp,
-            fontWeight = FontWeight.Bold
-        )
-
-        IconButton(onClick = onProfileClick) {
-            Box(
-                modifier = Modifier
-                    .size(36.dp)
-                    .clip(CircleShape)
-                    .background(Color.White.copy(alpha = 0.3f)),
-                contentAlignment = Alignment.Center
-            ) {
-                Icon(
-                    imageVector = Icons.Default.Person,
-                    contentDescription = "Perfil",
-                    tint = Color.White,
-                    modifier = Modifier.size(24.dp)
-                )
-            }
-        }
-    }
-}
-
-@Composable
-fun SideMenuOverlay(
-    isOpen: Boolean,
-    navController: NavController,
-    userId: String,
-    userName: String,
-    currentRoute: String,
-    context: Context,
-    supabaseClient: SupabaseClient,
-    onMenuToggle: (Boolean) -> Unit
-) {
-    val scope = rememberCoroutineScope()
-
-    val menuSections = listOf(
-        MenuSection(
-            title = "Principal",
-            items = listOf(
-                MenuItem(Icons.Default.Home, "Inicio", "userHome/$userId"),
-                MenuItem(Icons.Default.Person, "Mi Perfil", "MyProfile")
-            )
-        ),
-        MenuSection(
-            title = "Información",
-            items = listOf(
-                MenuItem(Icons.Default.Newspaper, "Noticias", "NewsUser"),
-                MenuItem(Icons.Default.Place, "Reportes en tu zona", "MapReports")
-            )
-        ),
-        MenuSection(
-            title = "Alertas",
-            items = listOf(
-                MenuItem(Icons.Default.Warning, "Alerta una emergencia", "FormUser"),
-                MenuItem(Icons.Default.Visibility, "Mis alertas", "RecordReports"),
-                MenuItem(Icons.Default.Notifications, "Notificaciones", "Notification")
-            )
-        ),
-        MenuSection(
-            title = "Configuración",
-            items = listOf(
-                MenuItem(Icons.Default.Settings, "Configuración", "settings"),
-                MenuItem(Icons.Default.Logout, "Cerrar Sesión", "logout")
-            )
-        )
-    )
-
-    AnimatedVisibility(
-        visible = isOpen,
-        enter = slideInHorizontally(
-            initialOffsetX = { -it },
-            animationSpec = tween(300)
-        ),
-        exit = slideOutHorizontally(
-            targetOffsetX = { -it },
-            animationSpec = tween(300)
-        )
-    ) {
-        Row(modifier = Modifier.fillMaxSize()) {
-            // Menú lateral
-            Column(
-                modifier = Modifier
-                    .width(300.dp)
-                    .fillMaxHeight()
-                    .background(PrimaryColor)
-            ) {
-                // Header del menú
-                Column(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(20.dp)
-                ) {
-                    Row(
-                        horizontalArrangement = Arrangement.Start,
-                        verticalAlignment = Alignment.CenterVertically
-                    ) {
-                        Box(
-                            modifier = Modifier
-                                .size(48.dp)
-                                .clip(CircleShape)
-                                .background(Color.White.copy(alpha = 0.2f)),
-                            contentAlignment = Alignment.Center
-                        ) {
-                            Icon(
-                                imageVector = Icons.Default.Person,
-                                contentDescription = null,
-                                tint = Color.White,
-                                modifier = Modifier.size(28.dp)
-                            )
-                        }
-                        Spacer(modifier = Modifier.width(12.dp))
-                        Column {
-                            Text(
-                                text = userName,
-                                color = Color.White,
-                                fontSize = 18.sp,
-                                fontWeight = FontWeight.Bold
-                            )
-                        }
-                    }
-                }
-
-                HorizontalDivider(
-                    color = Color.White.copy(alpha = 0.2f),
-                    thickness = 1.dp,
-                    modifier = Modifier.padding(horizontal = 16.dp)
-                )
-
-                Spacer(modifier = Modifier.height(12.dp))
-
-                // Secciones del menú
-                Column(
-                    modifier = Modifier
-                        .weight(1f)
-                        .fillMaxWidth()
-                        .verticalScroll(rememberScrollState())
-                ) {
-                    menuSections.forEach { section ->
-                        MenuSectionComponent(
-                            section = section,
-                            currentRoute = currentRoute,
-                            onItemClick = { route ->
-                                onMenuToggle(false)
-
-                                if (route == "logout") {
-                                    scope.launch {
-                                        logout(context, supabaseClient)
-                                        navController.navigate("login") {
-                                            popUpTo(0) { inclusive = true }
-                                        }
-                                    }
-                                } else {
-                                    navController.navigate(route)
-                                }
-                            }
-                        )
-                    }
-                }
-
-                // Footer
-                Column(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(16.dp)
-                ) {
-                    HorizontalDivider(
-                        color = Color.White.copy(alpha = 0.2f),
-                        thickness = 1.dp,
-                        modifier = Modifier.padding(bottom = 12.dp)
-                    )
-                    Row(
-                        modifier = Modifier.fillMaxWidth(),
-                        horizontalArrangement = Arrangement.SpaceBetween,
-                        verticalAlignment = Alignment.CenterVertically
-                    ) {
-                        Column {
-                            Text(
-                                text = "SafeZone App",
-                                color = Color.White.copy(alpha = 0.7f),
-                                fontSize = 12.sp,
-                                fontWeight = FontWeight.Medium
-                            )
-                            Text(
-                                text = "Versión 1.0.0",
-                                color = Color.White.copy(alpha = 0.5f),
-                                fontSize = 10.sp
-                            )
-                        }
-                        Icon(
-                            imageVector = Icons.Default.Security,
-                            contentDescription = null,
-                            tint = Color.White.copy(alpha = 0.5f),
-                            modifier = Modifier.size(20.dp)
-                        )
-                    }
-                }
-            }
-
-            // Área de cierre (click fuera del menú)
-            Box(
-                modifier = Modifier
-                    .fillMaxSize()
-                    .background(Color.Black.copy(alpha = 0.5f))
-                    .clickable { onMenuToggle(false) }
-            )
-        }
-    }
-}
-
-@Composable
-fun MenuSectionComponent(
-    section: MenuSection,
-    currentRoute: String,
-    onItemClick: (String) -> Unit
-) {
-    Column(
-        modifier = Modifier
-            .fillMaxWidth()
-            .padding(vertical = 8.dp)
-    ) {
-        Text(
-            text = section.title,
-            color = Color.White.copy(alpha = 0.6f),
-            fontSize = 12.sp,
-            fontWeight = FontWeight.Bold,
-            modifier = Modifier.padding(horizontal = 20.dp, vertical = 8.dp)
-        )
-
-        section.items.forEach { item ->
-            val isSelected = currentRoute == item.route
-
-            Row(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .background(
-                        if (isSelected) Color.White.copy(alpha = 0.15f)
-                        else Color.Transparent
-                    )
-                    .clickable { onItemClick(item.route) }
-                    .padding(horizontal = 20.dp, vertical = 14.dp),
-                verticalAlignment = Alignment.CenterVertically
-            ) {
-                Icon(
-                    imageVector = item.icon,
-                    contentDescription = item.label,
-                    tint = if (isSelected) Color.White else Color.White.copy(alpha = 0.8f),
-                    modifier = Modifier.size(22.dp)
-                )
-                Spacer(modifier = Modifier.width(16.dp))
-                Text(
-                    text = item.label,
-                    color = if (isSelected) Color.White else Color.White.copy(alpha = 0.8f),
-                    fontSize = 15.sp,
-                    fontWeight = if (isSelected) FontWeight.SemiBold else FontWeight.Normal
-                )
-            }
-        }
-    }
-}
-
-data class MenuItem(
-    val icon: ImageVector,
-    val label: String,
-    val route: String
-)
-
-data class MenuSection(
-    val title: String,
-    val items: List<MenuItem>
-)
 
 // Componentes originales del perfil
 @Composable
 fun ProfileScreen(
     userId: String,
+    supabaseClient: SupabaseClient,
     onNavigateToChangePassword: () -> Unit = {},
     onNavigateToChangeEmail: () -> Unit = {},
     modifier: Modifier = Modifier,
@@ -400,9 +132,37 @@ fun ProfileScreen(
     val context = LocalContext.current
     val uiState by viewModel.uiState.collectAsState()
     var isEditing by remember { mutableStateOf(false) }
+    var userReports by remember { mutableStateOf<List<ReportWithAffair>>(emptyList()) }
+    var isLoadingReports by remember { mutableStateOf(false) }
+    val scope = rememberCoroutineScope()
 
     LaunchedEffect(userId) {
+        Log.d("ProfileScreen", "🔄 LaunchedEffect disparado para userId: ${userId.take(8)}")
         viewModel.loadProfile(context, userId)
+
+        Log.d("ProfileScreen", "⏳ Esperando a que se cargue el perfil...")
+    }
+
+    // Cargar reportes cuando el perfil esté cargado y sea el perfil propio
+    LaunchedEffect(uiState.isOwnProfile, userId) {
+        if (uiState.isOwnProfile) {
+            Log.d("ProfileScreen", "✅ Es el perfil propio, cargando reportes...")
+            isLoadingReports = true
+            scope.launch {
+                try {
+                    Log.d("ProfileScreen", "📡 Llamando a getUserReports...")
+                    userReports = getUserReports(supabaseClient, userId)
+                    Log.d("ProfileScreen", "✅ Reportes cargados en UI: ${userReports.size}")
+                } catch (e: Exception) {
+                    Log.e("ProfileScreen", "❌ Error cargando reportes en UI: ${e.message}", e)
+                } finally {
+                    isLoadingReports = false
+                    Log.d("ProfileScreen", "🏁 Carga de reportes finalizada")
+                }
+            }
+        } else {
+            Log.d("ProfileScreen", "ℹ️ No es el perfil propio, omitiendo carga de reportes")
+        }
     }
 
     Box(
@@ -456,6 +216,8 @@ fun ProfileScreen(
                         userProfile = uiState.userProfile!!,
                         isOwnProfile = uiState.isOwnProfile,
                         viewModel = viewModel,
+                        userReports = userReports,
+                        isLoadingReports = isLoadingReports,
                         onEditClick = { isEditing = true },
                         onFollowClick = { /* TODO: Implementar seguir */ }
                     )
@@ -465,11 +227,96 @@ fun ProfileScreen(
     }
 }
 
+suspend fun getUserReports(supabaseClient: SupabaseClient, userId: String): List<ReportWithAffair> {
+    try {
+        Log.d("ProfileReports", "🔍 Iniciando carga de reportes para userId: ${userId.take(8)}...")
+
+        if (userId.isBlank()) {
+            Log.e("ProfileReports", "❌ userId está vacío")
+            return emptyList()
+        }
+
+        // Obtener TODOS los reportes primero para debugging
+        val allReports = supabaseClient.postgrest
+            .from("reports")
+            .select()
+            .decodeList<UserReport>()
+
+        Log.d("ProfileReports", "📊 Total de reportes en la tabla: ${allReports.size}")
+
+        // Filtrar reportes del usuario que NO sean anónimos
+        val userReports = allReports.filter {
+            val isUserReport = it.user_id == userId
+            val isNotAnonymous = !it.is_anonymous
+
+            Log.d("ProfileReports", "   Reporte ${it.id.take(8)}: user_match=$isUserReport, not_anon=$isNotAnonymous, user=${it.user_id.take(8)}")
+
+            isUserReport && isNotAnonymous
+        }
+
+        Log.d("ProfileReports", "✅ Reportes del usuario (no anónimos): ${userReports.size}")
+
+        if (userReports.isEmpty()) {
+            Log.w("ProfileReports", "⚠️ No se encontraron reportes públicos para este usuario")
+            Log.w("ProfileReports", "   Verifica que:")
+            Log.w("ProfileReports", "   1. El userId es correcto: $userId")
+            Log.w("ProfileReports", "   2. Existen reportes con is_anonymous=false")
+            Log.w("ProfileReports", "   3. El user_id coincide exactamente")
+            return emptyList()
+        }
+
+        // Obtener los tipos de asuntos
+        Log.d("ProfileReports", "🔍 Cargando tipos de asuntos...")
+        val affairs = supabaseClient.postgrest
+            .from("affair")
+            .select()
+            .decodeList<Affair>()
+
+        Log.d("ProfileReports", "✅ Asuntos cargados: ${affairs.size}")
+        affairs.forEach { affair ->
+            Log.d("ProfileReports", "   - Affair ID: ${affair.id}, Type: ${affair.type}")
+        }
+
+        // Combinar reportes con sus asuntos
+        val reportsWithAffairs = userReports.map { report ->
+            val affair = affairs.find { it.id == report.id_affair }
+            val affairType = affair?.type ?: "Desconocido"
+
+            Log.d("ProfileReports", "   Mapeando reporte ${report.id.take(8)}: affair_id=${report.id_affair} -> $affairType")
+
+            ReportWithAffair(
+                id = report.id,
+                description = report.description,
+                id_reporting_status = report.id_reporting_status,
+                created_at = report.created_at,
+                affairType = affairType,
+                report_location = report.report_location
+            )
+        }.sortedByDescending { it.created_at }
+
+        Log.d("ProfileReports", "✅ Reportes procesados exitosamente: ${reportsWithAffairs.size}")
+        reportsWithAffairs.take(3).forEach { report ->
+            Log.d("ProfileReports", "   📄 ${report.id.take(8)} - ${report.affairType} - Status: ${report.id_reporting_status}")
+        }
+
+        return reportsWithAffairs
+
+    } catch (e: Exception) {
+        Log.e("ProfileReports", "❌ Error cargando reportes: ${e.message}", e)
+        Log.e("ProfileReports", "❌ Tipo de excepción: ${e.javaClass.simpleName}")
+        Log.e("ProfileReports", "❌ Stack trace:", e)
+        return emptyList()
+    }
+}
+
+
 @Composable
 fun ProfileContent(
     userProfile: com.wilkins.safezone.backend.network.AppUser,
     isOwnProfile: Boolean,
     viewModel: ProfileViewModel,
+    userReports: List<ReportWithAffair>,
+    isLoadingReports: Boolean,
     onEditClick: () -> Unit,
     onFollowClick: () -> Unit,
     modifier: Modifier = Modifier
@@ -482,238 +329,598 @@ fun ProfileContent(
         modifier = modifier
             .fillMaxSize()
             .verticalScroll(rememberScrollState())
-            .padding(16.dp),
-        verticalArrangement = Arrangement.spacedBy(16.dp)
+            .background(Color.White)
     ) {
-        Card(
-            modifier = Modifier.fillMaxWidth(),
-            shape = RoundedCornerShape(20.dp),
-            colors = CardDefaults.cardColors(containerColor = Color.White),
-            elevation = CardDefaults.cardElevation(defaultElevation = 4.dp)
+        // Header con gradiente
+        Box(modifier = Modifier.fillMaxWidth()) {
+            Box(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .height(120.dp)
+                    .background(
+                        brush = Brush.horizontalGradient(
+                            colors = listOf(
+                                PrimaryColor.copy(alpha = 0.8f),
+                                PrimaryColor.copy(alpha = 0.5f)
+                            )
+                        )
+                    )
+                    .zIndex(0f)
+            )
+
+            Column(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .offset(y = 60.dp)
+                    .padding(horizontal = 16.dp)
+                    .zIndex(1f),
+                verticalArrangement = Arrangement.spacedBy(16.dp)
+            ) {
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.Top
+                ) {
+                    Box(
+                        modifier = Modifier
+                            .size(100.dp)
+                            .clip(CircleShape)
+                            .background(Color.White)
+                            .border(4.dp, Color.White, CircleShape),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        if (photoUrl != null) {
+                            AsyncImage(
+                                model = photoUrl,
+                                contentDescription = "Profile Picture",
+                                modifier = Modifier
+                                    .fillMaxSize()
+                                    .clip(CircleShape),
+                                contentScale = ContentScale.Crop
+                            )
+                        } else {
+                            Box(
+                                modifier = Modifier
+                                    .fillMaxSize()
+                                    .padding(4.dp)
+                                    .clip(CircleShape)
+                                    .background(
+                                        brush = Brush.linearGradient(
+                                            colors = listOf(
+                                                PrimaryColor.copy(alpha = 0.2f),
+                                                PrimaryColor.copy(alpha = 0.1f)
+                                            )
+                                        )
+                                    ),
+                                contentAlignment = Alignment.Center
+                            ) {
+                                Icon(
+                                    imageVector = Icons.Default.Person,
+                                    contentDescription = "Profile Picture",
+                                    tint = PrimaryColor,
+                                    modifier = Modifier.size(50.dp)
+                                )
+                            }
+                        }
+                    }
+
+                    if (isOwnProfile) {
+                        OutlinedButton(
+                            onClick = onEditClick,
+                            shape = RoundedCornerShape(12.dp),
+                            colors = ButtonDefaults.outlinedButtonColors(
+                                containerColor = Color.White,
+                                contentColor = PrimaryColor
+                            ),
+                            contentPadding = PaddingValues(horizontal = 24.dp, vertical = 10.dp)
+                        ) {
+                            Icon(
+                                imageVector = Icons.Outlined.Edit,
+                                contentDescription = null,
+                                modifier = Modifier.size(16.dp)
+                            )
+                            Spacer(modifier = Modifier.width(6.dp))
+                            Text(
+                                text = "Editar perfil",
+                                fontSize = 14.sp,
+                                fontWeight = FontWeight.SemiBold
+                            )
+                        }
+                    } else {
+                        Button(
+                            onClick = onFollowClick,
+                            colors = ButtonDefaults.buttonColors(
+                                containerColor = PrimaryColor,
+                                contentColor = Color.White
+                            ),
+                            shape = RoundedCornerShape(12.dp),
+                            contentPadding = PaddingValues(horizontal = 24.dp, vertical = 10.dp)
+                        ) {
+                            Icon(
+                                imageVector = Icons.Default.Add,
+                                contentDescription = null,
+                                modifier = Modifier.size(16.dp)
+                            )
+                            Spacer(modifier = Modifier.width(6.dp))
+                            Text(
+                                text = "Seguir",
+                                fontSize = 14.sp,
+                                fontWeight = FontWeight.SemiBold
+                            )
+                        }
+                    }
+                }
+            }
+        }
+
+        // Espacio para compensar el offset
+        Spacer(modifier = Modifier.height(80.dp))
+
+        // Contenido del perfil
+        Column(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(horizontal = 16.dp),
+            verticalArrangement = Arrangement.spacedBy(16.dp)
         ) {
-            Column(modifier = Modifier.fillMaxWidth()) {
+            Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                Text(
+                    text = userProfile.name ?: "Usuario sin nombre",
+                    fontSize = 24.sp,
+                    fontWeight = FontWeight.Bold,
+                    color = Color(0xFF1F1F1F),
+                    lineHeight = 30.sp
+                )
+
+                if (!userProfile.pronouns.isNullOrEmpty()) {
+                    Surface(
+                        shape = RoundedCornerShape(6.dp),
+                        color = PrimaryColor.copy(alpha = 0.1f)
+                    ) {
+                        Text(
+                            text = userProfile.pronouns,
+                            fontSize = 12.sp,
+                            color = PrimaryColor,
+                            fontWeight = FontWeight.Medium,
+                            modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp)
+                        )
+                    }
+                }
+            }
+
+            Surface(
+                shape = RoundedCornerShape(8.dp),
+                color = getStatusColor(userProfile.status_id).copy(alpha = 0.15f)
+            ) {
+                Row(
+                    modifier = Modifier.padding(horizontal = 12.dp, vertical = 8.dp),
+                    horizontalArrangement = Arrangement.spacedBy(6.dp),
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Box(
+                        modifier = Modifier
+                            .size(8.dp)
+                            .clip(CircleShape)
+                            .background(getStatusColor(userProfile.status_id))
+                    )
+                    Text(
+                        text = getStatusText(userProfile.status_id),
+                        fontSize = 13.sp,
+                        color = getStatusColor(userProfile.status_id),
+                        fontWeight = FontWeight.Medium
+                    )
+                }
+            }
+
+            if (!userProfile.description.isNullOrEmpty()) {
+                Surface(
+                    modifier = Modifier.fillMaxWidth(),
+                    shape = RoundedCornerShape(12.dp),
+                    color = Color(0xFFF8F9FA)
+                ) {
+                    Row(
+                        modifier = Modifier.padding(12.dp),
+                        horizontalArrangement = Arrangement.spacedBy(10.dp)
+                    ) {
+                        Icon(
+                            imageVector = Icons.Outlined.Info,
+                            contentDescription = null,
+                            tint = Color(0xFF757575),
+                            modifier = Modifier.size(20.dp)
+                        )
+                        Text(
+                            text = userProfile.description,
+                            fontSize = 14.sp,
+                            color = Color(0xFF616161),
+                            lineHeight = 20.sp,
+                            modifier = Modifier.weight(1f)
+                        )
+                    }
+                }
+            }
+
+            Divider(
+                color = Color(0xFFE0E0E0),
+                thickness = 1.dp,
+                modifier = Modifier.padding(vertical = 8.dp)
+            )
+
+            Column(
+                verticalArrangement = Arrangement.spacedBy(12.dp)
+            ) {
+                Text(
+                    text = "Información de contacto",
+                    fontSize = 14.sp,
+                    fontWeight = FontWeight.SemiBold,
+                    color = Color(0xFF757575)
+                )
+
+                ContactInfoRow(
+                    icon = Icons.Outlined.Email,
+                    text = userProfile.email ?: "No especificado"
+                )
+
+                if (!userProfile.phone.isNullOrEmpty()) {
+                    ContactInfoRow(
+                        icon = Icons.Outlined.Phone,
+                        text = userProfile.phone
+                    )
+                }
+
+                if (!userProfile.address.isNullOrEmpty()) {
+                    ContactInfoRow(
+                        icon = Icons.Outlined.LocationOn,
+                        text = userProfile.address
+                    )
+                }
+            }
+
+            // NUEVA SECCIÓN: Reportes del Usuario
+            if (isOwnProfile) {
+                Divider(
+                    color = Color(0xFFE0E0E0),
+                    thickness = 1.dp,
+                    modifier = Modifier.padding(vertical = 8.dp)
+                )
+
+                UserReportsSection(
+                    reports = userReports,
+                    isLoading = isLoadingReports
+                )
+            }
+
+            // Espacio final para que se vea todo el contenido
+            Spacer(modifier = Modifier.height(32.dp))
+        }
+    }
+}
+
+@Composable
+fun UserReportsSection(
+    reports: List<ReportWithAffair>,
+    isLoading: Boolean,
+    modifier: Modifier = Modifier
+) {
+    Column(
+        modifier = modifier.fillMaxWidth(),
+        verticalArrangement = Arrangement.spacedBy(12.dp)
+    ) {
+        // Header de la sección
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.SpaceBetween,
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Row(
+                horizontalArrangement = Arrangement.spacedBy(8.dp),
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Icon(
+                    imageVector = Icons.Outlined.Assignment,
+                    contentDescription = null,
+                    tint = PrimaryColor,
+                    modifier = Modifier.size(20.dp)
+                )
+                Text(
+                    text = "Mis Reportes Públicos",
+                    fontSize = 16.sp,
+                    fontWeight = FontWeight.Bold,
+                    color = Color(0xFF1F1F1F)
+                )
+            }
+
+            if (reports.isNotEmpty()) {
+                Surface(
+                    shape = RoundedCornerShape(12.dp),
+                    color = PrimaryColor.copy(alpha = 0.1f)
+                ) {
+                    Text(
+                        text = "${reports.size}",
+                        fontSize = 12.sp,
+                        fontWeight = FontWeight.Bold,
+                        color = PrimaryColor,
+                        modifier = Modifier.padding(horizontal = 10.dp, vertical = 4.dp)
+                    )
+                }
+            }
+        }
+
+        // Contenido
+        when {
+            isLoading -> {
                 Box(
                     modifier = Modifier
                         .fillMaxWidth()
-                        .height(80.dp)
-                        .background(
-                            brush = Brush.horizontalGradient(
-                                colors = listOf(
-                                    PrimaryColor.copy(alpha = 0.8f),
-                                    PrimaryColor.copy(alpha = 0.5f)
-                                )
-                            )
+                        .height(120.dp),
+                    contentAlignment = Alignment.Center
+                ) {
+                    CircularProgressIndicator(
+                        color = PrimaryColor,
+                        modifier = Modifier.size(32.dp)
+                    )
+                }
+            }
+            reports.isEmpty() -> {
+                Surface(
+                    modifier = Modifier.fillMaxWidth(),
+                    shape = RoundedCornerShape(12.dp),
+                    color = Color(0xFFF8F9FA)
+                ) {
+                    Column(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(24.dp),
+                        horizontalAlignment = Alignment.CenterHorizontally,
+                        verticalArrangement = Arrangement.spacedBy(8.dp)
+                    ) {
+                        Icon(
+                            imageVector = Icons.Outlined.AssignmentLate,
+                            contentDescription = null,
+                            tint = Color(0xFF9E9E9E),
+                            modifier = Modifier.size(48.dp)
                         )
-                )
-
+                        Text(
+                            text = "No hay reportes públicos",
+                            fontSize = 14.sp,
+                            color = Color(0xFF757575),
+                            fontWeight = FontWeight.Medium
+                        )
+                        Text(
+                            text = "Tus reportes públicos aparecerán aquí",
+                            fontSize = 12.sp,
+                            color = Color(0xFF9E9E9E)
+                        )
+                    }
+                }
+            }
+            else -> {
                 Column(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .offset(y = (-40).dp)
-                        .padding(horizontal = 16.dp),
-                    verticalArrangement = Arrangement.spacedBy(16.dp)
+                    verticalArrangement = Arrangement.spacedBy(10.dp)
+                ) {
+                    reports.take(3).forEach { report ->
+                        ReportCard(report = report)
+                    }
+
+                    if (reports.size > 3) {
+                        Surface(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .clickable { /* TODO: Navegar a vista completa */ },
+                            shape = RoundedCornerShape(12.dp),
+                            color = PrimaryColor.copy(alpha = 0.05f)
+                        ) {
+                            Row(
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .padding(14.dp),
+                                horizontalArrangement = Arrangement.Center,
+                                verticalAlignment = Alignment.CenterVertically
+                            ) {
+                                Text(
+                                    text = "Ver todos los reportes (${reports.size})",
+                                    fontSize = 13.sp,
+                                    color = PrimaryColor,
+                                    fontWeight = FontWeight.SemiBold
+                                )
+                                Spacer(modifier = Modifier.width(4.dp))
+                                Icon(
+                                    imageVector = Icons.Default.ArrowForward,
+                                    contentDescription = null,
+                                    tint = PrimaryColor,
+                                    modifier = Modifier.size(16.dp)
+                                )
+                            }
+                        }
+                    }
+                }
+            }
+        }
+    }
+}
+
+@Composable
+fun ReportCard(
+    report: ReportWithAffair,
+    modifier: Modifier = Modifier
+) {
+    val statusColor = when (report.id_reporting_status) {
+        1 -> Color(0xFFFFA726) // Pendiente - Naranja
+        2 -> Color(0xFF42A5F5) // Revisado - Azul
+        3 -> Color(0xFF66BB6A) // Resuelto - Verde
+        4 -> Color(0xFFEF5350) // Rechazado - Rojo
+        else -> Color(0xFF9E9E9E) // Desconocido - Gris
+    }
+
+    val statusText = when (report.id_reporting_status) {
+        1 -> "Pendiente"
+        2 -> "Revisado"
+        3 -> "Resuelto"
+        4 -> "Rechazado"
+        else -> "Desconocido"
+    }
+
+    val dateFormatter = remember {
+        SimpleDateFormat("dd MMM yyyy, HH:mm", Locale("es", "ES"))
+    }
+
+    val formattedDate = try {
+        val date = SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss", Locale.getDefault()).parse(report.created_at)
+        date?.let { dateFormatter.format(it) } ?: report.created_at
+    } catch (e: Exception) {
+        report.created_at
+    }
+
+    Card(
+        modifier = modifier
+            .fillMaxWidth()
+            .clickable { /* TODO: Navegar a detalle del reporte */ },
+        shape = RoundedCornerShape(14.dp),
+        colors = CardDefaults.cardColors(containerColor = Color.White),
+        elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
+    ) {
+        Column(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(14.dp),
+            verticalArrangement = Arrangement.spacedBy(10.dp)
+        ) {
+            // Header del reporte
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.Top
+            ) {
+                Column(
+                    modifier = Modifier.weight(1f),
+                    verticalArrangement = Arrangement.spacedBy(4.dp)
+                ) {
+                    Text(
+                        text = "Reporte #${report.id.take(8).uppercase()}",
+                        fontSize = 15.sp,
+                        fontWeight = FontWeight.Bold,
+                        color = Color(0xFF1F1F1F),
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis
+                    )
+
+                    Row(
+                        horizontalArrangement = Arrangement.spacedBy(6.dp),
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Surface(
+                            shape = RoundedCornerShape(6.dp),
+                            color = PrimaryColor.copy(alpha = 0.1f)
+                        ) {
+                            Row(
+                                modifier = Modifier.padding(horizontal = 8.dp, vertical = 3.dp),
+                                horizontalArrangement = Arrangement.spacedBy(4.dp),
+                                verticalAlignment = Alignment.CenterVertically
+                            ) {
+                                Icon(
+                                    imageVector = Icons.Default.Category,
+                                    contentDescription = null,
+                                    tint = PrimaryColor,
+                                    modifier = Modifier.size(12.dp)
+                                )
+                                Text(
+                                    text = report.affairType,
+                                    fontSize = 11.sp,
+                                    color = PrimaryColor,
+                                    fontWeight = FontWeight.Medium
+                                )
+                            }
+                        }
+                    }
+                }
+
+                Surface(
+                    shape = RoundedCornerShape(8.dp),
+                    color = statusColor.copy(alpha = 0.15f)
                 ) {
                     Row(
-                        modifier = Modifier.fillMaxWidth(),
-                        horizontalArrangement = Arrangement.SpaceBetween,
-                        verticalAlignment = Alignment.Top
+                        modifier = Modifier.padding(horizontal = 10.dp, vertical = 5.dp),
+                        horizontalArrangement = Arrangement.spacedBy(4.dp),
+                        verticalAlignment = Alignment.CenterVertically
                     ) {
                         Box(
                             modifier = Modifier
-                                .size(80.dp)
+                                .size(6.dp)
                                 .clip(CircleShape)
-                                .background(Color.White)
-                                .border(4.dp, Color.White, CircleShape),
-                            contentAlignment = Alignment.Center
-                        ) {
-                            if (photoUrl != null) {
-                                AsyncImage(
-                                    model = photoUrl,
-                                    contentDescription = "Profile Picture",
-                                    modifier = Modifier
-                                        .fillMaxSize()
-                                        .clip(CircleShape),
-                                    contentScale = ContentScale.Crop
-                                )
-                            } else {
-                                Box(
-                                    modifier = Modifier
-                                        .fillMaxSize()
-                                        .padding(4.dp)
-                                        .clip(CircleShape)
-                                        .background(
-                                            brush = Brush.linearGradient(
-                                                colors = listOf(
-                                                    PrimaryColor.copy(alpha = 0.2f),
-                                                    PrimaryColor.copy(alpha = 0.1f)
-                                                )
-                                            )
-                                        ),
-                                    contentAlignment = Alignment.Center
-                                ) {
-                                    Icon(
-                                        imageVector = Icons.Default.Person,
-                                        contentDescription = "Profile Picture",
-                                        tint = PrimaryColor,
-                                        modifier = Modifier.size(40.dp)
-                                    )
-                                }
-                            }
-                        }
-
-                        if (isOwnProfile) {
-                            OutlinedButton(
-                                onClick = onEditClick,
-                                shape = RoundedCornerShape(12.dp),
-                                colors = ButtonDefaults.outlinedButtonColors(
-                                    contentColor = PrimaryColor
-                                ),
-                                contentPadding = PaddingValues(horizontal = 24.dp, vertical = 10.dp)
-                            ) {
-                                Icon(
-                                    imageVector = Icons.Outlined.Edit,
-                                    contentDescription = null,
-                                    modifier = Modifier.size(16.dp)
-                                )
-                                Spacer(modifier = Modifier.width(6.dp))
-                                Text(
-                                    text = "Editar perfil",
-                                    fontSize = 14.sp,
-                                    fontWeight = FontWeight.SemiBold
-                                )
-                            }
-                        } else {
-                            Button(
-                                onClick = onFollowClick,
-                                colors = ButtonDefaults.buttonColors(
-                                    containerColor = PrimaryColor,
-                                    contentColor = Color.White
-                                ),
-                                shape = RoundedCornerShape(12.dp),
-                                contentPadding = PaddingValues(horizontal = 24.dp, vertical = 10.dp)
-                            ) {
-                                Icon(
-                                    imageVector = Icons.Default.Add,
-                                    contentDescription = null,
-                                    modifier = Modifier.size(16.dp)
-                                )
-                                Spacer(modifier = Modifier.width(6.dp))
-                                Text(
-                                    text = "Seguir",
-                                    fontSize = 14.sp,
-                                    fontWeight = FontWeight.SemiBold
-                                )
-                            }
-                        }
-                    }
-
-                    Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                                .background(statusColor)
+                        )
                         Text(
-                            text = userProfile.name ?: "Usuario sin nombre",
-                            fontSize = 20.sp,
-                            fontWeight = FontWeight.Bold,
-                            color = Color(0xFF1F1F1F),
-                            lineHeight = 26.sp
+                            text = statusText,
+                            fontSize = 11.sp,
+                            color = statusColor,
+                            fontWeight = FontWeight.SemiBold
                         )
-
-                        if (!userProfile.pronouns.isNullOrEmpty()) {
-                            Surface(
-                                shape = RoundedCornerShape(6.dp),
-                                color = PrimaryColor.copy(alpha = 0.1f)
-                            ) {
-                                Text(
-                                    text = userProfile.pronouns,
-                                    fontSize = 12.sp,
-                                    color = PrimaryColor,
-                                    fontWeight = FontWeight.Medium,
-                                    modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp)
-                                )
-                            }
-                        }
                     }
+                }
+            }
 
-                    Surface(
-                        shape = RoundedCornerShape(8.dp),
-                        color = getStatusColor(userProfile.status_id).copy(alpha = 0.15f)
+            // Descripción
+            Text(
+                text = report.description,
+                fontSize = 13.sp,
+                color = Color(0xFF616161),
+                lineHeight = 18.sp,
+                maxLines = 2,
+                overflow = TextOverflow.Ellipsis
+            )
+
+            // Footer con fecha y ubicación
+            Column(
+                verticalArrangement = Arrangement.spacedBy(4.dp)
+            ) {
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Row(
+                        horizontalArrangement = Arrangement.spacedBy(4.dp),
+                        verticalAlignment = Alignment.CenterVertically
                     ) {
-                        Row(
-                            modifier = Modifier.padding(horizontal = 12.dp, vertical = 6.dp),
-                            horizontalArrangement = Arrangement.spacedBy(6.dp),
-                            verticalAlignment = Alignment.CenterVertically
-                        ) {
-                            Box(
-                                modifier = Modifier
-                                    .size(8.dp)
-                                    .clip(CircleShape)
-                                    .background(getStatusColor(userProfile.status_id))
-                            )
-                            Text(
-                                text = getStatusText(userProfile.status_id),
-                                fontSize = 13.sp,
-                                color = getStatusColor(userProfile.status_id),
-                                fontWeight = FontWeight.Medium
-                            )
-                        }
-                    }
-
-                    if (!userProfile.description.isNullOrEmpty()) {
-                        Surface(
-                            modifier = Modifier.fillMaxWidth(),
-                            shape = RoundedCornerShape(12.dp),
-                            color = Color(0xFFF8F9FA)
-                        ) {
-                            Row(
-                                modifier = Modifier.padding(12.dp),
-                                horizontalArrangement = Arrangement.spacedBy(10.dp)
-                            ) {
-                                Icon(
-                                    imageVector = Icons.Outlined.Info,
-                                    contentDescription = null,
-                                    tint = Color(0xFF757575),
-                                    modifier = Modifier.size(20.dp)
-                                )
-                                Text(
-                                    text = userProfile.description,
-                                    fontSize = 13.sp,
-                                    color = Color(0xFF616161),
-                                    lineHeight = 19.sp,
-                                    modifier = Modifier.weight(1f)
-                                )
-                            }
-                        }
-                    }
-
-                    Divider(color = Color(0xFFE0E0E0), thickness = 1.dp)
-
-                    Column(
-                        verticalArrangement = Arrangement.spacedBy(12.dp),
-                        modifier = Modifier.padding(bottom = 8.dp)
-                    ) {
+                        Icon(
+                            imageVector = Icons.Outlined.Schedule,
+                            contentDescription = null,
+                            tint = Color(0xFF9E9E9E),
+                            modifier = Modifier.size(14.dp)
+                        )
                         Text(
-                            text = "Información de contacto",
-                            fontSize = 13.sp,
-                            fontWeight = FontWeight.SemiBold,
-                            color = Color(0xFF757575)
+                            text = formattedDate,
+                            fontSize = 11.sp,
+                            color = Color(0xFF9E9E9E)
                         )
+                    }
 
-                        ContactInfoRow(
-                            icon = Icons.Outlined.Email,
-                            text = userProfile.email ?: "No especificado"
+                    Icon(
+                        imageVector = Icons.Default.ChevronRight,
+                        contentDescription = "Ver detalle",
+                        tint = Color(0xFFBDBDBD),
+                        modifier = Modifier.size(20.dp)
+                    )
+                }
+
+                // Ubicación si existe
+                if (!report.report_location.isNullOrBlank()) {
+                    Row(
+                        horizontalArrangement = Arrangement.spacedBy(4.dp),
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Icon(
+                            imageVector = Icons.Outlined.LocationOn,
+                            contentDescription = null,
+                            tint = Color(0xFF9E9E9E),
+                            modifier = Modifier.size(14.dp)
                         )
-
-                        if (!userProfile.phone.isNullOrEmpty()) {
-                            ContactInfoRow(
-                                icon = Icons.Outlined.Phone,
-                                text = userProfile.phone
-                            )
-                        }
-
-                        if (!userProfile.address.isNullOrEmpty()) {
-                            ContactInfoRow(
-                                icon = Icons.Outlined.LocationOn,
-                                text = userProfile.address
-                            )
-                        }
+                        Text(
+                            text = report.report_location,
+                            fontSize = 11.sp,
+                            color = Color(0xFF9E9E9E),
+                            maxLines = 1,
+                            overflow = TextOverflow.Ellipsis
+                        )
                     }
                 }
             }

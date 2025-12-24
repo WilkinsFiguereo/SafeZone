@@ -8,6 +8,7 @@ import androidx.compose.animation.core.tween
 import androidx.compose.animation.slideInHorizontally
 import androidx.compose.animation.slideOutHorizontally
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
@@ -20,23 +21,28 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.navigation.NavController
+import coil.compose.AsyncImage
 import com.wilkins.safezone.backend.network.AppUser
+import com.wilkins.safezone.backend.network.SupabaseService
 import com.wilkins.safezone.ui.theme.NameApp
 import com.wilkins.safezone.ui.theme.PrimaryColor
 import io.github.jan.supabase.SupabaseClient
+import io.github.jan.supabase.storage.storage
 import kotlinx.coroutines.launch
 
 @Composable
 fun SideMenu(
     navController: NavController,
     userId: String,
-    userName: String , // Nombre del usuario
+    userName: String, // Nombre del usuario
     currentRoute: String = "",
     modifier: Modifier = Modifier,
     isMenuOpen: Boolean = false,
@@ -46,14 +52,30 @@ fun SideMenu(
 ) {
     var isOpen by remember { mutableStateOf(isMenuOpen) }
     val scope = rememberCoroutineScope()
+
     LaunchedEffect(isMenuOpen) {
         isOpen = isMenuOpen
     }
+
     val userState = produceState<AppUser?>(initialValue = null) {
         value = getUserProfile(context)
     }
 
     val user = userState.value
+
+    // Obtener URL de la foto de perfil
+    val profilePhotoUrl = remember(user?.photoProfile) {
+        if (!user?.photoProfile.isNullOrEmpty()) {
+            try {
+                val bucket = SupabaseService.getInstance().storage.from("UserProfile")
+                bucket.publicUrl(user!!.photoProfile!!)
+            } catch (e: Exception) {
+                null
+            }
+        } else {
+            null
+        }
+    }
 
     val menuSections = listOf(
         MenuSection(
@@ -117,19 +139,26 @@ fun SideMenu(
                     fontWeight = FontWeight.Bold
                 )
 
-                Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-
-
-                    IconButton(onClick = {
-                        navController.navigate("navigationDrawer")
-                    }) {
-                        Box(
-                            modifier = Modifier
-                                .size(36.dp)
-                                .clip(CircleShape)
-                                .background(Color.White.copy(alpha = 0.3f)),
-                            contentAlignment = Alignment.Center
-                        ) {
+                IconButton(onClick = {
+                    navController.navigate("navigationDrawer")
+                }) {
+                    Box(
+                        modifier = Modifier
+                            .size(36.dp)
+                            .clip(CircleShape)
+                            .background(Color.White.copy(alpha = 0.3f)),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        if (profilePhotoUrl != null) {
+                            AsyncImage(
+                                model = profilePhotoUrl,
+                                contentDescription = "Foto de perfil",
+                                modifier = Modifier
+                                    .fillMaxSize()
+                                    .clip(CircleShape),
+                                contentScale = ContentScale.Crop
+                            )
+                        } else {
                             Icon(
                                 imageVector = Icons.Default.Person,
                                 contentDescription = "Perfil",
@@ -161,7 +190,7 @@ fun SideMenu(
                         .fillMaxHeight()
                         .background(PrimaryColor)
                 ) {
-                    // Header del menú con info del usuario
+                    // Header del menú con foto de perfil
                     Column(
                         modifier = Modifier
                             .fillMaxWidth()
@@ -171,27 +200,67 @@ fun SideMenu(
                             horizontalArrangement = Arrangement.Start,
                             verticalAlignment = Alignment.CenterVertically
                         ) {
+                            // Foto de perfil en el menú
                             Box(
                                 modifier = Modifier
-                                    .size(48.dp)
+                                    .size(56.dp)
                                     .clip(CircleShape)
+                                    .border(2.dp, Color.White.copy(alpha = 0.3f), CircleShape)
                                     .background(Color.White.copy(alpha = 0.2f)),
                                 contentAlignment = Alignment.Center
                             ) {
-                                Icon(
-                                    imageVector = Icons.Default.Person,
-                                    contentDescription = null,
-                                    tint = Color.White,
-                                    modifier = Modifier.size(28.dp)
-                                )
+                                if (profilePhotoUrl != null) {
+                                    AsyncImage(
+                                        model = profilePhotoUrl,
+                                        contentDescription = "Foto de perfil",
+                                        modifier = Modifier
+                                            .fillMaxSize()
+                                            .clip(CircleShape),
+                                        contentScale = ContentScale.Crop
+                                    )
+                                } else {
+                                    // Ícono por defecto con gradiente
+                                    Box(
+                                        modifier = Modifier
+                                            .fillMaxSize()
+                                            .background(
+                                                brush = Brush.linearGradient(
+                                                    colors = listOf(
+                                                        Color.White.copy(alpha = 0.3f),
+                                                        Color.White.copy(alpha = 0.1f)
+                                                    )
+                                                )
+                                            ),
+                                        contentAlignment = Alignment.Center
+                                    ) {
+                                        Icon(
+                                            imageVector = Icons.Default.Person,
+                                            contentDescription = null,
+                                            tint = Color.White,
+                                            modifier = Modifier.size(32.dp)
+                                        )
+                                    }
+                                }
                             }
+
                             Spacer(modifier = Modifier.width(12.dp))
+
                             Column {
                                 Text(
                                     text = userName,
                                     color = Color.White,
                                     fontSize = 18.sp,
                                     fontWeight = FontWeight.Bold
+                                )
+                                Text(
+                                    text = "Ver perfil",
+                                    color = Color.White.copy(alpha = 0.7f),
+                                    fontSize = 12.sp,
+                                    modifier = Modifier.clickable {
+                                        isOpen = false
+                                        onMenuToggle(false)
+                                        navController.navigate("MyProfile")
+                                    }
                                 )
                             }
                         }
@@ -231,7 +300,6 @@ fun SideMenu(
                                         navController.navigate(route)
                                     }
                                 }
-
                             )
                         }
                     }

@@ -52,7 +52,8 @@ fun Profile(navController: NavController, context: Context, supabaseClient: Supa
                 },
                 onNavigateToChangeEmail = {
                     navController.navigate("change_email")
-                }
+                },
+                supabaseClient = supabase
             )
         }
 

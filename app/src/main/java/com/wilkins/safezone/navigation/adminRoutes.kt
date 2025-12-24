@@ -16,22 +16,6 @@ import com.wilkins.safezone.frontend.ui.Admin.CrudUser.UserProfileCrud
 import com.wilkins.safezone.frontend.ui.Admin.Dasbhoard.AdminDashboard
 import com.wilkins.safezone.frontend.ui.screens.auth.AccountDisabledScreen
 
-/**
- * 🛡️ RUTAS DE ADMINISTRADOR (Role ID: 2)
- * Requieren autenticación y rol admin
- *
- * Total: 8 rutas
- *
- * Incluye:
- * - accountDisabled (Gestión de cuentas suspendidas)
- * - DashboardAdmin (Panel principal)
- * - crudUsuarios (Usuarios activos)
- * - crudUsuariosDisabled (Usuarios deshabilitados)
- * - userProfileCrud (Perfil de usuario)
- * - CreateUserCrud (Crear usuario)
- * - affair_categories (Categorías de asuntos)
- * - incident_categories (Categorías de incidentes)
- */
 fun NavGraphBuilder.adminRoutes(
     navController: NavHostController,
     context: Context,

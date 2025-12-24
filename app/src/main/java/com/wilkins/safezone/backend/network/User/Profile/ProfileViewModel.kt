@@ -138,7 +138,7 @@ class ProfileViewModel : ViewModel() {
                 }
 
                 // Generar nombre único para la imagen
-                val fileName = "${currentProfile.id}_${UUID.randomUUID()}.jpg"
+                val fileName = "${currentProfile.id}/${UUID.randomUUID()}.jpg"
 
                 // Subir imagen al bucket UserProfile
                 val bucket = supabaseClient.storage.from("UserProfile")
