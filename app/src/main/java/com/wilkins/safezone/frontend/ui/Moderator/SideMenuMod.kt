@@ -1,4 +1,4 @@
-package com.wilkins.safezone.frontend.ui.Moderator.Dasbhoard
+package com.wilkins.safezone.frontend.ui.Moderator
 
 import SessionManager.logout
 import android.content.Context
@@ -67,23 +67,39 @@ fun ModeratorSideMenu(
         MenuSection(
             title = "Reportes",
             items = listOf(
-                ModeratorMenuItem(Icons.Default.Report, "Ver Reportes", "moderatorReports"),
-                ModeratorMenuItem(Icons.Default.PendingActions, "Reportes Pendientes", "moderatorPendingReports"),
-                ModeratorMenuItem(Icons.Default.CheckCircle, "Reportes Resueltos", "moderatorResolvedReports")
+                ModeratorMenuItem(Icons.Default.Report, "Ver Reportes", "ReportReviewList"),
+                ModeratorMenuItem(
+                    Icons.Default.PendingActions,
+                    "Reportes Pendientes",
+                    "moderatorPendingReports"
+                ),
+                ModeratorMenuItem(
+                    Icons.Default.CheckCircle,
+                    "Reportes Resueltos",
+                    "moderatorResolvedReports"
+                )
             )
         ),
         MenuSection(
             title = "Usuarios",
             items = listOf(
                 ModeratorMenuItem(Icons.Default.People, "Gestionar Usuarios", "moderatorUsers"),
-                ModeratorMenuItem(Icons.Default.Block, "Usuarios Bloqueados", "moderatorBlockedUsers")
+                ModeratorMenuItem(
+                    Icons.Default.Block,
+                    "Usuarios Bloqueados",
+                    "moderatorBlockedUsers"
+                )
             )
         ),
         MenuSection(
             title = "Configuración",
             items = listOf(
                 ModeratorMenuItem(Icons.Default.Person, "Mi Perfil", "moderatorProfile"),
-                ModeratorMenuItem(Icons.Default.Notifications, "Notificaciones", "moderatorNotifications"),
+                ModeratorMenuItem(
+                    Icons.Default.Notifications,
+                    "Notificaciones",
+                    "moderatorNotifications"
+                ),
                 ModeratorMenuItem(Icons.Default.Settings, "Configuración", "moderatorSettings"),
                 ModeratorMenuItem(Icons.Default.Logout, "Cerrar Sesión", "logout")
             )

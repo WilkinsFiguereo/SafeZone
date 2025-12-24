@@ -16,7 +16,6 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
@@ -26,21 +25,80 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.navigation.NavController
 import com.wilkins.safezone.GenericUserUi.AdminMenu
-import com.wilkins.safezone.frontend.ui.Admin.Dasbhoard.components.RecentUpdatesSection
+import com.wilkins.safezone.backend.network.Admin.Dashboard.*
+import com.wilkins.safezone.backend.network.GlobalAssociation.DateUtils
 import com.wilkins.safezone.ui.theme.PrimaryColor
+import kotlinx.coroutines.async
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 
 @Composable
 fun AdminDashboard(navController: NavController) {
     var isMenuOpen by remember { mutableStateOf(false) }
-
-    // Estados para animaciones de carga
     var isLoading by remember { mutableStateOf(true) }
+    var errorMessage by remember { mutableStateOf<String?>(null) }
 
+    // Estados para datos dinámicos
+    var dashboardStats by remember { mutableStateOf<DashboardStats?>(null) }
+    var monthlyActivity by remember { mutableStateOf<List<MonthlyActivity>>(emptyList()) }
+    var recentReports by remember { mutableStateOf<List<RecentReport>>(emptyList()) }
+    var recentActivities by remember { mutableStateOf<List<ActivityLog>>(emptyList()) }
+
+    val repository = remember { DashboardRepository() }
+    val scope = rememberCoroutineScope()
+
+    // Función para cargar datos
+    suspend fun loadDashboardData() {
+        try {
+            println("🔄 AdminDashboard: Iniciando carga de datos...")
+
+            // Cargar datos en paralelo usando async/await
+            val statsDeferred = scope.async {
+                println("🔄 Lanzando getDashboardStats...")
+                repository.getDashboardStats()
+            }
+            val activityDeferred = scope.async {
+                println("🔄 Lanzando getMonthlyActivity...")
+                repository.getMonthlyActivity()
+            }
+            val reportsDeferred = scope.async {
+                println("🔄 Lanzando getRecentReports...")
+                repository.getRecentReports(3)
+            }
+            val activitiesDeferred = scope.async {
+                println("🔄 Lanzando getRecentActivities...")
+                repository.getRecentActivities(5)
+            }
+
+            // Esperar a que todos completen
+            println("⏳ Esperando resultados...")
+            dashboardStats = statsDeferred.await()
+            monthlyActivity = activityDeferred.await()
+            recentReports = reportsDeferred.await()
+            recentActivities = activitiesDeferred.await()
+
+            println("✅ AdminDashboard: Todos los datos cargados exitosamente")
+            println("   - Stats: \${dashboardStats != null}")
+            println("   - Monthly: \${monthlyActivity.size} items")
+            println("   - Reports: \${recentReports.size} items")
+            println("   - Activities: \${recentActivities.size} items")
+
+            errorMessage = null
+        } catch (e: Exception) {
+            System.err.println("❌ AdminDashboard: Error al cargar datos")
+            System.err.println("   Mensaje: \${e.message}")
+            e.printStackTrace()
+            errorMessage = "Error al cargar datos: \${e.message}"
+        }
+    }
+
+    // Cargar datos al inicio
     LaunchedEffect(Unit) {
-        delay(1000) // Simular carga de datos
+        println("🚀 AdminDashboard: LaunchedEffect iniciado")
+        isLoading = true
+        loadDashboardData()
         isLoading = false
+        println("🏁 AdminDashboard: LaunchedEffect completado")
     }
 
     AdminMenu(
@@ -51,22 +109,89 @@ fun AdminDashboard(navController: NavController) {
         onMenuToggle = { isMenuOpen = !isMenuOpen }
     ) {
         Column(modifier = Modifier.fillMaxSize()) {
-            // Header personalizado del Dashboard
             DashboardHeader(
                 onMenuClick = { isMenuOpen = !isMenuOpen },
                 onNotificationClick = { navController.navigate("notifications") }
             )
 
-            // Contenido del dashboard
-            if (isLoading) {
-                Box(
-                    modifier = Modifier.fillMaxSize(),
-                    contentAlignment = Alignment.Center
-                ) {
-                    CircularProgressIndicator(color = PrimaryColor)
+            when {
+                isLoading -> {
+                    Box(
+                        modifier = Modifier.fillMaxSize(),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                            CircularProgressIndicator(color = PrimaryColor)
+                            Spacer(modifier = Modifier.height(16.dp))
+                            Text(
+                                text = "Cargando dashboard...",
+                                color = Color.Gray,
+                                fontSize = 14.sp
+                            )
+                        }
+                    }
                 }
-            } else {
-                DashboardContent(navController)
+                errorMessage != null -> {
+                    Box(
+                        modifier = Modifier.fillMaxSize(),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        Column(
+                            horizontalAlignment = Alignment.CenterHorizontally,
+                            modifier = Modifier.padding(32.dp)
+                        ) {
+                            Icon(
+                                Icons.Default.Warning,
+                                contentDescription = null,
+                                tint = Color(0xFFF44336),
+                                modifier = Modifier.size(64.dp)
+                            )
+                            Spacer(modifier = Modifier.height(16.dp))
+                            Text(
+                                text = "Error al cargar",
+                                fontSize = 18.sp,
+                                fontWeight = FontWeight.Bold
+                            )
+                            Spacer(modifier = Modifier.height(8.dp))
+                            Text(
+                                text = errorMessage ?: "Error desconocido",
+                                color = Color.Gray,
+                                fontSize = 14.sp
+                            )
+                            Spacer(modifier = Modifier.height(24.dp))
+                            Button(
+                                onClick = {
+                                    scope.launch {
+                                        isLoading = true
+                                        loadDashboardData()
+                                        isLoading = false
+                                    }
+                                },
+                                colors = ButtonDefaults.buttonColors(containerColor = PrimaryColor)
+                            ) {
+                                Icon(Icons.Default.Refresh, contentDescription = null)
+                                Spacer(modifier = Modifier.width(8.dp))
+                                Text("Reintentar")
+                            }
+                        }
+                    }
+                }
+                else -> {
+                    DashboardContent(
+                        navController = navController,
+                        stats = dashboardStats,
+                        monthlyActivity = monthlyActivity,
+                        recentReports = recentReports,
+                        recentActivities = recentActivities,
+                        onRefresh = {
+                            scope.launch {
+                                isLoading = true
+                                loadDashboardData()
+                                isLoading = false
+                            }
+                        }
+                    )
+                }
             }
         }
     }
@@ -114,27 +239,26 @@ fun DashboardHeader(
             }
         }
 
-        Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-            IconButton(onClick = onNotificationClick) {
-                Badge(
-                    containerColor = Color.Red,
-                    modifier = Modifier.offset(x = 8.dp, y = (-8).dp)
-                ) {
-                    Text("3", fontSize = 10.sp, color = Color.White)
-                }
-                Icon(
-                    Icons.Default.Notifications,
-                    contentDescription = "Notificaciones",
-                    tint = Color.White,
-                    modifier = Modifier.size(24.dp)
-                )
-            }
+        IconButton(onClick = onNotificationClick) {
+            Icon(
+                Icons.Default.Notifications,
+                contentDescription = "Notificaciones",
+                tint = Color.White,
+                modifier = Modifier.size(24.dp)
+            )
         }
     }
 }
 
 @Composable
-fun DashboardContent(navController: NavController) {
+fun DashboardContent(
+    navController: NavController,
+    stats: DashboardStats?,
+    monthlyActivity: List<MonthlyActivity>,
+    recentReports: List<RecentReport>,
+    recentActivities: List<ActivityLog>,
+    onRefresh: () -> Unit
+) {
     LazyColumn(
         modifier = Modifier
             .fillMaxSize()
@@ -142,7 +266,51 @@ fun DashboardContent(navController: NavController) {
         contentPadding = PaddingValues(16.dp),
         verticalArrangement = Arrangement.spacedBy(16.dp)
     ) {
-        // Sección de estadísticas principales
+        // Botón de refresh
+        item {
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.End
+            ) {
+                Button(
+                    onClick = onRefresh,
+                    colors = ButtonDefaults.buttonColors(containerColor = PrimaryColor)
+                ) {
+                    Icon(Icons.Default.Refresh, contentDescription = null)
+                    Spacer(modifier = Modifier.width(8.dp))
+                    Text("Actualizar")
+                }
+            }
+        }
+
+        // Debug info
+        if (stats == null) {
+            item {
+                Card(
+                    modifier = Modifier.fillMaxWidth(),
+                    colors = CardDefaults.cardColors(containerColor = Color(0xFFFFF3CD))
+                ) {
+                    Row(
+                        modifier = Modifier.padding(16.dp),
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Icon(
+                            Icons.Default.Info,
+                            contentDescription = null,
+                            tint = Color(0xFF856404)
+                        )
+                        Spacer(modifier = Modifier.width(12.dp))
+                        Text(
+                            text = "No se pudieron cargar las estadísticas",
+                            color = Color(0xFF856404),
+                            fontSize = 14.sp
+                        )
+                    }
+                }
+            }
+        }
+
+        // Estadísticas principales
         item {
             Text(
                 text = "Resumen General",
@@ -153,25 +321,27 @@ fun DashboardContent(navController: NavController) {
         }
 
         item {
-            StatsCardsSection()
+            StatsCardsSection(stats)
         }
 
-        // Gráfico de barras
-        item {
-            Spacer(modifier = Modifier.height(8.dp))
-            Text(
-                text = "Actividad Mensual",
-                fontSize = 18.sp,
-                fontWeight = FontWeight.Bold,
-                modifier = Modifier.padding(vertical = 8.dp)
-            )
+        // Gráfico de actividad mensual
+        if (monthlyActivity.isNotEmpty()) {
+            item {
+                Spacer(modifier = Modifier.height(8.dp))
+                Text(
+                    text = "Actividad Mensual",
+                    fontSize = 18.sp,
+                    fontWeight = FontWeight.Bold,
+                    modifier = Modifier.padding(vertical = 8.dp)
+                )
+            }
+
+            item {
+                BarChartCard(monthlyActivity)
+            }
         }
 
-        item {
-            BarChartCard()
-        }
-
-        // Últimos reportes enviados
+        // Últimos reportes
         item {
             Spacer(modifier = Modifier.height(8.dp))
             Text(
@@ -183,10 +353,39 @@ fun DashboardContent(navController: NavController) {
         }
 
         item {
-            RecentReportsSection()
+            if (recentReports.isEmpty()) {
+                Card(
+                    modifier = Modifier.fillMaxWidth(),
+                    colors = CardDefaults.cardColors(containerColor = Color.White)
+                ) {
+                    Box(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(32.dp),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                            Icon(
+                                Icons.Default.Description,
+                                contentDescription = null,
+                                tint = Color.Gray,
+                                modifier = Modifier.size(48.dp)
+                            )
+                            Spacer(modifier = Modifier.height(8.dp))
+                            Text(
+                                text = "No hay reportes recientes",
+                                color = Color.Gray,
+                                fontSize = 14.sp
+                            )
+                        }
+                    }
+                }
+            } else {
+                RecentReportsSection(recentReports)
+            }
         }
 
-        // Últimos mensajes
+        // Últimos mensajes (estáticos por ahora)
         item {
             Spacer(modifier = Modifier.height(8.dp))
             Text(
@@ -201,7 +400,7 @@ fun DashboardContent(navController: NavController) {
             RecentMessagesSection()
         }
 
-        // Últimas actualizaciones
+        // Últimas actividades (dinámico)
         item {
             Spacer(modifier = Modifier.height(8.dp))
             Text(
@@ -213,10 +412,38 @@ fun DashboardContent(navController: NavController) {
         }
 
         item {
-            RecentUpdatesSection()
+            if (recentActivities.isEmpty()) {
+                Card(
+                    modifier = Modifier.fillMaxWidth(),
+                    colors = CardDefaults.cardColors(containerColor = Color.White)
+                ) {
+                    Box(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(32.dp),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                            Icon(
+                                Icons.Default.Notifications,
+                                contentDescription = null,
+                                tint = Color.Gray,
+                                modifier = Modifier.size(48.dp)
+                            )
+                            Spacer(modifier = Modifier.height(8.dp))
+                            Text(
+                                text = "No hay actividades recientes",
+                                color = Color.Gray,
+                                fontSize = 14.sp
+                            )
+                        }
+                    }
+                }
+            } else {
+                RecentUpdatesSection(recentActivities)
+            }
         }
 
-        // Espaciado final
         item {
             Spacer(modifier = Modifier.height(16.dp))
         }
@@ -224,18 +451,36 @@ fun DashboardContent(navController: NavController) {
 }
 
 @Composable
-fun StatsCardsSection() {
-    val stats = listOf(
-        StatData("Reportes enviados", "30", Icons.Default.Send, Color(0xFF4CAF50)),
-        StatData("Reportes recibidos", "30", Icons.Default.Inbox, Color(0xFF2196F3)),
-        StatData("Reportes resueltos", "30", Icons.Default.CheckCircle, Color(0xFFFF9800)),
-        StatData("Reportes cancelados", "30", Icons.Default.Cancel, Color(0xFFF44336))
+fun StatsCardsSection(stats: DashboardStats?) {
+    val statsData = listOf(
+        StatData(
+            "Reportes enviados",
+            stats?.reportsSent?.toString() ?: "0",
+            Icons.Default.Send,
+            Color(0xFF4CAF50)
+        ),
+        StatData(
+            "Reportes recibidos",
+            stats?.reportsReceived?.toString() ?: "0",
+            Icons.Default.Inbox,
+            Color(0xFF2196F3)
+        ),
+        StatData(
+            "Reportes resueltos",
+            stats?.reportsResolved?.toString() ?: "0",
+            Icons.Default.CheckCircle,
+            Color(0xFFFF9800)
+        ),
+        StatData(
+            "Reportes cancelados",
+            stats?.reportsCancelled?.toString() ?: "0",
+            Icons.Default.Cancel,
+            Color(0xFFF44336)
+        )
     )
 
-    LazyRow(
-        horizontalArrangement = Arrangement.spacedBy(12.dp)
-    ) {
-        items(stats) { stat ->
+    LazyRow(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+        items(statsData) { stat ->
             StatCard(stat)
         }
     }
@@ -310,9 +555,10 @@ fun StatCard(stat: StatData) {
 }
 
 @Composable
-fun BarChartCard() {
-    val barHeights = listOf(0.4f, 0.7f, 0.5f, 0.9f, 0.6f)
-    val months = listOf("Ene", "Feb", "Mar", "Abr", "May")
+fun BarChartCard(monthlyActivity: List<MonthlyActivity>) {
+    val maxCount = monthlyActivity.maxOfOrNull { it.reportCount } ?: 1
+    val barHeights = monthlyActivity.map { (it.reportCount.toFloat() / maxCount).coerceIn(0.2f, 1f) }
+    val months = monthlyActivity.map { it.monthName }
 
     Card(
         modifier = Modifier
@@ -335,7 +581,6 @@ fun BarChartCard() {
 
             Spacer(modifier = Modifier.height(24.dp))
 
-            // Gráfico de barras
             Row(
                 modifier = Modifier
                     .fillMaxWidth()
@@ -343,10 +588,10 @@ fun BarChartCard() {
                 horizontalArrangement = Arrangement.SpaceEvenly,
                 verticalAlignment = Alignment.Bottom
             ) {
-                barHeights.forEachIndexed { index, height ->
+                barHeights.zip(months).forEach { (height, label) ->
                     AnimatedBar(
                         height = height,
-                        label = months[index],
+                        label = label,
                         color = PrimaryColor
                     )
                 }
@@ -354,7 +599,6 @@ fun BarChartCard() {
         }
     }
 }
-
 
 @Composable
 fun AnimatedBar(height: Float, label: String, color: Color) {
@@ -398,28 +642,7 @@ fun AnimatedBar(height: Float, label: String, color: Color) {
 }
 
 @Composable
-fun RecentReportsSection() {
-    val reports = listOf(
-        ReportItem(
-            "Reporte 1",
-            "Usuario Juan Pérez - Incidente reportado...",
-            "Hace 10 min",
-            ReportStatus.PENDING
-        ),
-        ReportItem(
-            "Reporte 2",
-            "Usuario Ana García - Problema de acceso...",
-            "Hace 25 min",
-            ReportStatus.IN_PROGRESS
-        ),
-        ReportItem(
-            "Reporte 3",
-            "Usuario Carlos López - Solicitud de ayuda...",
-            "Hace 1 hora",
-            ReportStatus.COMPLETED
-        )
-    )
-
+fun RecentReportsSection(reports: List<RecentReport>) {
     Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
         reports.forEach { report ->
             ReportCard(report)
@@ -428,7 +651,15 @@ fun RecentReportsSection() {
 }
 
 @Composable
-fun ReportCard(report: ReportItem) {
+fun ReportCard(report: RecentReport) {
+    val status = when (report.statusId) {
+        1 -> ReportStatus.PENDING
+        2 -> ReportStatus.IN_PROGRESS
+        3 -> ReportStatus.COMPLETED
+        4 -> ReportStatus.CANCELLED
+        else -> ReportStatus.PENDING
+    }
+
     Card(
         modifier = Modifier.fillMaxWidth(),
         shape = RoundedCornerShape(12.dp),
@@ -441,7 +672,6 @@ fun ReportCard(report: ReportItem) {
                 .padding(16.dp),
             verticalAlignment = Alignment.CenterVertically
         ) {
-            // Icono de imagen/miniatura
             Box(
                 modifier = Modifier
                     .size(56.dp)
@@ -459,7 +689,6 @@ fun ReportCard(report: ReportItem) {
 
             Spacer(modifier = Modifier.width(12.dp))
 
-            // Información del reporte
             Column(modifier = Modifier.weight(1f)) {
                 Text(
                     text = report.title,
@@ -470,22 +699,21 @@ fun ReportCard(report: ReportItem) {
                 )
                 Spacer(modifier = Modifier.height(4.dp))
                 Text(
-                    text = report.description,
+                    text = "Por: ${report.userName}",
                     fontSize = 12.sp,
                     color = Color.Gray,
-                    maxLines = 2,
+                    maxLines = 1,
                     overflow = TextOverflow.Ellipsis
                 )
                 Spacer(modifier = Modifier.height(4.dp))
                 Text(
-                    text = report.time,
+                    text = DateUtils.formatDateTime(report.createdAt),
                     fontSize = 11.sp,
                     color = Color.Gray
                 )
             }
 
-            // Status badge
-            StatusBadge(report.status)
+            StatusBadge(status)
         }
     }
 }
@@ -542,7 +770,6 @@ fun MessageCard(message: MessageItem) {
                 .padding(16.dp),
             verticalAlignment = Alignment.CenterVertically
         ) {
-            // Avatar
             Box(
                 modifier = Modifier
                     .size(48.dp)
@@ -564,7 +791,6 @@ fun MessageCard(message: MessageItem) {
 
             Spacer(modifier = Modifier.width(12.dp))
 
-            // Contenido del mensaje
             Column(modifier = Modifier.weight(1f)) {
                 Row(
                     modifier = Modifier.fillMaxWidth(),
@@ -594,19 +820,78 @@ fun MessageCard(message: MessageItem) {
     }
 }
 
+@Composable
+fun RecentUpdatesSection(activities: List<ActivityLog>) {
+    Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+        activities.forEach { activity ->
+            UpdateCard(activity)
+        }
+    }
+}
+
+@Composable
+fun UpdateCard(activity: ActivityLog) {
+    val (icon, color) = when (activity.actionType) {
+        "ADDED" -> Icons.Default.Add to Color(0xFF4CAF50)
+        "EDITED" -> Icons.Default.Edit to Color(0xFF2196F3)
+        "DELETED" -> Icons.Default.Delete to Color(0xFFF44336)
+        else -> Icons.Default.Notifications to Color.Gray
+    }
+
+    Card(
+        modifier = Modifier.fillMaxWidth(),
+        shape = RoundedCornerShape(12.dp),
+        elevation = CardDefaults.cardElevation(defaultElevation = 2.dp),
+        colors = CardDefaults.cardColors(containerColor = Color.White)
+    ) {
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(16.dp),
+            verticalAlignment = Alignment.Top
+        ) {
+            Box(
+                modifier = Modifier
+                    .size(40.dp)
+                    .clip(RoundedCornerShape(8.dp))
+                    .background(color.copy(alpha = 0.15f)),
+                contentAlignment = Alignment.Center
+            ) {
+                Icon(
+                    icon,
+                    contentDescription = null,
+                    tint = color,
+                    modifier = Modifier.size(20.dp)
+                )
+            }
+
+            Spacer(modifier = Modifier.width(12.dp))
+
+            Column(modifier = Modifier.weight(1f)) {
+                Text(
+                    text = activity.recordTitle,
+                    fontSize = 14.sp,
+                    fontWeight = FontWeight.Medium,
+                    maxLines = 2,
+                    overflow = TextOverflow.Ellipsis
+                )
+                Spacer(modifier = Modifier.height(4.dp))
+                Text(
+                    text = DateUtils.formatDateTime(activity.createdAt),
+                    fontSize = 12.sp,
+                    color = Color.Gray
+                )
+            }
+        }
+    }
+}
+
 // Data classes
 data class StatData(
     val label: String,
     val value: String,
     val icon: ImageVector,
     val color: Color
-)
-
-data class ReportItem(
-    val title: String,
-    val description: String,
-    val time: String,
-    val status: ReportStatus
 )
 
 data class MessageItem(

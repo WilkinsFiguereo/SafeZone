@@ -6,7 +6,9 @@ import androidx.navigation.NavGraphBuilder
 import androidx.navigation.NavHostController
 import androidx.navigation.compose.composable
 import com.wilkins.safezone.backend.network.SupabaseService
+import com.wilkins.safezone.frontend.ui.GlobalAssociation.ReportSent.ReportStatusScreen
 import com.wilkins.safezone.frontend.ui.Moderator.Dashboard.ModeratorDashboard
+import com.wilkins.safezone.frontend.ui.Moderator.ReviewReports.RewiewReportsListScreen
 
 /**
  * ⚙️ RUTAS DE MODERADOR (Role ID: 3)
@@ -44,6 +46,30 @@ fun NavGraphBuilder.moderatorRoutes(
                 context = context,
                 supabaseClient = supabaseClient
             )
+        }
+    }
+
+    composable("report_review_detail/{reportId}") { backStackEntry ->
+        if (!hasActiveSession()) {
+            Log.w("ModRoutes", "⚠️ Intento de acceso sin sesión a report_detail")
+            navController.navigate("login") {
+                popUpTo(0) { inclusive = true }
+            }
+        } else {
+            val reportId = backStackEntry.arguments?.getString("reportId") ?: return@composable
+            ReportStatusScreen(navController = navController, reportId)
+        }
+    }
+
+    composable("ReportReviewList") {
+        if (!hasActiveSession()) {
+            Log.w("ModRoutes", "⚠️ Intento de acceso sin sesión a ReportSentList")
+            navController.navigate("login") {
+                popUpTo(0) { inclusive = true }
+            }
+        } else {
+            val supabaseClient = SupabaseService.getInstance()
+            RewiewReportsListScreen(navController = navController, initialStatusId = 5)
         }
     }
 }

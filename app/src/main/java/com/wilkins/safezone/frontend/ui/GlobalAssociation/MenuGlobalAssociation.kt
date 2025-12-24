@@ -174,13 +174,11 @@ fun GovernmentMenu(
             items = listOf(
                 GovernmentMenuItem(Icons.Default.Analytics, "Estadísticas", "government_analytics"),
                 GovernmentMenuItem(Icons.Default.Map, "Mapa de Incidentes", "government_map"),
-                GovernmentMenuItem(Icons.Default.TrendingUp, "Tendencias", "government_trends")
             )
         ),
         GovernmentMenuSection(
             title = "GESTIÓN",
             items = listOf(
-                GovernmentMenuItem(Icons.Default.Category, "Categorías", "government_categories"),
                 GovernmentMenuItem(Icons.Default.Notifications, "Notificaciones", "government_notifications", badge = 5),
                 GovernmentMenuItem(Icons.Default.Settings, "Configuración", "government_settings")
             )

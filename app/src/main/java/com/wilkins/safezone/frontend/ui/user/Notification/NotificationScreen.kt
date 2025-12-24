@@ -20,6 +20,7 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.navigation.NavController
@@ -140,7 +141,6 @@ fun NotificationsScreen(navController: NavController, context: Context, subaseCl
                                             onClick = {
                                                 scope.launch {
                                                     notificationRepository.markAllAsRead(userId)
-                                                    // Recargar notificaciones
                                                     notifications = when (selectedTab) {
                                                         FilterTab.ALL -> notificationRepository.getUserNotifications(userId)
                                                         FilterTab.UNREAD -> notificationRepository.getUnreadNotifications(userId)
@@ -163,7 +163,6 @@ fun NotificationsScreen(navController: NavController, context: Context, subaseCl
                                             onClick = {
                                                 scope.launch {
                                                     notificationRepository.deleteAllRead(userId)
-                                                    // Recargar notificaciones
                                                     notifications = when (selectedTab) {
                                                         FilterTab.ALL -> notificationRepository.getUserNotifications(userId)
                                                         FilterTab.UNREAD -> notificationRepository.getUnreadNotifications(userId)
@@ -235,7 +234,7 @@ fun NotificationsScreen(navController: NavController, context: Context, subaseCl
                         }
                     }
 
-                    // Tabs de filtros
+                    // Tabs de filtros - AJUSTADO PARA NO ROMPER
                     TabRow(
                         selectedTabIndex = FilterTab.values().indexOf(selectedTab),
                         containerColor = Color.White,
@@ -255,20 +254,24 @@ fun NotificationsScreen(navController: NavController, context: Context, subaseCl
                                 unselectedContentColor = Color(0xFF5F6368)
                             ) {
                                 Row(
-                                    modifier = Modifier.padding(vertical = 12.dp),
+                                    modifier = Modifier
+                                        .padding(vertical = 10.dp, horizontal = 4.dp)
+                                        .widthIn(max = 100.dp), // Limitar ancho máximo
                                     horizontalArrangement = Arrangement.Center,
                                     verticalAlignment = Alignment.CenterVertically
                                 ) {
                                     Icon(
                                         imageVector = tab.icon,
                                         contentDescription = null,
-                                        modifier = Modifier.size(18.dp)
+                                        modifier = Modifier.size(16.dp) // Icono más pequeño
                                     )
-                                    Spacer(modifier = Modifier.width(6.dp))
+                                    Spacer(modifier = Modifier.width(4.dp)) // Menos espacio
                                     Text(
                                         text = tab.label,
-                                        fontSize = 14.sp,
-                                        fontWeight = if (selectedTab == tab) FontWeight.Medium else FontWeight.Normal
+                                        fontSize = 12.sp, // Texto más pequeño
+                                        fontWeight = if (selectedTab == tab) FontWeight.Medium else FontWeight.Normal,
+                                        maxLines = 1, // Una sola línea
+                                        overflow = TextOverflow.Ellipsis // Puntos suspensivos si es muy largo
                                     )
                                 }
                             }
@@ -317,7 +320,6 @@ fun NotificationsScreen(navController: NavController, context: Context, subaseCl
                             onMarkAsRead = {
                                 scope.launch {
                                     if (notificationRepository.markAsRead(notification.id)) {
-                                        // Recargar notificaciones
                                         notifications = when (selectedTab) {
                                             FilterTab.ALL -> notificationRepository.getUserNotifications(userId)
                                             FilterTab.UNREAD -> notificationRepository.getUnreadNotifications(userId)
@@ -330,7 +332,6 @@ fun NotificationsScreen(navController: NavController, context: Context, subaseCl
                             onDelete = {
                                 scope.launch {
                                     if (notificationRepository.deleteNotification(notification.id)) {
-                                        // Recargar notificaciones
                                         notifications = when (selectedTab) {
                                             FilterTab.ALL -> notificationRepository.getUserNotifications(userId)
                                             FilterTab.UNREAD -> notificationRepository.getUnreadNotifications(userId)
@@ -366,14 +367,12 @@ fun NotificationItem(
 ) {
     var showMenu by remember { mutableStateOf(false) }
 
-    // Determinar el nombre del remitente
     val senderName = when {
         notification.type == "SYSTEM" -> "Sistema SafeZone"
         notification.senderName != null -> notification.senderName
         else -> "Usuario"
     }
 
-    // Determinar el icono según el tipo
     val typeIcon = when (notification.type) {
         "SYSTEM" -> Icons.Outlined.Notifications
         "IMPORTANT" -> Icons.Outlined.PriorityHigh
@@ -398,7 +397,6 @@ fun NotificationItem(
             .padding(horizontal = 16.dp, vertical = 12.dp),
         verticalAlignment = Alignment.Top
     ) {
-        // Avatar o icono según tipo
         Box(
             modifier = Modifier
                 .size(40.dp)
@@ -463,7 +461,6 @@ fun NotificationItem(
 
         Spacer(modifier = Modifier.width(8.dp))
 
-        // Menú de opciones
         Box {
             IconButton(onClick = { showMenu = true }) {
                 Icon(
@@ -512,9 +509,6 @@ fun NotificationItem(
     }
 }
 
-/**
- * Convierte un timestamp ISO a formato "hace X tiempo"
- */
 fun getTimeAgo(timestamp: String): String {
     return try {
         val sdf = SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss", Locale.getDefault())

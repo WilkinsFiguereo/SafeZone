@@ -13,24 +13,26 @@ class NotificationRepository(private val supabase: SupabaseClient) {
      */
     suspend fun getUserNotifications(userId: String): List<NotificationData> {
         return try {
-            supabase.from("notifications")
-                .select(
-                    columns = Columns.raw("""
-                        *,
-                        sender:sender_id (
-                            name,
-                            email
-                        )
-                    """.trimIndent())
-                ) {
+            println("📥 NotificationRepository: Obteniendo notificaciones para userId=$userId")
+
+            val notifications = supabase.from("notifications")
+                .select() {
                     filter {
                         eq("receiver_id", userId)
                     }
                     order("created_at", Order.DESCENDING)
                 }
                 .decodeList<NotificationData>()
+
+            println("✅ NotificationRepository: Se obtuvieron ${notifications.size} notificaciones")
+            notifications.forEachIndexed { index, notif ->
+                println("   [$index] ID=${notif.id}, Type=${notif.type}, Sender=${notif.senderId}, Message=${notif.message.take(50)}..., IsRead=${notif.isRead}")
+            }
+
+            notifications
         } catch (e: Exception) {
-            println("Error al obtener notificaciones: ${e.message}")
+            println("❌ NotificationRepository: Error al obtener notificaciones: ${e.message}")
+            e.printStackTrace()
             emptyList()
         }
     }
@@ -40,16 +42,10 @@ class NotificationRepository(private val supabase: SupabaseClient) {
      */
     suspend fun getUnreadNotifications(userId: String): List<NotificationData> {
         return try {
-            supabase.from("notifications")
-                .select(
-                    columns = Columns.raw("""
-                        *,
-                        sender:sender_id (
-                            name,
-                            email
-                        )
-                    """.trimIndent())
-                ) {
+            println("📥 NotificationRepository: Obteniendo notificaciones NO LEÍDAS para userId=$userId")
+
+            val notifications = supabase.from("notifications")
+                .select() {
                     filter {
                         eq("receiver_id", userId)
                         eq("is_read", false)
@@ -57,8 +53,13 @@ class NotificationRepository(private val supabase: SupabaseClient) {
                     order("created_at", Order.DESCENDING)
                 }
                 .decodeList<NotificationData>()
+
+            println("✅ NotificationRepository: Se obtuvieron ${notifications.size} notificaciones no leídas")
+
+            notifications
         } catch (e: Exception) {
-            println("Error al obtener notificaciones no leídas: ${e.message}")
+            println("❌ NotificationRepository: Error al obtener notificaciones no leídas: ${e.message}")
+            e.printStackTrace()
             emptyList()
         }
     }
@@ -68,16 +69,10 @@ class NotificationRepository(private val supabase: SupabaseClient) {
      */
     suspend fun getNotificationsByType(userId: String, type: String): List<NotificationData> {
         return try {
-            supabase.from("notifications")
-                .select(
-                    columns = Columns.raw("""
-                        *,
-                        sender:sender_id (
-                            name,
-                            email
-                        )
-                    """.trimIndent())
-                ) {
+            println("📥 NotificationRepository: Obteniendo notificaciones tipo=$type para userId=$userId")
+
+            val notifications = supabase.from("notifications")
+                .select() {
                     filter {
                         eq("receiver_id", userId)
                         eq("type", type)
@@ -85,8 +80,13 @@ class NotificationRepository(private val supabase: SupabaseClient) {
                     order("created_at", Order.DESCENDING)
                 }
                 .decodeList<NotificationData>()
+
+            println("✅ NotificationRepository: Se obtuvieron ${notifications.size} notificaciones tipo $type")
+
+            notifications
         } catch (e: Exception) {
-            println("Error al obtener notificaciones por tipo: ${e.message}")
+            println("❌ NotificationRepository: Error al obtener notificaciones por tipo: ${e.message}")
+            e.printStackTrace()
             emptyList()
         }
     }
@@ -105,10 +105,11 @@ class NotificationRepository(private val supabase: SupabaseClient) {
                     count(Count.EXACT)
                 }
 
-            // El count viene en los headers de la respuesta
-            result.countOrNull()?.toInt() ?: 0
+            val count = result.countOrNull()?.toInt() ?: 0
+            println("📊 NotificationRepository: Contador de no leídas = $count")
+            count
         } catch (e: Exception) {
-            println("Error al contar notificaciones: ${e.message}")
+            println("❌ NotificationRepository: Error al contar notificaciones: ${e.message}")
             0
         }
     }
@@ -118,13 +119,19 @@ class NotificationRepository(private val supabase: SupabaseClient) {
      */
     suspend fun createNotification(notification: NotificationCreate): NotificationData? {
         return try {
-            supabase.from("notifications")
+            println("📤 NotificationRepository: Creando notificación para receiver=${notification.receiverId}")
+
+            val result = supabase.from("notifications")
                 .insert(notification) {
                     select()
                 }
                 .decodeSingle<NotificationData>()
+
+            println("✅ NotificationRepository: Notificación creada con ID=${result.id}")
+            result
         } catch (e: Exception) {
-            println("Error al crear notificación: ${e.message}")
+            println("❌ NotificationRepository: Error al crear notificación: ${e.message}")
+            e.printStackTrace()
             null
         }
     }
@@ -134,6 +141,8 @@ class NotificationRepository(private val supabase: SupabaseClient) {
      */
     suspend fun markAsRead(notificationId: String): Boolean {
         return try {
+            println("✔️ NotificationRepository: Marcando como leída notificationId=$notificationId")
+
             supabase.from("notifications")
                 .update({
                     set("is_read", true)
@@ -142,9 +151,12 @@ class NotificationRepository(private val supabase: SupabaseClient) {
                         eq("id", notificationId)
                     }
                 }
+
+            println("✅ NotificationRepository: Notificación marcada como leída")
             true
         } catch (e: Exception) {
-            println("Error al marcar notificación como leída: ${e.message}")
+            println("❌ NotificationRepository: Error al marcar notificación como leída: ${e.message}")
+            e.printStackTrace()
             false
         }
     }
@@ -154,6 +166,8 @@ class NotificationRepository(private val supabase: SupabaseClient) {
      */
     suspend fun markAllAsRead(userId: String): Boolean {
         return try {
+            println("✔️ NotificationRepository: Marcando TODAS como leídas para userId=$userId")
+
             supabase.from("notifications")
                 .update({
                     set("is_read", true)
@@ -163,9 +177,12 @@ class NotificationRepository(private val supabase: SupabaseClient) {
                         eq("is_read", false)
                     }
                 }
+
+            println("✅ NotificationRepository: Todas las notificaciones marcadas como leídas")
             true
         } catch (e: Exception) {
-            println("Error al marcar todas como leídas: ${e.message}")
+            println("❌ NotificationRepository: Error al marcar todas como leídas: ${e.message}")
+            e.printStackTrace()
             false
         }
     }
@@ -175,15 +192,20 @@ class NotificationRepository(private val supabase: SupabaseClient) {
      */
     suspend fun deleteNotification(notificationId: String): Boolean {
         return try {
+            println("🗑️ NotificationRepository: Eliminando notificationId=$notificationId")
+
             supabase.from("notifications")
                 .delete {
                     filter {
                         eq("id", notificationId)
                     }
                 }
+
+            println("✅ NotificationRepository: Notificación eliminada")
             true
         } catch (e: Exception) {
-            println("Error al eliminar notificación: ${e.message}")
+            println("❌ NotificationRepository: Error al eliminar notificación: ${e.message}")
+            e.printStackTrace()
             false
         }
     }
@@ -193,6 +215,8 @@ class NotificationRepository(private val supabase: SupabaseClient) {
      */
     suspend fun deleteAllRead(userId: String): Boolean {
         return try {
+            println("🗑️ NotificationRepository: Eliminando todas las leídas para userId=$userId")
+
             supabase.from("notifications")
                 .delete {
                     filter {
@@ -200,9 +224,12 @@ class NotificationRepository(private val supabase: SupabaseClient) {
                         eq("is_read", true)
                     }
                 }
+
+            println("✅ NotificationRepository: Notificaciones leídas eliminadas")
             true
         } catch (e: Exception) {
-            println("Error al eliminar notificaciones leídas: ${e.message}")
+            println("❌ NotificationRepository: Error al eliminar notificaciones leídas: ${e.message}")
+            e.printStackTrace()
             false
         }
     }

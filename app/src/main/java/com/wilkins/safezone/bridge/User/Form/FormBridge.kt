@@ -107,7 +107,7 @@ class ReportRepository(private val context: Context) {
             is_anonymous = isAnonymous,
             user_name = userName,
             report_location = reportLocation,
-            id_reporting_status = 1
+            id_reporting_status = 5
         )
 
         Log.d("ReportRepository", "📦 Objeto Report creado:")
