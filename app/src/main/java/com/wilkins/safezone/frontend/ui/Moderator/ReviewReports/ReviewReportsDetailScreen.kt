@@ -1,5 +1,9 @@
 package com.wilkins.safezone.frontend.ui.GlobalAssociation.ReportSent
 
+import android.net.Uri
+import android.view.ViewGroup
+import android.widget.MediaController
+import android.widget.VideoView
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
@@ -13,9 +17,11 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.compose.ui.viewinterop.AndroidView
 import androidx.navigation.NavController
 import coil.compose.AsyncImage
 import com.wilkins.safezone.backend.network.GlobalAssociation.DateUtils
@@ -42,6 +48,7 @@ fun ReportStatusScreen(
     var errorMessage by remember { mutableStateOf<String?>(null) }
     var isUpdating by remember { mutableStateOf(false) }
     var showSuccessMessage by remember { mutableStateOf(false) }
+    var isVideo by remember { mutableStateOf(false) }
 
     val scope = rememberCoroutineScope()
     val repository = remember { ReportsRepository() }
@@ -59,6 +66,18 @@ fun ReportStatusScreen(
 
                 if (report != null) {
                     reportData = report
+
+                    // Detectar si es video por la extensión del archivo
+                    if (report.imageUrl != null) {
+                        val url = report.imageUrl.lowercase()
+                        isVideo = url.endsWith(".mp4") ||
+                                url.endsWith(".mov") ||
+                                url.endsWith(".avi") ||
+                                url.endsWith(".mkv") ||
+                                url.endsWith(".webm") ||
+                                url.contains("/video/") ||
+                                url.contains("video")
+                    }
 
                     // Cargar el affair si existe
                     if (report.idAffair != null) {
@@ -182,7 +201,7 @@ fun ReportStatusScreen(
                             .background(Color(0xFFF5F5F5))
                             .verticalScroll(rememberScrollState())
                     ) {
-                        // Imagen del reporte
+                        // Imagen o Video del reporte
                         Card(
                             modifier = Modifier
                                 .fillMaxWidth()
@@ -191,26 +210,38 @@ fun ReportStatusScreen(
                             elevation = CardDefaults.cardElevation(defaultElevation = 8.dp)
                         ) {
                             Box {
-                                if (report.imageUrl != null) {
-                                    AsyncImage(
-                                        model = report.imageUrl,
-                                        contentDescription = "Imagen del reporte",
-                                        modifier = Modifier.fillMaxSize(),
-                                        contentScale = ContentScale.Crop
-                                    )
-                                } else {
-                                    Box(
-                                        modifier = Modifier
-                                            .fillMaxSize()
-                                            .background(Color(0xFFE0E0E0)),
-                                        contentAlignment = Alignment.Center
-                                    ) {
-                                        Icon(
-                                            imageVector = Icons.Default.ImageNotSupported,
-                                            contentDescription = null,
-                                            modifier = Modifier.size(80.dp),
-                                            tint = Color(0xFF9E9E9E)
+                                when {
+                                    report.imageUrl != null && isVideo -> {
+                                        // Mostrar video
+                                        VideoPlayer(
+                                            videoUrl = report.imageUrl,
+                                            modifier = Modifier.fillMaxSize()
                                         )
+                                    }
+                                    report.imageUrl != null -> {
+                                        // Mostrar imagen
+                                        AsyncImage(
+                                            model = report.imageUrl,
+                                            contentDescription = "Imagen del reporte",
+                                            modifier = Modifier.fillMaxSize(),
+                                            contentScale = ContentScale.Crop
+                                        )
+                                    }
+                                    else -> {
+                                        // Sin multimedia
+                                        Box(
+                                            modifier = Modifier
+                                                .fillMaxSize()
+                                                .background(Color(0xFFE0E0E0)),
+                                            contentAlignment = Alignment.Center
+                                        ) {
+                                            Icon(
+                                                imageVector = Icons.Default.ImageNotSupported,
+                                                contentDescription = null,
+                                                modifier = Modifier.size(80.dp),
+                                                tint = Color(0xFF9E9E9E)
+                                            )
+                                        }
                                     }
                                 }
 
@@ -239,6 +270,37 @@ fun ReportStatusScreen(
                                             fontSize = 12.sp,
                                             fontWeight = FontWeight.Bold
                                         )
+                                    }
+                                }
+
+                                // Badge indicador de tipo de media
+                                if (report.imageUrl != null) {
+                                    Surface(
+                                        modifier = Modifier
+                                            .align(Alignment.TopStart)
+                                            .padding(16.dp),
+                                        shape = RoundedCornerShape(20.dp),
+                                        color = Color.Black.copy(alpha = 0.6f)
+                                    ) {
+                                        Row(
+                                            modifier = Modifier.padding(horizontal = 12.dp, vertical = 6.dp),
+                                            verticalAlignment = Alignment.CenterVertically
+                                        ) {
+                                            Icon(
+                                                imageVector = if (isVideo) Icons.Default.VideoLibrary
+                                                else Icons.Default.Photo,
+                                                contentDescription = null,
+                                                tint = Color.White,
+                                                modifier = Modifier.size(16.dp)
+                                            )
+                                            Spacer(modifier = Modifier.width(4.dp))
+                                            Text(
+                                                text = if (isVideo) "Video" else "Imagen",
+                                                color = Color.White,
+                                                fontSize = 12.sp,
+                                                fontWeight = FontWeight.Bold
+                                            )
+                                        }
                                     }
                                 }
                             }
@@ -625,4 +687,50 @@ fun ReportStatusScreen(
             )
         }
     }
+}
+
+@Composable
+fun VideoPlayer(
+    videoUrl: String,
+    modifier: Modifier = Modifier
+) {
+    val context = LocalContext.current
+
+    AndroidView(
+        factory = { ctx ->
+            VideoView(ctx).apply {
+                layoutParams = ViewGroup.LayoutParams(
+                    ViewGroup.LayoutParams.MATCH_PARENT,
+                    ViewGroup.LayoutParams.MATCH_PARENT
+                )
+
+                // Configurar controles de media
+                val mediaController = MediaController(ctx)
+                mediaController.setAnchorView(this)
+                setMediaController(mediaController)
+
+                // Establecer URI del video
+                setVideoURI(Uri.parse(videoUrl))
+
+                // Preparar y auto-reproducir
+                setOnPreparedListener { mp ->
+                    mp.isLooping = false
+                    mp.setVolume(1f, 1f)
+                }
+
+                // Manejar errores
+                setOnErrorListener { _, what, extra ->
+                    android.util.Log.e("VideoPlayer", "Error reproduciendo video: what=$what, extra=$extra")
+                    true
+                }
+
+                // Iniciar preparación
+                requestFocus()
+            }
+        },
+        update = { videoView ->
+            videoView.setVideoURI(Uri.parse(videoUrl))
+        },
+        modifier = modifier
+    )
 }

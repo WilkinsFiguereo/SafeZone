@@ -26,7 +26,6 @@ import com.wilkins.safezone.ui.theme.PrimaryColor
 import io.github.jan.supabase.SupabaseClient
 import com.wilkins.safezone.backend.network.User.Form.Affair
 import com.wilkins.safezone.backend.network.User.Form.getAffairs
-import com.wilkins.safezone.backend.network.User.Form.uploadImageToSupabase
 import com.wilkins.safezone.bridge.User.Form.ReportRepository
 import com.wilkins.safezone.frontend.ui.Map.GoogleMapPicker
 import kotlinx.coroutines.launch
@@ -54,6 +53,9 @@ fun FormScreen(
     var imageUrl by remember { mutableStateOf<String?>(null) }
     var showMapPicker by remember { mutableStateOf(false) }
     var isAnonymous by remember { mutableStateOf(false) }
+    var mediaType by remember { mutableStateOf<String?>(null) } // "image" o "video"
+    var mediaFileName by remember { mutableStateOf<String?>(null) }
+    var showMediaOptions by remember { mutableStateOf(false) }
 
     // Lista de affairs desde la BD
     var affairsList by remember { mutableStateOf<List<Affair>>(emptyList()) }
@@ -66,7 +68,9 @@ fun FormScreen(
 
     // Estado para el dropdown de asunto
     var affairExpandido by remember { mutableStateOf(false) }
-    val launcher = rememberLauncherForActivityResult(
+
+    // Launcher para imágenes
+    val imageLauncher = rememberLauncherForActivityResult(
         contract = ActivityResultContracts.GetContent(),
         onResult = { uri ->
             if (uri != null) {
@@ -82,10 +86,21 @@ fun FormScreen(
                         val bytes = inputStream.readBytes()
                         inputStream.close()
 
-                        imageBytes = bytes  // SOLO GUARDAR, NO SUBIR
+                        // Obtener nombre del archivo
+                        val cursor = context.contentResolver.query(uri, null, null, null, null)
+                        val fileName = cursor?.use {
+                            if (it.moveToFirst()) {
+                                val nameIndex = it.getColumnIndex(android.provider.OpenableColumns.DISPLAY_NAME)
+                                if (nameIndex != -1) it.getString(nameIndex) else "imagen.jpg"
+                            } else "imagen.jpg"
+                        } ?: "imagen.jpg"
+
+                        imageBytes = bytes
+                        mediaType = "image"
+                        mediaFileName = fileName
                         evidenciaSubida = true
 
-                        snackbarMessage = "Imagen seleccionada"
+                        snackbarMessage = "Imagen seleccionada: $fileName"
                         showSnackbar = true
 
                     } catch (e: Exception) {
@@ -95,7 +110,58 @@ fun FormScreen(
                 }
             }
         }
+    )
 
+    // Launcher para videos
+    val videoLauncher = rememberLauncherForActivityResult(
+        contract = ActivityResultContracts.GetContent(),
+        onResult = { uri ->
+            if (uri != null) {
+                scope.launch {
+                    try {
+                        val inputStream = context.contentResolver.openInputStream(uri)
+                        if (inputStream == null) {
+                            snackbarMessage = "No se pudo leer el video"
+                            showSnackbar = true
+                            return@launch
+                        }
+
+                        val bytes = inputStream.readBytes()
+                        inputStream.close()
+
+                        // Verificar tamaño del video (límite: 50MB)
+                        val maxSize = 50 * 1024 * 1024 // 50MB en bytes
+                        if (bytes.size > maxSize) {
+                            snackbarMessage = "El video es demasiado grande. Máximo 50MB"
+                            showSnackbar = true
+                            return@launch
+                        }
+
+                        // Obtener nombre del archivo
+                        val cursor = context.contentResolver.query(uri, null, null, null, null)
+                        val fileName = cursor?.use {
+                            if (it.moveToFirst()) {
+                                val nameIndex = it.getColumnIndex(android.provider.OpenableColumns.DISPLAY_NAME)
+                                if (nameIndex != -1) it.getString(nameIndex) else "video.mp4"
+                            } else "video.mp4"
+                        } ?: "video.mp4"
+
+                        imageBytes = bytes
+                        mediaType = "video"
+                        mediaFileName = fileName
+                        evidenciaSubida = true
+
+                        val sizeMB = bytes.size / (1024f * 1024f)
+                        snackbarMessage = "Video seleccionado: $fileName (${String.format("%.2f", sizeMB)} MB)"
+                        showSnackbar = true
+
+                    } catch (e: Exception) {
+                        snackbarMessage = "Error al seleccionar video: ${e.message}"
+                        showSnackbar = true
+                    }
+                }
+            }
+        }
     )
 
     // Cargar affairs al iniciar
@@ -236,7 +302,6 @@ fun FormScreen(
                         )
 
                         if (isLoadingAffairs) {
-                            // Indicador de carga
                             Box(
                                 modifier = Modifier
                                     .fillMaxWidth()
@@ -249,7 +314,6 @@ fun FormScreen(
                                 )
                             }
                         } else if (errorMessage != null) {
-                            // Mensaje de error
                             Text(
                                 errorMessage!!,
                                 color = Color.Red,
@@ -257,7 +321,6 @@ fun FormScreen(
                                 modifier = Modifier.padding(vertical = 8.dp)
                             )
                         } else {
-                            // Dropdown personalizado con datos de la BD
                             Box(
                                 modifier = Modifier
                                     .fillMaxWidth()
@@ -307,7 +370,6 @@ fun FormScreen(
                                 )
                             }
 
-                            // Dropdown Menu
                             if (affairExpandido) {
                                 Card(
                                     modifier = Modifier
@@ -371,8 +433,6 @@ fun FormScreen(
                             modifier = Modifier.padding(bottom = 10.dp)
                         )
 
-
-
                         Card(
                             modifier = Modifier
                                 .fillMaxWidth()
@@ -410,7 +470,6 @@ fun FormScreen(
                                 }
                             }
                         }
-
 
                         OutlinedTextField(
                             value = direccion,
@@ -478,7 +537,7 @@ fun FormScreen(
 
                         Spacer(modifier = Modifier.height(22.dp))
 
-                        // Sección de evidencia
+                        // Sección de evidencia multimedia (ACTUALIZADA)
                         Text(
                             "Evidencia multimedia",
                             color = PrimaryColor,
@@ -487,50 +546,139 @@ fun FormScreen(
                             modifier = Modifier.padding(bottom = 10.dp)
                         )
 
-                        Card(
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .clickable {
-                                    // TODO: Implementar lógica para subir evidencia
-                                    launcher.launch("image/*")
-                                },
-                            elevation = CardDefaults.cardElevation(defaultElevation = 6.dp),
-                            colors = CardDefaults.cardColors(
-                                containerColor = if (evidenciaSubida) Color(0xFFE8F5E8)
-                                else Color(0xFFF5F5F5)
-                            ),
-                            shape = RoundedCornerShape(14.dp)
-                        ) {
-                            Column(
-                                modifier = Modifier
-                                    .padding(20.dp)
-                                    .fillMaxWidth(),
-                                horizontalAlignment = Alignment.CenterHorizontally
+                        // Botones para seleccionar tipo de media
+                        if (!evidenciaSubida) {
+                            Row(
+                                modifier = Modifier.fillMaxWidth(),
+                                horizontalArrangement = Arrangement.spacedBy(12.dp)
                             ) {
-                                Icon(
-                                    imageVector = if (evidenciaSubida) Icons.Default.CheckCircle
-                                    else Icons.Default.FileUpload,
-                                    contentDescription = "Subir evidencia",
-                                    tint = PrimaryColor,
-                                    modifier = Modifier.size(32.dp)
-                                )
-                                Spacer(modifier = Modifier.height(12.dp))
-                                Text(
-                                    text = if (evidenciaSubida) "Evidencia subida ✓"
-                                    else "Subir evidencia",
-                                    color = PrimaryColor,
-                                    fontWeight = FontWeight.SemiBold,
-                                    fontSize = 16.sp
-                                )
-                                Spacer(modifier = Modifier.height(6.dp))
-                                Text(
-                                    text = if (evidenciaSubida) "Archivo adjunto correctamente"
-                                    else "Fotos, videos o documentos relevantes",
-                                    color = if (evidenciaSubida) PrimaryColor
-                                    else Color(0xFF757575),
-                                    fontSize = 13.sp,
-                                    textAlign = androidx.compose.ui.text.style.TextAlign.Center
-                                )
+                                // Botón de Foto
+                                Card(
+                                    modifier = Modifier
+                                        .weight(1f)
+                                        .clickable { imageLauncher.launch("image/*") },
+                                    elevation = CardDefaults.cardElevation(defaultElevation = 4.dp),
+                                    colors = CardDefaults.cardColors(containerColor = Color(0xFFF5F5F5)),
+                                    shape = RoundedCornerShape(14.dp)
+                                ) {
+                                    Column(
+                                        modifier = Modifier
+                                            .padding(20.dp)
+                                            .fillMaxWidth(),
+                                        horizontalAlignment = Alignment.CenterHorizontally
+                                    ) {
+                                        Icon(
+                                            imageVector = Icons.Default.Photo,
+                                            contentDescription = "Subir foto",
+                                            tint = PrimaryColor,
+                                            modifier = Modifier.size(32.dp)
+                                        )
+                                        Spacer(modifier = Modifier.height(8.dp))
+                                        Text(
+                                            "Foto",
+                                            color = PrimaryColor,
+                                            fontWeight = FontWeight.SemiBold,
+                                            fontSize = 14.sp
+                                        )
+                                    }
+                                }
+
+                                // Botón de Video
+                                Card(
+                                    modifier = Modifier
+                                        .weight(1f)
+                                        .clickable { videoLauncher.launch("video/*") },
+                                    elevation = CardDefaults.cardElevation(defaultElevation = 4.dp),
+                                    colors = CardDefaults.cardColors(containerColor = Color(0xFFF5F5F5)),
+                                    shape = RoundedCornerShape(14.dp)
+                                ) {
+                                    Column(
+                                        modifier = Modifier
+                                            .padding(20.dp)
+                                            .fillMaxWidth(),
+                                        horizontalAlignment = Alignment.CenterHorizontally
+                                    ) {
+                                        Icon(
+                                            imageVector = Icons.Default.VideoLibrary,
+                                            contentDescription = "Subir video",
+                                            tint = PrimaryColor,
+                                            modifier = Modifier.size(32.dp)
+                                        )
+                                        Spacer(modifier = Modifier.height(8.dp))
+                                        Text(
+                                            "Video",
+                                            color = PrimaryColor,
+                                            fontWeight = FontWeight.SemiBold,
+                                            fontSize = 14.sp
+                                        )
+                                        Text(
+                                            "Máx 50MB",
+                                            color = Color(0xFF757575),
+                                            fontSize = 10.sp
+                                        )
+                                    }
+                                }
+                            }
+                        } else {
+                            // Card mostrando archivo subido
+                            Card(
+                                modifier = Modifier.fillMaxWidth(),
+                                elevation = CardDefaults.cardElevation(defaultElevation = 6.dp),
+                                colors = CardDefaults.cardColors(containerColor = Color(0xFFE8F5E8)),
+                                shape = RoundedCornerShape(14.dp)
+                            ) {
+                                Row(
+                                    modifier = Modifier
+                                        .padding(20.dp)
+                                        .fillMaxWidth(),
+                                    verticalAlignment = Alignment.CenterVertically,
+                                    horizontalArrangement = Arrangement.SpaceBetween
+                                ) {
+                                    Row(
+                                        verticalAlignment = Alignment.CenterVertically,
+                                        modifier = Modifier.weight(1f)
+                                    ) {
+                                        Icon(
+                                            imageVector = if (mediaType == "image") Icons.Default.Photo
+                                            else Icons.Default.VideoLibrary,
+                                            contentDescription = null,
+                                            tint = PrimaryColor,
+                                            modifier = Modifier.size(32.dp)
+                                        )
+                                        Spacer(modifier = Modifier.width(12.dp))
+                                        Column {
+                                            Text(
+                                                text = if (mediaType == "image") "Imagen adjunta"
+                                                else "Video adjunto",
+                                                color = PrimaryColor,
+                                                fontWeight = FontWeight.SemiBold,
+                                                fontSize = 14.sp
+                                            )
+                                            Text(
+                                                text = mediaFileName ?: "Archivo",
+                                                color = PrimaryColor.copy(alpha = 0.7f),
+                                                fontSize = 12.sp,
+                                                maxLines = 1
+                                            )
+                                        }
+                                    }
+
+                                    // Botón para eliminar
+                                    IconButton(
+                                        onClick = {
+                                            evidenciaSubida = false
+                                            imageBytes = null
+                                            mediaType = null
+                                            mediaFileName = null
+                                        }
+                                    ) {
+                                        Icon(
+                                            imageVector = Icons.Default.Close,
+                                            contentDescription = "Eliminar",
+                                            tint = Color.Red
+                                        )
+                                    }
+                                }
                             }
                         }
 
@@ -541,7 +689,6 @@ fun FormScreen(
                             modifier = Modifier.fillMaxWidth(),
                             horizontalArrangement = Arrangement.spacedBy(14.dp)
                         ) {
-                            // Botón Limpiar
                             OutlinedButton(
                                 onClick = {
                                     affairSeleccionado = null
@@ -550,6 +697,8 @@ fun FormScreen(
                                     evidenciaSubida = false
                                     imageBytes = null
                                     isAnonymous = false
+                                    mediaType = null
+                                    mediaFileName = null
                                 },
                                 modifier = Modifier
                                     .weight(1f)
@@ -569,10 +718,10 @@ fun FormScreen(
                                 )
                             }
 
-                            // Botón Enviar
+                            // En el botón "Enviar Reporte", reemplaza la llamada a createReportBridge:
+
                             Button(
                                 onClick = {
-                                    // Validación
                                     if (affairSeleccionado == null) {
                                         snackbarMessage = "Selecciona un tipo de incidencia"
                                         showSnackbar = true
@@ -589,7 +738,6 @@ fun FormScreen(
                                         return@Button
                                     }
 
-                                    // Enviar reporte
                                     scope.launch {
                                         try {
                                             val result = reportRepository.createReportBridge(
@@ -597,9 +745,10 @@ fun FormScreen(
                                                 imageBytes = imageBytes,
                                                 isAnonymous = isAnonymous,
                                                 reportLocation = direccion,
-                                                affairId = affairSeleccionado!!.id
+                                                affairId = affairSeleccionado!!.id,
+                                                mediaType = mediaType,           // ✅ AGREGAR ESTE PARÁMETRO
+                                                mediaFileName = mediaFileName    // ✅ AGREGAR ESTE PARÁMETRO
                                             )
-
 
                                             result.fold(
                                                 onSuccess = {
@@ -612,6 +761,8 @@ fun FormScreen(
                                                     evidenciaSubida = false
                                                     imageBytes = null
                                                     isAnonymous = false
+                                                    mediaType = null
+                                                    mediaFileName = null
                                                 },
                                                 onFailure = { error ->
                                                     snackbarMessage = "Error: ${error.message}"

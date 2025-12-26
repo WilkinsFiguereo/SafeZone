@@ -6,6 +6,9 @@ import android.content.Context
 import android.util.Log
 import com.wilkins.safezone.backend.network.SupabaseService
 import com.wilkins.safezone.backend.network.User.Form.Report
+import com.wilkins.safezone.backend.network.User.Form.insertReportBackend
+import com.wilkins.safezone.backend.network.User.Form.uploadImageToSupabase
+import com.wilkins.safezone.backend.network.User.Form.uploadMediaToSupabase
 import io.github.jan.supabase.postgrest.from
 import io.github.jan.supabase.postgrest.postgrest
 import io.github.jan.supabase.storage.storage
@@ -40,104 +43,93 @@ class ReportRepository(private val context: Context) {
     // ============================================================================
     suspend fun createReportBridge(
         description: String,
-        imageBytes: ByteArray?,    // <- Recibe BYTEARRAY
+        imageBytes: ByteArray?,
         isAnonymous: Boolean,
-        reportLocation: String?,
-        affairId: Int
+        reportLocation: String,
+        affairId: Int,
+        mediaType: String? = null,  // NUEVO PARÁMETRO
+        mediaFileName: String? = null  // NUEVO PARÁMETRO
     ): Result<Boolean> = withContext(Dispatchers.IO) {
-
-        Log.d("ReportRepository", "🔄 Iniciando creación de reporte...")
-        Log.d("ReportRepository", "📋 Datos recibidos:")
-        Log.d("ReportRepository", "  - Affair ID: $affairId")
-        Log.d("ReportRepository", "  - Description: $description")
-        Log.d("ReportRepository", "  - Location: $reportLocation")
-        Log.d("ReportRepository", "  - Is Anonymous: $isAnonymous")
-        Log.d("ReportRepository", "  - ImageBytes: ${imageBytes != null}")
-
-        // ---- Validación ----
-        if (description.isBlank()) {
-            Log.e("ReportRepository", "❌ Validación fallida: descripción vacía")
-            return@withContext Result.failure(Exception("La descripción es obligatoria"))
-        }
-
-        val userId = getUserId()
-        if (userId == null) {
-            Log.e("ReportRepository", "❌ No hay sesión activa")
-            return@withContext Result.failure(Exception("No hay sesión activa"))
-        }
-
-        val userName = if (isAnonymous) null else getUserName()
-
-        // ================================================================
-        // 📸 1. SUBIR LA IMAGEN AL STORAGE Y OBTENER URL
-        // ================================================================
-        var finalImageUrl: String? = null
-
-        if (imageBytes != null) {
-            try {
-                Log.d("ReportRepository", "📤 Subiendo imagen a Supabase Storage...")
-
-                val bucket = client.storage.from("report")
-                val fileName = "${System.currentTimeMillis()}_${userId}.jpg"
-
-                bucket.upload(
-                    path = fileName,
-                    data = imageBytes,
-                    upsert = false
-                )
-
-                finalImageUrl = bucket.publicUrl(fileName)
-
-                Log.d("ReportRepository", "✅ Imagen subida correctamente")
-                Log.d("ReportRepository", "🌐 URL generada: $finalImageUrl")
-
-            } catch (e: Exception) {
-                Log.e("ReportRepository", "❌ Error al subir imagen: ${e.message}")
-            }
-        }
-
-        // ================================================================
-        // 📝 2. CREAR OBJETO REPORT
-        // ================================================================
-        val report = Report(
-            id_affair = affairId,
-            description = description,
-            image_url = finalImageUrl,  // 👈 SOLO LA URL
-            user_id = userId,
-            is_anonymous = isAnonymous,
-            user_name = userName,
-            report_location = reportLocation,
-            id_reporting_status = 5
-        )
-
-        Log.d("ReportRepository", "📦 Objeto Report creado:")
-        Log.d("ReportRepository", "  - id_affair: ${report.id_affair}")
-        Log.d("ReportRepository", "  - user_id: ${report.user_id}")
-        Log.d("ReportRepository", "  - is_anonymous: ${report.is_anonymous}")
-        Log.d("ReportRepository", "  - user_name: ${report.user_name}")
-        Log.d("ReportRepository", "  - report_location: ${report.report_location}")
-        Log.d("ReportRepository", "  - id_reporting_status: ${report.id_reporting_status}")
-        Log.d("ReportRepository", "  - image_url: $finalImageUrl")
-
-        // ================================================================
-        // 🚀 3. INSERTAR REPORTE EN SUPABASE
-        // ================================================================
         try {
-            Log.d("ReportRepository", "🚀 Enviando reporte a Supabase...")
+            Log.d("ReportRepository", "🔄 Iniciando creación de reporte...")
+            Log.d("ReportRepository", "📝 Descripción: ${description.take(50)}...")
+            Log.d("ReportRepository", "🔒 Anónimo: $isAnonymous")
+            Log.d("ReportRepository", "📍 Ubicación: $reportLocation")
+            Log.d("ReportRepository", "📋 Affair ID: $affairId")
+            Log.d("ReportRepository", "🎬 Tipo de media: $mediaType")
+            Log.d("ReportRepository", "📁 Nombre de archivo: $mediaFileName")
 
-            val result = client.postgrest
-                .from("reports")
-                .insert(report)
+            // Subir imagen/video si existe
+            var mediaUrl: String? = null
+            if (imageBytes != null) {
+                Log.d("ReportRepository", "📤 Subiendo archivo multimedia...")
 
-            Log.d("ReportRepository", "✅ Reporte insertado exitosamente")
-            Log.d("ReportRepository", "📊 Resultado Supabase: ${result.data}")
+                // ACTUALIZACIÓN IMPORTANTE: Usar la nueva función con tipo de archivo
+                mediaUrl = if (mediaType != null && mediaFileName != null) {
+                    // Usar la nueva función que detecta la extensión correcta
+                    uploadMediaToSupabase(
+                        context = context,
+                        fileBytes = imageBytes,
+                        fileName = mediaFileName,
+                        mediaType = mediaType
+                    )
+                } else {
+                    // Fallback a la función legacy (solo para compatibilidad)
+                    Log.w("ReportRepository", "⚠️ Usando función legacy - el tipo de archivo podría ser incorrecto")
+                    uploadImageToSupabase(context, imageBytes)
+                }
 
-            Result.success(true)
+                if (mediaUrl != null) {
+                    Log.d("ReportRepository", "✅ Archivo subido exitosamente: $mediaUrl")
+                } else {
+                    Log.e("ReportRepository", "❌ Error al subir archivo")
+                    return@withContext Result.failure(Exception("Error al subir archivo multimedia"))
+                }
+            } else {
+                Log.d("ReportRepository", "ℹ️ No se proporcionó archivo multimedia")
+            }
+
+            // Obtener información del usuario
+            val session = SessionManager.loadSession(context)
+            val userId = session?.user?.id
+            val userName = session?.user?.userMetadata?.get("name")?.toString()
+
+            Log.d("ReportRepository", "👤 Usuario ID: $userId")
+            Log.d("ReportRepository", "👤 Usuario Nombre: $userName")
+
+            if (userId == null) {
+                Log.e("ReportRepository", "❌ Usuario no autenticado")
+                return@withContext Result.failure(Exception("Usuario no autenticado"))
+            }
+
+            // Crear objeto Report
+            val report = Report(
+                description = description,
+                image_url = mediaUrl,
+                is_anonymous = isAnonymous,
+                report_location = reportLocation,
+                user_id = userId,
+                user_name = if (isAnonymous) null else userName,
+                id_affair = affairId,
+                id_reporting_status = 1 // 1 = Pendiente
+            )
+
+            Log.d("ReportRepository", "💾 Insertando reporte en la base de datos...")
+
+            // Insertar en Supabase
+            val success = insertReportBackend(report)
+
+            if (success) {
+                Log.d("ReportRepository", "✅ Reporte creado exitosamente")
+                Result.success(true)
+            } else {
+                Log.e("ReportRepository", "❌ Error al insertar reporte en la base de datos")
+                Result.failure(Exception("Error al crear el reporte"))
+            }
 
         } catch (e: Exception) {
-            Log.e("ReportRepository", "❌ Error al insertar reporte: ${e.message}")
-            Log.e("ReportRepository", "❌ Tipo de error: ${e.javaClass.simpleName}")
-            Log.e("ReportRepository", "❌ Stack trace completo:", e)
+            Log.e("ReportRepository", "❌ Error en createReportBridge: ${e.message}")
+            Log.e("ReportRepository", "❌ Stack trace:", e)
             Result.failure(e)
         }
     }
