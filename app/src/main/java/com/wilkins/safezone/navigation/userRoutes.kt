@@ -11,6 +11,7 @@ import com.wilkins.safezone.backend.network.AppUser
 import com.wilkins.safezone.backend.network.SupabaseService
 import com.wilkins.safezone.frontend.ui.Map.GoogleMapScreen
 import com.wilkins.safezone.frontend.ui.user.Form.FormScreen
+import com.wilkins.safezone.frontend.ui.user.Form.ReportResultScreen
 import com.wilkins.safezone.frontend.ui.user.Homepage.UserHomeScreen
 import com.wilkins.safezone.frontend.ui.user.NavigationDrawer.NavigationDrawer
 import com.wilkins.safezone.frontend.ui.user.NavigationDrawer.Profile
@@ -188,6 +189,26 @@ fun NavGraphBuilder.userRoutes(
             val userId = supabaseClient.auth.currentUserOrNull()?.id ?: ""
             FormScreen(navController, userId, user?.name ?: "Usuario", supabaseClient)
         }
+    }
+
+    composable(
+        route = "reportResult/{userId}/{isSuccess}/{message}",
+        arguments = listOf(
+            navArgument("userId") { type = NavType.StringType },
+            navArgument("isSuccess") { type = NavType.BoolType },
+            navArgument("message") { type = NavType.StringType }
+        )
+    ) { backStackEntry ->
+        val userId = backStackEntry.arguments?.getString("userId") ?: ""
+        val isSuccess = backStackEntry.arguments?.getBoolean("isSuccess") ?: false
+        val message = backStackEntry.arguments?.getString("message") ?: ""
+
+        ReportResultScreen(
+            navController = navController,
+            userId = userId,
+            isSuccess = isSuccess,
+            message = message
+        )
     }
 
     // ════════════════════════════════════════════

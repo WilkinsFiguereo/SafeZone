@@ -22,7 +22,8 @@ import androidx.core.content.ContextCompat
 import com.google.android.gms.maps.model.CameraPosition
 import com.google.android.gms.maps.model.LatLng
 import com.google.maps.android.compose.*
-
+import com.google.android.gms.location.LocationServices
+import kotlinx.coroutines.tasks.await
 import java.util.Locale
 
 @SuppressLint("MissingPermission")
@@ -34,6 +35,9 @@ fun GoogleMapPicker(
     Log.i("GoogleMapPicker", "🟦 Composable cargado")
 
     val context = LocalContext.current
+    val fusedLocationClient = remember {
+        LocationServices.getFusedLocationProviderClient(context)
+    }
 
     // -------------------------------------------------------------
     // 🔵 PERMISOS
@@ -58,26 +62,41 @@ fun GoogleMapPicker(
         hasLocationPermission = granted
     }
 
-    LaunchedEffect(Unit) {
-        if (!hasLocationPermission) {
-            Log.w("GoogleMapPicker", "🚨 Solicitando permiso...")
-            permissionLauncher.launch(Manifest.permission.ACCESS_FINE_LOCATION)
-        } else {
-            Log.i("GoogleMapPicker", "✔ Permiso ya otorgado")
+    val cameraPositionState = rememberCameraPositionState()
+    var selectedPosition by remember { mutableStateOf<LatLng?>(null) }
+
+    LaunchedEffect(hasLocationPermission) {
+        if (hasLocationPermission) {
+            try {
+                Log.i("GoogleMapPicker", "📡 Obteniendo ubicación actual...")
+
+                val location = fusedLocationClient.lastLocation.await()
+
+                location?.let {
+                    val currentLatLng = LatLng(it.latitude, it.longitude)
+
+                    cameraPositionState.position = CameraPosition.fromLatLngZoom(
+                        currentLatLng,
+                        15f
+                    )
+
+                    selectedPosition = currentLatLng
+
+                    Log.i(
+                        "GoogleMapPicker",
+                        "📍 Cámara inicial en ubicación actual: $currentLatLng"
+                    )
+                }
+            } catch (e: Exception) {
+                Log.e(
+                    "GoogleMapPicker",
+                    "❌ Error obteniendo ubicación: ${e.message}"
+                )
+            }
         }
     }
 
-    // -------------------------------------------------------------
-    // 🔵 CONFIGURACIÓN INICIAL DEL MAPA
-    // -------------------------------------------------------------
-    val santoDomingo = LatLng(18.4861, -69.9312)
 
-    val cameraPositionState = rememberCameraPositionState {
-        Log.i("GoogleMapPicker", "📸 Inicializando cámara en Santo Domingo")
-        position = CameraPosition.fromLatLngZoom(santoDomingo, 12f)
-    }
-
-    var selectedPosition by remember { mutableStateOf<LatLng?>(null) }
 
     // -------------------------------------------------------------
     // 🔵 UI PRINCIPAL (DIALOG)

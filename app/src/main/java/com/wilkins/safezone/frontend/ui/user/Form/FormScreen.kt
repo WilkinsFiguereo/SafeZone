@@ -471,19 +471,7 @@ fun FormScreen(
                             }
                         }
 
-                        OutlinedTextField(
-                            value = direccion,
-                            onValueChange = { direccion = it },
-                            placeholder = { Text("Ingresa la dirección específica") },
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .padding(top = 14.dp),
-                            leadingIcon = {
-                                Icon(Icons.Default.LocationOn, null, tint = PrimaryColor)
-                            },
-                            singleLine = true,
-                            shape = RoundedCornerShape(12.dp)
-                        )
+
 
                         Spacer(modifier = Modifier.height(20.dp))
 
@@ -538,6 +526,11 @@ fun FormScreen(
                         Spacer(modifier = Modifier.height(22.dp))
 
                         // Sección de evidencia multimedia (ACTUALIZADA)
+                        // Reemplaza solo la sección de evidencia multimedia y botones de acción
+
+// Dentro de Column (línea ~520 aprox), reemplaza desde "Sección de evidencia multimedia" hasta el final de los botones:
+
+// Sección de evidencia multimedia - BOTÓN UNIFICADO
                         Text(
                             "Evidencia multimedia",
                             color = PrimaryColor,
@@ -546,78 +539,153 @@ fun FormScreen(
                             modifier = Modifier.padding(bottom = 10.dp)
                         )
 
-                        // Botones para seleccionar tipo de media
                         if (!evidenciaSubida) {
-                            Row(
-                                modifier = Modifier.fillMaxWidth(),
-                                horizontalArrangement = Arrangement.spacedBy(12.dp)
-                            ) {
-                                // Botón de Foto
-                                Card(
-                                    modifier = Modifier
-                                        .weight(1f)
-                                        .clickable { imageLauncher.launch("image/*") },
-                                    elevation = CardDefaults.cardElevation(defaultElevation = 4.dp),
-                                    colors = CardDefaults.cardColors(containerColor = Color(0xFFF5F5F5)),
-                                    shape = RoundedCornerShape(14.dp)
-                                ) {
-                                    Column(
-                                        modifier = Modifier
-                                            .padding(20.dp)
-                                            .fillMaxWidth(),
-                                        horizontalAlignment = Alignment.CenterHorizontally
-                                    ) {
-                                        Icon(
-                                            imageVector = Icons.Default.Photo,
-                                            contentDescription = "Subir foto",
-                                            tint = PrimaryColor,
-                                            modifier = Modifier.size(32.dp)
-                                        )
-                                        Spacer(modifier = Modifier.height(8.dp))
-                                        Text(
-                                            "Foto",
-                                            color = PrimaryColor,
-                                            fontWeight = FontWeight.SemiBold,
-                                            fontSize = 14.sp
-                                        )
-                                    }
-                                }
+                            // Botón unificado con opciones
+                            var showMediaDialog by remember { mutableStateOf(false) }
 
-                                // Botón de Video
-                                Card(
+                            Card(
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .clickable { showMediaDialog = true },
+                                elevation = CardDefaults.cardElevation(defaultElevation = 6.dp),
+                                colors = CardDefaults.cardColors(containerColor = Color(0xFFF5F5F5)),
+                                shape = RoundedCornerShape(14.dp)
+                            ) {
+                                Row(
                                     modifier = Modifier
-                                        .weight(1f)
-                                        .clickable { videoLauncher.launch("video/*") },
-                                    elevation = CardDefaults.cardElevation(defaultElevation = 4.dp),
-                                    colors = CardDefaults.cardColors(containerColor = Color(0xFFF5F5F5)),
-                                    shape = RoundedCornerShape(14.dp)
+                                        .fillMaxWidth()
+                                        .padding(24.dp),
+                                    verticalAlignment = Alignment.CenterVertically,
+                                    horizontalArrangement = Arrangement.Center
                                 ) {
-                                    Column(
-                                        modifier = Modifier
-                                            .padding(20.dp)
-                                            .fillMaxWidth(),
-                                        horizontalAlignment = Alignment.CenterHorizontally
-                                    ) {
-                                        Icon(
-                                            imageVector = Icons.Default.VideoLibrary,
-                                            contentDescription = "Subir video",
-                                            tint = PrimaryColor,
-                                            modifier = Modifier.size(32.dp)
-                                        )
-                                        Spacer(modifier = Modifier.height(8.dp))
+                                    Icon(
+                                        imageVector = Icons.Default.AddPhotoAlternate,
+                                        contentDescription = "Agregar multimedia",
+                                        tint = PrimaryColor,
+                                        modifier = Modifier.size(32.dp)
+                                    )
+                                    Spacer(modifier = Modifier.width(16.dp))
+                                    Column {
                                         Text(
-                                            "Video",
+                                            "Agregar foto o video",
                                             color = PrimaryColor,
                                             fontWeight = FontWeight.SemiBold,
-                                            fontSize = 14.sp
+                                            fontSize = 16.sp
                                         )
                                         Text(
-                                            "Máx 50MB",
+                                            "Opcional - Ayuda a validar tu reporte",
                                             color = Color(0xFF757575),
-                                            fontSize = 10.sp
+                                            fontSize = 13.sp
                                         )
                                     }
                                 }
+                            }
+
+                            // Diálogo para elegir tipo de archivo
+                            if (showMediaDialog) {
+                                AlertDialog(
+                                    onDismissRequest = { showMediaDialog = false },
+                                    title = {
+                                        Text(
+                                            "Seleccionar evidencia",
+                                            fontWeight = FontWeight.Bold
+                                        )
+                                    },
+                                    text = {
+                                        Column(
+                                            modifier = Modifier.fillMaxWidth(),
+                                            verticalArrangement = Arrangement.spacedBy(12.dp)
+                                        ) {
+                                            // Opción: Foto
+                                            Card(
+                                                modifier = Modifier
+                                                    .fillMaxWidth()
+                                                    .clickable {
+                                                        showMediaDialog = false
+                                                        imageLauncher.launch("image/*")
+                                                    },
+                                                colors = CardDefaults.cardColors(
+                                                    containerColor = PrimaryColor.copy(alpha = 0.1f)
+                                                ),
+                                                shape = RoundedCornerShape(12.dp)
+                                            ) {
+                                                Row(
+                                                    modifier = Modifier
+                                                        .fillMaxWidth()
+                                                        .padding(20.dp),
+                                                    verticalAlignment = Alignment.CenterVertically
+                                                ) {
+                                                    Icon(
+                                                        imageVector = Icons.Default.Photo,
+                                                        contentDescription = null,
+                                                        tint = PrimaryColor,
+                                                        modifier = Modifier.size(32.dp)
+                                                    )
+                                                    Spacer(modifier = Modifier.width(16.dp))
+                                                    Column {
+                                                        Text(
+                                                            "Seleccionar foto",
+                                                            fontWeight = FontWeight.SemiBold,
+                                                            fontSize = 16.sp
+                                                        )
+                                                        Text(
+                                                            "Formatos: JPG, PNG, etc.",
+                                                            fontSize = 13.sp,
+                                                            color = Color(0xFF757575)
+                                                        )
+                                                    }
+                                                }
+                                            }
+
+                                            // Opción: Video
+                                            Card(
+                                                modifier = Modifier
+                                                    .fillMaxWidth()
+                                                    .clickable {
+                                                        showMediaDialog = false
+                                                        videoLauncher.launch("video/*")
+                                                    },
+                                                colors = CardDefaults.cardColors(
+                                                    containerColor = PrimaryColor.copy(alpha = 0.1f)
+                                                ),
+                                                shape = RoundedCornerShape(12.dp)
+                                            ) {
+                                                Row(
+                                                    modifier = Modifier
+                                                        .fillMaxWidth()
+                                                        .padding(20.dp),
+                                                    verticalAlignment = Alignment.CenterVertically
+                                                ) {
+                                                    Icon(
+                                                        imageVector = Icons.Default.VideoLibrary,
+                                                        contentDescription = null,
+                                                        tint = PrimaryColor,
+                                                        modifier = Modifier.size(32.dp)
+                                                    )
+                                                    Spacer(modifier = Modifier.width(16.dp))
+                                                    Column {
+                                                        Text(
+                                                            "Seleccionar video",
+                                                            fontWeight = FontWeight.SemiBold,
+                                                            fontSize = 16.sp
+                                                        )
+                                                        Text(
+                                                            "Máximo 50MB",
+                                                            fontSize = 13.sp,
+                                                            color = Color(0xFF757575)
+                                                        )
+                                                    }
+                                                }
+                                            }
+                                        }
+                                    },
+                                    confirmButton = {},
+                                    dismissButton = {
+                                        TextButton(onClick = { showMediaDialog = false }) {
+                                            Text("Cancelar")
+                                        }
+                                    }
+                                )
                             }
                         } else {
                             // Card mostrando archivo subido
@@ -684,7 +752,7 @@ fun FormScreen(
 
                         Spacer(modifier = Modifier.height(28.dp))
 
-                        // Botones de acción
+// Botones de acción
                         Row(
                             modifier = Modifier.fillMaxWidth(),
                             horizontalArrangement = Arrangement.spacedBy(14.dp)
@@ -718,8 +786,6 @@ fun FormScreen(
                                 )
                             }
 
-                            // En el botón "Enviar Reporte", reemplaza la llamada a createReportBridge:
-
                             Button(
                                 onClick = {
                                     if (affairSeleccionado == null) {
@@ -746,32 +812,31 @@ fun FormScreen(
                                                 isAnonymous = isAnonymous,
                                                 reportLocation = direccion,
                                                 affairId = affairSeleccionado!!.id,
-                                                mediaType = mediaType,           // ✅ AGREGAR ESTE PARÁMETRO
-                                                mediaFileName = mediaFileName    // ✅ AGREGAR ESTE PARÁMETRO
+                                                mediaType = mediaType,
+                                                mediaFileName = mediaFileName
                                             )
 
                                             result.fold(
                                                 onSuccess = {
-                                                    snackbarMessage = "Reporte enviado exitosamente"
-                                                    showSnackbar = true
-                                                    // Limpiar formulario
-                                                    affairSeleccionado = null
-                                                    descripcion = ""
-                                                    direccion = ""
-                                                    evidenciaSubida = false
-                                                    imageBytes = null
-                                                    isAnonymous = false
-                                                    mediaType = null
-                                                    mediaFileName = null
+                                                    // Navegar a pantalla de éxito
+                                                    navController.navigate("reportResult/$userId/true/success") {
+                                                        popUpTo("formScreen") { inclusive = true }
+                                                    }
                                                 },
                                                 onFailure = { error ->
-                                                    snackbarMessage = "Error: ${error.message}"
-                                                    showSnackbar = true
+                                                    // Navegar a pantalla de error
+                                                    val errorMsg = error.message ?: "Error desconocido"
+                                                    navController.navigate("reportResult/$userId/false/$errorMsg") {
+                                                        popUpTo("formScreen") { inclusive = true }
+                                                    }
                                                 }
                                             )
                                         } catch (e: Exception) {
-                                            snackbarMessage = "Error al enviar: ${e.message}"
-                                            showSnackbar = true
+                                            // Navegar a pantalla de error
+                                            val errorMsg = e.message ?: "Error desconocido"
+                                            navController.navigate("reportResult/$userId/false/$errorMsg") {
+                                                popUpTo("formScreen") { inclusive = true }
+                                            }
                                         }
                                     }
                                 },
