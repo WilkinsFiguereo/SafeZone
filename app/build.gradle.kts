@@ -52,6 +52,7 @@ dependencies {
     implementation(libs.androidx.compose.foundation)
     implementation(libs.androidx.compose.ui.text)
     implementation(libs.androidx.compose.ui.graphics)
+    implementation("com.squareup.okhttp3:okhttp:4.12.0")
 
 
     // ===== KTOR CLIENT =====

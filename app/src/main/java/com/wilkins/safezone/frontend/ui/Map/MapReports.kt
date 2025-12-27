@@ -7,9 +7,6 @@ import android.content.pm.PackageManager
 import android.graphics.Bitmap
 import android.graphics.Canvas
 import android.graphics.Paint
-import android.graphics.PorterDuff
-import android.graphics.PorterDuffXfermode
-import android.graphics.Rect
 import android.location.Geocoder
 import android.location.Location
 import android.util.Log
@@ -26,34 +23,34 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.AccessTime
 import androidx.compose.material.icons.filled.ArrowBack
-import androidx.compose.material.icons.filled.CalendarToday
 import androidx.compose.material.icons.filled.Category
-import androidx.compose.material.icons.filled.Description
 import androidx.compose.material.icons.filled.LocationOn
 import androidx.compose.material.icons.filled.Person
 import androidx.compose.material.icons.filled.Photo
+import androidx.compose.material.icons.filled.PlayArrow
+import androidx.compose.material.icons.filled.VideoLibrary
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.CircularProgressIndicator
+import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.FloatingActionButton
 import androidx.compose.material3.FloatingActionButtonDefaults
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
+import androidx.compose.material3.ModalBottomSheet
 import androidx.compose.material3.Text
+import androidx.compose.material3.rememberModalBottomSheetState
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.shadow
-import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.graphics.toArgb
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.layout.ContentScale
-import androidx.compose.ui.text.style.TextOverflow
 import androidx.core.content.ContextCompat
 import coil.compose.AsyncImagePainter
 import coil.compose.rememberAsyncImagePainter
@@ -67,7 +64,6 @@ import com.google.maps.android.compose.GoogleMap
 import com.google.maps.android.compose.MapProperties
 import com.google.maps.android.compose.MapUiSettings
 import com.google.maps.android.compose.Marker
-import com.google.maps.android.compose.MarkerInfoWindowContent
 import com.google.maps.android.compose.MarkerState
 import com.google.maps.android.compose.rememberCameraPositionState
 import com.wilkins.safezone.backend.network.GlobalAssociation.ReportsRepository
@@ -77,7 +73,6 @@ import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import java.text.SimpleDateFormat
 import java.util.Calendar
-import java.util.Date
 import java.util.Locale
 import kotlin.coroutines.resume
 import kotlin.coroutines.suspendCoroutine
@@ -121,6 +116,7 @@ data class MapConfig(
  * @param onReportClick Callback cuando se hace click en un marcador
  * @param onBackClick Callback cuando se presiona el botón de volver
  */
+@OptIn(ExperimentalMaterial3Api::class)
 @SuppressLint("MissingPermission")
 @Composable
 fun GoogleMapScreen(
@@ -157,6 +153,10 @@ fun GoogleMapScreen(
     var reportMarkers by remember { mutableStateOf<List<ReportMarker>>(emptyList()) }
     var allReports by remember { mutableStateOf<List<ReportDto>>(emptyList()) }
     var isLoading by remember { mutableStateOf(true) }
+
+    // Estado para el marcador seleccionado
+    var selectedMarker by remember { mutableStateOf<ReportMarker?>(null) }
+    val sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
 
     // Solicitar permisos
     LaunchedEffect(Unit) {
@@ -252,6 +252,13 @@ fun GoogleMapScreen(
                                     if (shouldAdd) {
                                         val affairName = report.idAffair?.let { affairsMap[it]?.affairName }
 
+                                        // LOG IMPORTANTE: Verificar URL de imagen/video
+                                        Log.d("GoogleMapScreen", "🎬 Reporte ID: ${report.id}")
+                                        Log.d("GoogleMapScreen", "📎 imageUrl: ${report.imageUrl}")
+                                        Log.d("GoogleMapScreen", "📏 Longitud URL: ${report.imageUrl?.length ?: 0}")
+                                        Log.d("GoogleMapScreen", "🔍 ¿Es null?: ${report.imageUrl == null}")
+                                        Log.d("GoogleMapScreen", "🔍 ¿Es blank?: ${report.imageUrl.isNullOrBlank()}")
+
                                         markers.add(
                                             ReportMarker(
                                                 id = report.id,
@@ -339,44 +346,28 @@ fun GoogleMapScreen(
 
             // Marcador de ubicación del usuario (azul)
             userLocation?.let { location ->
-                MarkerInfoWindowContent(
+                Marker(
                     state = MarkerState(position = location),
+                    title = "Tu ubicación",
+                    snippet = "Estás aquí",
                     icon = BitmapDescriptorFactory.defaultMarker(BitmapDescriptorFactory.HUE_AZURE)
-                ) {
-                    Card(
-                        modifier = Modifier
-                            .width(150.dp)
-                            .padding(4.dp),
-                        shape = RoundedCornerShape(8.dp),
-                        colors = CardDefaults.cardColors(containerColor = Color.White)
-                    ) {
-                        Column(
-                            modifier = Modifier.padding(12.dp),
-                            horizontalAlignment = Alignment.CenterHorizontally
-                        ) {
-                            Text(
-                                text = "📍 Tu ubicación",
-                                fontWeight = FontWeight.Bold,
-                                fontSize = 14.sp
-                            )
-                            Text(
-                                text = "Estás aquí",
-                                fontSize = 12.sp,
-                                color = Color.Gray
-                            )
-                        }
-                    }
-                }
+                )
             }
 
-            // Marcadores de reportes con InfoWindow personalizado
+            // Marcadores de reportes con click
             reportMarkers.forEach { marker ->
-                MarkerInfoWindowContent(
+                Marker(
                     state = MarkerState(position = marker.position),
-                    icon = createCustomMarkerIcon(context, marker.userImageUrl)
-                ) {
-                    CustomReportInfoWindow(marker = marker)
-                }
+                    title = marker.title,
+                    snippet = marker.description.take(50) + "...",
+                    icon = createCustomMarkerIcon(context, marker.userImageUrl),
+                    onClick = {
+                        Log.d("GoogleMapScreen", "🖱️ Click en marcador: ${marker.id}")
+                        Log.d("GoogleMapScreen", "📎 URL del marcador: ${marker.reportImageUrl}")
+                        selectedMarker = marker
+                        true // Retorna true para evitar el comportamiento por defecto
+                    }
+                )
             }
         }
 
@@ -410,344 +401,473 @@ fun GoogleMapScreen(
                 modifier = Modifier.align(Alignment.Center)
             )
         }
+
+        // Bottom Sheet con detalles completos del reporte
+        selectedMarker?.let { marker ->
+            Log.d("GoogleMapScreen", "📋 Mostrando Bottom Sheet para marcador: ${marker.id}")
+            Log.d("GoogleMapScreen", "📎 URL en Bottom Sheet: ${marker.reportImageUrl}")
+
+            ModalBottomSheet(
+                onDismissRequest = { selectedMarker = null },
+                sheetState = sheetState,
+                containerColor = Color.White
+            ) {
+                ReportDetailSheet(
+                    marker = marker,
+                    onClose = { selectedMarker = null }
+                )
+            }
+        }
     }
 
     Log.i("GoogleMapScreen", "🟢 GoogleMap renderizado")
 }
 
 /**
- * Versión simple del mapa (sin configuración)
+ * Bottom Sheet con detalles completos del reporte
  */
 @Composable
-fun SimpleGoogleMapScreen(
-    modifier: Modifier = Modifier,
-    onReportClick: ((ReportDto) -> Unit)? = null,
-    onBackClick: (() -> Unit)? = null
+fun ReportDetailSheet(
+    marker: ReportMarker,
+    onClose: () -> Unit
 ) {
-    GoogleMapScreen(
-        modifier = modifier,
-        config = MapConfig(
-            showUserLocation = true,
-            showAllReports = false,
-            maxDistanceKm = 10f,
-            initialZoom = 12f,
-            showDefaultMarker = true
-        ),
-        onReportClick = onReportClick,
-        onBackClick = onBackClick
-    )
-}
+    Log.d("ReportDetailSheet", "🎨 Renderizando detalles del reporte: ${marker.id}")
+    Log.d("ReportDetailSheet", "📎 reportImageUrl: ${marker.reportImageUrl}")
 
-@Composable
-fun CustomReportInfoWindow(marker: ReportMarker) {
-    Card(
+    Column(
         modifier = Modifier
-            .width(280.dp)
-            .padding(horizontal = 2.dp, vertical = 6.dp),
-        shape = RoundedCornerShape(16.dp),
-        elevation = CardDefaults.cardElevation(defaultElevation = 8.dp),
-        colors = CardDefaults.cardColors(containerColor = Color.White),
-        border = BorderStroke(0.5.dp, Color(0xFFE0E0E0))
+            .fillMaxWidth()
+            .padding(horizontal = 16.dp)
+            .padding(bottom = 32.dp)
     ) {
-        Column(
-            modifier = Modifier.fillMaxWidth()
+        // Encabezado
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(bottom = 16.dp),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.SpaceBetween
         ) {
-            // Encabezado con información del usuario
-            Box(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .height(60.dp)
-                    .background(
-                        brush = Brush.horizontalGradient(
-                            colors = listOf(
-                                Color(0xFF1976D2),
-                                Color(0xFF2196F3)
-                            )
-                        )
-                    )
-                    .clip(RoundedCornerShape(topStart = 16.dp, topEnd = 16.dp))
-            ) {
+            Column(modifier = Modifier.weight(1f)) {
                 Row(
-                    modifier = Modifier
-                        .fillMaxSize()
-                        .padding(horizontal = 12.dp),
                     verticalAlignment = Alignment.CenterVertically
                 ) {
-                    // Avatar del usuario
                     Box(
                         modifier = Modifier
-                            .size(44.dp)
+                            .size(40.dp)
                             .clip(CircleShape)
-                            .background(Color.White),
+                            .background(Color(0xFF1976D2).copy(alpha = 0.1f)),
                         contentAlignment = Alignment.Center
                     ) {
                         Icon(
                             imageVector = Icons.Default.Person,
                             contentDescription = "Usuario",
                             tint = Color(0xFF1976D2),
-                            modifier = Modifier.size(22.dp)
-                        )
-
-                        // Anillo decorativo
-                        Box(
-                            modifier = Modifier
-                                .fillMaxSize()
-                                .clip(CircleShape)
-                                .border(
-                                    width = 2.dp,
-                                    color = Color(0xFF1976D2).copy(alpha = 0.3f),
-                                    shape = CircleShape
-                                )
+                            modifier = Modifier.size(20.dp)
                         )
                     }
-
                     Spacer(modifier = Modifier.width(12.dp))
-
-                    // Información del usuario
-                    Column(modifier = Modifier.weight(1f)) {
+                    Column {
                         Text(
                             text = marker.title,
+                            fontSize = 18.sp,
                             fontWeight = FontWeight.Bold,
-                            fontSize = 15.sp,
-                            color = Color.White,
-                            maxLines = 1,
-                            overflow = TextOverflow.Ellipsis
+                            color = Color(0xFF212121)
                         )
-
                         Row(
                             verticalAlignment = Alignment.CenterVertically,
                             modifier = Modifier.padding(top = 2.dp)
                         ) {
                             Icon(
                                 imageVector = Icons.Default.LocationOn,
-                                contentDescription = "Distancia",
-                                tint = Color.White.copy(alpha = 0.9f),
-                                modifier = Modifier.size(12.dp)
+                                contentDescription = null,
+                                tint = Color(0xFF757575),
+                                modifier = Modifier.size(14.dp)
                             )
                             Spacer(modifier = Modifier.width(4.dp))
                             Text(
                                 text = if (marker.distance > 0) {
                                     "${String.format("%.1f", marker.distance)} km"
                                 } else {
-                                    "Cerca de ti"
+                                    "Ubicación cercana"
                                 },
                                 fontSize = 12.sp,
-                                color = Color.White.copy(alpha = 0.9f),
-                                fontWeight = FontWeight.Medium
-                            )
-                        }
-                    }
-                    Log.i("Affair", "✅ affair cargado ${marker.affairName}")
-
-                    // Badge de tipo (si existe)
-                    marker.affairName?.let { affairName ->
-                        Box(
-                            modifier = Modifier
-                                .clip(RoundedCornerShape(8.dp))
-                                .background(Color.White.copy(alpha = 0.2f))
-                                .border(
-                                    1.dp,
-                                    Color.White.copy(alpha = 0.4f),
-                                    RoundedCornerShape(8.dp)
-                                )
-                                .padding(horizontal = 8.dp, vertical = 4.dp)
-                        ) {
-                            Text(
-                                text = affairName.take(3).uppercase(),
-                                fontSize = 10.sp,
-                                color = Color.White,
-                                fontWeight = FontWeight.Bold
+                                color = Color(0xFF757575)
                             )
                         }
                     }
                 }
             }
 
-            // Contenido principal
-            Column(
+            IconButton(onClick = onClose) {
+                Icon(
+                    imageVector = Icons.Default.ArrowBack,
+                    contentDescription = "Cerrar",
+                    tint = Color(0xFF757575)
+                )
+            }
+        }
+
+        // Fecha y hora
+        marker.createdAt?.let { date ->
+            Row(
+                verticalAlignment = Alignment.CenterVertically,
+                modifier = Modifier.padding(bottom = 12.dp)
+            ) {
+                Icon(
+                    imageVector = Icons.Default.AccessTime,
+                    contentDescription = null,
+                    tint = Color(0xFF757575),
+                    modifier = Modifier.size(16.dp)
+                )
+                Spacer(modifier = Modifier.width(8.dp))
+                Text(
+                    text = formatDateTime(date),
+                    fontSize = 14.sp,
+                    color = Color(0xFF757575),
+                    fontWeight = FontWeight.Medium
+                )
+            }
+        }
+
+        // Tipo de incidente
+        marker.affairName?.let { affairName ->
+            Card(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .padding(16.dp)
+                    .padding(bottom = 16.dp),
+                shape = RoundedCornerShape(12.dp),
+                colors = CardDefaults.cardColors(
+                    containerColor = Color(0xFF1976D2).copy(alpha = 0.1f)
+                ),
+                border = BorderStroke(1.dp, Color(0xFF1976D2).copy(alpha = 0.3f))
             ) {
-                // Fecha y hora
-                marker.createdAt?.let { date ->
-                    Row(
-                        verticalAlignment = Alignment.CenterVertically,
-                        modifier = Modifier.padding(bottom = 8.dp)
-                    ) {
-                        Icon(
-                            imageVector = Icons.Default.AccessTime,
-                            contentDescription = "Hora",
-                            tint = Color(0xFF757575),
-                            modifier = Modifier.size(14.dp)
-                        )
-                        Spacer(modifier = Modifier.width(6.dp))
+                Row(
+                    verticalAlignment = Alignment.CenterVertically,
+                    modifier = Modifier.padding(16.dp)
+                ) {
+                    Icon(
+                        imageVector = Icons.Default.Category,
+                        contentDescription = null,
+                        tint = Color(0xFF1976D2),
+                        modifier = Modifier.size(20.dp)
+                    )
+                    Spacer(modifier = Modifier.width(12.dp))
+                    Column {
                         Text(
-                            text = formatDateTime(date),
+                            text = "Tipo de Incidente",
                             fontSize = 12.sp,
                             color = Color(0xFF757575),
                             fontWeight = FontWeight.Medium
                         )
-                    }
-                }
-
-                // Tipo de Affair - Más destacado
-                marker.affairName?.let { affairName ->
-                    Card(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .padding(bottom = 8.dp),
-                        shape = RoundedCornerShape(10.dp),
-                        colors = CardDefaults.cardColors(
-                            containerColor = Color(0xFF1976D2).copy(alpha = 0.1f)
-                        ),
-                        border = BorderStroke(1.dp, Color(0xFF1976D2).copy(alpha = 0.3f))
-                    ) {
-                        Row(
-                            verticalAlignment = Alignment.CenterVertically,
-                            modifier = Modifier.padding(horizontal = 12.dp, vertical = 8.dp)
-                        ) {
-                            Icon(
-                                imageVector = Icons.Default.Category,
-                                contentDescription = "Tipo de incidente",
-                                tint = Color(0xFF1976D2),
-                                modifier = Modifier.size(18.dp)
-                            )
-                            Spacer(modifier = Modifier.width(8.dp))
-                            Column {
-                                Text(
-                                    text = "Tipo de Incidente",
-                                    fontSize = 10.sp,
-                                    color = Color(0xFF757575),
-                                    fontWeight = FontWeight.Medium
-                                )
-                                Text(
-                                    text = affairName,
-                                    fontSize = 14.sp,
-                                    color = Color(0xFF1976D2),
-                                    fontWeight = FontWeight.Bold
-                                )
-                            }
-                        }
-                    }
-                }
-
-                // Título del reporte
-                Text(
-                    text = "📢 Descripción",
-                    fontSize = 14.sp,
-                    fontWeight = FontWeight.Bold,
-                    color = Color(0xFF1976D2),
-                    modifier = Modifier.padding(bottom = 4.dp)
-                )
-
-                // Descripción
-                Card(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(bottom = 12.dp),
-                    shape = RoundedCornerShape(12.dp),
-                    colors = CardDefaults.cardColors(
-                        containerColor = Color(0xFFF8F9FA)
-                    ),
-                    elevation = CardDefaults.cardElevation(defaultElevation = 0.dp),
-                    border = BorderStroke(0.5.dp, Color(0xFFE0E0E0))
-                ) {
-                    Text(
-                        text = marker.description,
-                        fontSize = 13.sp,
-                        color = Color(0xFF424242),
-                        lineHeight = 18.sp,
-                        modifier = Modifier.padding(12.dp)
-                    )
-                }
-
-                // Imagen del reporte
-                marker.reportImageUrl?.let { imageUrl ->
-                    Card(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .height(120.dp),
-                        shape = RoundedCornerShape(12.dp),
-                        elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
-                    ) {
-                        Box(
-                            modifier = Modifier
-                                .fillMaxSize()
-                                .background(Color(0xFFF5F5F5)),
-                            contentAlignment = Alignment.Center
-                        ) {
-                            coil.compose.AsyncImage(
-                                model = ImageRequest.Builder(LocalContext.current)
-                                    .data(imageUrl)
-                                    .crossfade(true)
-                                    .placeholder(android.R.drawable.ic_menu_gallery)
-                                    .error(android.R.drawable.ic_menu_report_image)
-                                    .build(),
-                                contentDescription = "Imagen del reporte",
-                                modifier = Modifier.fillMaxSize(),
-                                contentScale = ContentScale.Crop,
-                            )
-
-                            // Overlay de protección
-                            Box(
-                                modifier = Modifier
-                                    .fillMaxSize()
-                                    .background(
-                                        brush = Brush.verticalGradient(
-                                            colors = listOf(
-                                                Color.Transparent,
-                                                Color.Black.copy(alpha = 0.05f)
-                                            ),
-                                            startY = 0.7f
-                                        )
-                                    )
-                            )
-                        }
-                    }
-
-                    // Pie de foto
-                    Text(
-                        text = "📷 Imagen relacionada al reporte",
-                        fontSize = 10.sp,
-                        color = Color(0xFF757575),
-                        modifier = Modifier
-                            .padding(top = 4.dp)
-                            .align(Alignment.Start)
-                    )
-                }
-
-                // Pie de página con acciones
-                Row(
-                    verticalAlignment = Alignment.CenterVertically,
-                    horizontalArrangement = Arrangement.SpaceBetween,
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(top = 12.dp)
-                ) {
-                    // Nivel de prioridad
-                    Row(
-                        verticalAlignment = Alignment.CenterVertically
-                    ) {
-                        Box(
-                            modifier = Modifier
-                                .size(8.dp)
-                                .clip(CircleShape)
-                                .background(Color(0xFFE53935))
-                        )
-                        Spacer(modifier = Modifier.width(6.dp))
                         Text(
-                            text = "ALTA PRIORIDAD",
-                            fontSize = 10.sp,
-                            color = Color(0xFFE53935),
+                            text = affairName,
+                            fontSize = 16.sp,
+                            color = Color(0xFF1976D2),
                             fontWeight = FontWeight.Bold
                         )
                     }
-
                 }
             }
         }
+
+        // Descripción
+        Text(
+            text = "Descripción del Reporte",
+            fontSize = 16.sp,
+            fontWeight = FontWeight.Bold,
+            color = Color(0xFF212121),
+            modifier = Modifier.padding(bottom = 8.dp)
+        )
+
+        Card(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(bottom = 16.dp),
+            shape = RoundedCornerShape(12.dp),
+            colors = CardDefaults.cardColors(
+                containerColor = Color(0xFFF8F9FA)
+            ),
+            border = BorderStroke(0.5.dp, Color(0xFFE0E0E0))
+        ) {
+            Text(
+                text = marker.description,
+                fontSize = 14.sp,
+                color = Color(0xFF424242),
+                lineHeight = 20.sp,
+                modifier = Modifier.padding(16.dp)
+            )
+        }
+
+        // Imagen o Video del reporte - AQUÍ ES DONDE SE CARGA
+        marker.reportImageUrl?.let { mediaUrl ->
+            Log.d("ReportDetailSheet", "🎬 Procesando media URL")
+            Log.d("ReportDetailSheet", "📎 URL completa: $mediaUrl")
+            Log.d("ReportDetailSheet", "🔍 ¿URL está vacía?: ${mediaUrl.isEmpty()}")
+            Log.d("ReportDetailSheet", "🔍 ¿URL está en blanco?: ${mediaUrl.isBlank()}")
+
+            Text(
+                text = "Evidencia del Reporte",
+                fontSize = 16.sp,
+                fontWeight = FontWeight.Bold,
+                color = Color(0xFF212121),
+                modifier = Modifier.padding(bottom = 8.dp)
+            )
+
+            val isVideo = isVideoUrl(mediaUrl)
+            Log.d("ReportDetailSheet", "🎬 ¿Es video?: $isVideo")
+
+            Card(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .height(240.dp),
+                shape = RoundedCornerShape(12.dp),
+                elevation = CardDefaults.cardElevation(defaultElevation = 4.dp)
+            ) {
+                Box(
+                    modifier = Modifier.fillMaxSize(),
+                    contentAlignment = Alignment.Center
+                ) {
+                    if (isVideo) {
+                        Log.d("ReportDetailSheet", "🎥 Cargando VideoThumbnailWithLoading")
+                        // Thumbnail de video con estado de carga
+                        VideoThumbnailWithLoading(
+                            videoUrl = mediaUrl,
+                            onClick = {
+                                // TODO: Abrir reproductor de video
+                                Log.i("ReportDetailSheet", "🎬 Click en video: $mediaUrl")
+                            }
+                        )
+                    } else {
+                        Log.d("ReportDetailSheet", "🖼️ Cargando ImageWithLoading")
+                        // Imagen con estado de carga
+                        ImageWithLoading(imageUrl = mediaUrl)
+                    }
+                }
+            }
+
+            // Etiqueta
+            Row(
+                verticalAlignment = Alignment.CenterVertically,
+                modifier = Modifier.padding(top = 8.dp)
+            ) {
+                Icon(
+                    imageVector = if (isVideo) Icons.Default.VideoLibrary else Icons.Default.Photo,
+                    contentDescription = null,
+                    tint = Color(0xFF757575),
+                    modifier = Modifier.size(14.dp)
+                )
+                Spacer(modifier = Modifier.width(6.dp))
+                Text(
+                    text = if (isVideo) "Video relacionado al reporte" else "Imagen relacionada al reporte",
+                    fontSize = 12.sp,
+                    color = Color(0xFF757575)
+                )
+            }
+        } ?: run {
+            Log.w("ReportDetailSheet", "⚠️ NO HAY reportImageUrl - marker.reportImageUrl es NULL")
+        }
+
+        // Badge de prioridad
+        Row(
+            verticalAlignment = Alignment.CenterVertically,
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(top = 16.dp)
+        ) {
+            Box(
+                modifier = Modifier
+                    .size(8.dp)
+                    .clip(CircleShape)
+                    .background(Color(0xFFE53935))
+            )
+            Spacer(modifier = Modifier.width(6.dp))
+            Text(
+                text = "ALTA PRIORIDAD",
+                fontSize = 11.sp,
+                color = Color(0xFFE53935),
+                fontWeight = FontWeight.Bold
+            )
+        }
     }
+}
+
+/**
+ * Componente de imagen con manejo de estados de carga
+ */
+@Composable
+fun ImageWithLoading(imageUrl: String) {
+    Log.d("ImageWithLoading", "🖼️ Iniciando carga de imagen")
+    Log.d("ImageWithLoading", "📎 URL: $imageUrl")
+    Log.d("ImageWithLoading", "📏 Longitud URL: ${imageUrl.length}")
+
+    val painter = rememberAsyncImagePainter(
+        model = ImageRequest.Builder(LocalContext.current)
+            .data(imageUrl)
+            .crossfade(true)
+            .listener(
+                onStart = {
+                    Log.d("ImageWithLoading", "▶️ Carga iniciada: $imageUrl")
+                },
+                onSuccess = { _, result ->
+                    Log.d("ImageWithLoading", "✅ Imagen cargada exitosamente: $imageUrl")
+                    Log.d("ImageWithLoading", "📊 Dimensiones: ${result.drawable.intrinsicWidth}x${result.drawable.intrinsicHeight}")
+                },
+                onError = { _, result ->
+                    Log.e("ImageWithLoading", "❌ Error cargando imagen: $imageUrl")
+                    Log.e("ImageWithLoading", "❌ Error: ${result.throwable.message}")
+                    Log.e("ImageWithLoading", "❌ Tipo de error: ${result.throwable.javaClass.simpleName}")
+                    Log.e("ImageWithLoading", "❌ Stack trace:", result.throwable)
+                }
+            )
+            .build()
+    )
+
+    Box(
+        modifier = Modifier.fillMaxSize(),
+        contentAlignment = Alignment.Center
+    ) {
+        when (val state = painter.state) {
+            is AsyncImagePainter.State.Loading -> {
+                Log.d("ImageWithLoading", "⏳ Estado: Cargando...")
+                CircularProgressIndicator(
+                    color = Color(0xFF1976D2),
+                    modifier = Modifier.size(48.dp)
+                )
+            }
+            is AsyncImagePainter.State.Error -> {
+                Log.e("ImageWithLoading", "❌ Estado: Error")
+                Log.e("ImageWithLoading", "❌ Detalle del error: ${state.result.throwable.message}")
+                Column(
+                    horizontalAlignment = Alignment.CenterHorizontally,
+                    verticalArrangement = Arrangement.Center
+                ) {
+                    Icon(
+                        imageVector = Icons.Default.Photo,
+                        contentDescription = null,
+                        tint = Color(0xFF757575),
+                        modifier = Modifier.size(48.dp)
+                    )
+                    Spacer(modifier = Modifier.height(8.dp))
+                    Text(
+                        text = "No se pudo cargar la imagen",
+                        fontSize = 12.sp,
+                        color = Color(0xFF757575)
+                    )
+                    Spacer(modifier = Modifier.height(4.dp))
+                    Text(
+                        text = state.result.throwable.message ?: "Error desconocido",
+                        fontSize = 10.sp,
+                        color = Color(0xFF757575)
+                    )
+                }
+            }
+            is AsyncImagePainter.State.Success -> {
+                Log.d("ImageWithLoading", "✅ Estado: Éxito - Mostrando imagen")
+                Image(
+                    painter = painter,
+                    contentDescription = "Imagen del reporte",
+                    modifier = Modifier.fillMaxSize(),
+                    contentScale = ContentScale.Crop
+                )
+            }
+            else -> {
+                Log.d("ImageWithLoading", "⚪ Estado: Empty/Inicial")
+            }
+        }
+    }
+}
+
+/**
+ * Thumbnail de video con estado de carga
+ */
+@Composable
+fun VideoThumbnailWithLoading(
+    videoUrl: String,
+    onClick: () -> Unit
+) {
+    Log.d("VideoThumbnailWithLoading", "🎥 Renderizando thumbnail de video")
+    Log.d("VideoThumbnailWithLoading", "📎 URL: $videoUrl")
+
+    Box(
+        modifier = Modifier
+            .fillMaxSize()
+            .background(Color.Black.copy(alpha = 0.7f))
+            .clickable(onClick = onClick),
+        contentAlignment = Alignment.Center
+    ) {
+        Column(
+            horizontalAlignment = Alignment.CenterHorizontally,
+            verticalArrangement = Arrangement.Center
+        ) {
+            // Botón de play
+            Box(
+                modifier = Modifier
+                    .size(80.dp)
+                    .clip(CircleShape)
+                    .background(Color.White.copy(alpha = 0.95f))
+                    .border(4.dp, Color(0xFF1976D2), CircleShape),
+                contentAlignment = Alignment.Center
+            ) {
+                Icon(
+                    imageVector = Icons.Default.PlayArrow,
+                    contentDescription = "Reproducir video",
+                    tint = Color(0xFF1976D2),
+                    modifier = Modifier.size(48.dp)
+                )
+            }
+
+            Spacer(modifier = Modifier.height(16.dp))
+
+            Text(
+                text = "Toca para reproducir",
+                fontSize = 14.sp,
+                color = Color.White,
+                fontWeight = FontWeight.Medium
+            )
+        }
+
+        // Badge de "Video"
+        Box(
+            modifier = Modifier
+                .align(Alignment.TopEnd)
+                .padding(12.dp)
+                .clip(RoundedCornerShape(8.dp))
+                .background(Color(0xFFE53935))
+                .padding(horizontal = 12.dp, vertical = 6.dp)
+        ) {
+            Row(
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(6.dp)
+            ) {
+                Icon(
+                    imageVector = Icons.Default.VideoLibrary,
+                    contentDescription = null,
+                    tint = Color.White,
+                    modifier = Modifier.size(14.dp)
+                )
+                Text(
+                    text = "VIDEO",
+                    fontSize = 11.sp,
+                    color = Color.White,
+                    fontWeight = FontWeight.Bold
+                )
+            }
+        }
+    }
+}
+
+/**
+ * Función para detectar si una URL es de video basándose en la extensión
+ */
+fun isVideoUrl(url: String): Boolean {
+    val videoExtensions = listOf(".mp4", ".mov", ".avi", ".mkv", ".webm", ".3gp", ".flv")
+    val isVideo = videoExtensions.any { url.lowercase().contains(it) }
+
+    Log.d("isVideoUrl", "🔍 Verificando URL: $url")
+    Log.d("isVideoUrl", "🎬 ¿Es video?: $isVideo")
+
+    return isVideo
 }
 
 /**
@@ -772,9 +892,9 @@ private fun formatDateTime(dateString: String): String {
                     return if (now.get(Calendar.YEAR) == reportDate.get(Calendar.YEAR) &&
                         now.get(Calendar.MONTH) == reportDate.get(Calendar.MONTH) &&
                         now.get(Calendar.DAY_OF_MONTH) == reportDate.get(Calendar.DAY_OF_MONTH)) {
-                        SimpleDateFormat("HH:mm", Locale.getDefault()).format(date)
+                        "Hoy a las " + SimpleDateFormat("HH:mm", Locale.getDefault()).format(date)
                     } else {
-                        SimpleDateFormat("dd MMM yyyy", Locale.getDefault()).format(date)
+                        SimpleDateFormat("dd MMM yyyy, HH:mm", Locale.getDefault()).format(date)
                     }
                 }
             } catch (e: Exception) {
@@ -785,32 +905,6 @@ private fun formatDateTime(dateString: String): String {
         dateString
     } catch (e: Exception) {
         dateString
-    }
-}
-
-/**
- * Componente Badge para mostrar el tipo de asunto
- */
-@Composable
-private fun BadgeComponent(affairName: String) {
-    Box(
-        modifier = Modifier
-            .clip(RoundedCornerShape(10.dp))
-            .background(Color.White.copy(alpha = 0.9f))
-            .border(
-                width = 1.dp,
-                color = Color(0xFF1976D2).copy(alpha = 0.3f),
-                shape = RoundedCornerShape(10.dp)
-            )
-            .padding(horizontal = 10.dp, vertical = 6.dp)
-    ) {
-        Text(
-            text = affairName.uppercase(),
-            fontSize = 11.sp,
-            color = Color(0xFF1976D2),
-            fontWeight = FontWeight.Bold,
-            maxLines = 1
-        )
     }
 }
 
@@ -862,22 +956,6 @@ private fun createCustomMarkerIcon(context: Context, imageUrl: String?): BitmapD
     canvas.drawText("!", size / 2f, size / 2f + 18f, iconPaint)
 
     return BitmapDescriptorFactory.fromBitmap(bitmap)
-}
-
-/**
- * Formatear fecha para mostrar
- */
-private fun formatDate(dateString: String): String {
-    return try {
-        val parts = dateString.split(" ")
-        if (parts.isNotEmpty()) {
-            parts[0]
-        } else {
-            dateString
-        }
-    } catch (e: Exception) {
-        dateString
-    }
 }
 
 /**
