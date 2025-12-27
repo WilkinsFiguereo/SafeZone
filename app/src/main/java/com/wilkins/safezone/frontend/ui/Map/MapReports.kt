@@ -629,19 +629,70 @@ fun ReportDetailSheet(
                     contentAlignment = Alignment.Center
                 ) {
                     if (isVideo) {
-                        Log.d("ReportDetailSheet", "🎥 Cargando VideoThumbnailWithLoading")
-                        // Thumbnail de video con estado de carga
-                        VideoThumbnailWithLoading(
-                            videoUrl = mediaUrl,
-                            onClick = {
-                                // TODO: Abrir reproductor de video
-                                Log.i("ReportDetailSheet", "🎬 Click en video: $mediaUrl")
+                        Log.d("ReportDetailSheet", "🎥 Mostrando thumbnail de video")
+                        // Thumbnail de video
+                        Box(
+                            modifier = Modifier
+                                .fillMaxSize()
+                                .background(Color.Black.copy(alpha = 0.7f))
+                                .clickable {
+                                    Log.i("ReportDetailSheet", "🎬 Click en video: $mediaUrl")
+                                },
+                            contentAlignment = Alignment.Center
+                        ) {
+                            Column(
+                                horizontalAlignment = Alignment.CenterHorizontally,
+                                verticalArrangement = Arrangement.Center
+                            ) {
+                                Box(
+                                    modifier = Modifier
+                                        .size(80.dp)
+                                        .clip(CircleShape)
+                                        .background(Color.White.copy(alpha = 0.95f))
+                                        .border(4.dp, Color(0xFF1976D2), CircleShape),
+                                    contentAlignment = Alignment.Center
+                                ) {
+                                    Icon(
+                                        imageVector = Icons.Default.PlayArrow,
+                                        contentDescription = "Reproducir video",
+                                        tint = Color(0xFF1976D2),
+                                        modifier = Modifier.size(48.dp)
+                                    )
+                                }
+                                Spacer(modifier = Modifier.height(16.dp))
+                                Text(
+                                    text = "Toca para reproducir",
+                                    fontSize = 14.sp,
+                                    color = Color.White,
+                                    fontWeight = FontWeight.Medium
+                                )
                             }
-                        )
+                        }
                     } else {
-                        Log.d("ReportDetailSheet", "🖼️ Cargando ImageWithLoading")
-                        // Imagen con estado de carga
-                        ImageWithLoading(imageUrl = mediaUrl)
+                        Log.d("ReportDetailSheet", "🖼️ Cargando imagen con AsyncImage")
+                        // Imagen con AsyncImage (como en la versión que funcionaba)
+                        coil.compose.AsyncImage(
+                            model = ImageRequest.Builder(LocalContext.current)
+                                .data(mediaUrl)
+                                .crossfade(true)
+                                .placeholder(android.R.drawable.ic_menu_gallery)
+                                .error(android.R.drawable.ic_menu_report_image)
+                                .listener(
+                                    onStart = {
+                                        Log.d("ReportDetailSheet", "▶️ Carga de imagen iniciada: $mediaUrl")
+                                    },
+                                    onSuccess = { _, result ->
+                                        Log.d("ReportDetailSheet", "✅ Imagen cargada exitosamente")
+                                    },
+                                    onError = { _, result ->
+                                        Log.e("ReportDetailSheet", "❌ Error cargando imagen: ${result.throwable.message}")
+                                    }
+                                )
+                                .build(),
+                            contentDescription = "Imagen del reporte",
+                            modifier = Modifier.fillMaxSize(),
+                            contentScale = ContentScale.Crop
+                        )
                     }
                 }
             }
