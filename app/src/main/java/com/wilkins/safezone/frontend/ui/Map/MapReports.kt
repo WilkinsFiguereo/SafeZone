@@ -629,45 +629,9 @@ fun ReportDetailSheet(
                     contentAlignment = Alignment.Center
                 ) {
                     if (isVideo) {
-                        Log.d("ReportDetailSheet", "🎥 Mostrando thumbnail de video")
-                        // Thumbnail de video
-                        Box(
-                            modifier = Modifier
-                                .fillMaxSize()
-                                .background(Color.Black.copy(alpha = 0.7f))
-                                .clickable {
-                                    Log.i("ReportDetailSheet", "🎬 Click en video: $mediaUrl")
-                                },
-                            contentAlignment = Alignment.Center
-                        ) {
-                            Column(
-                                horizontalAlignment = Alignment.CenterHorizontally,
-                                verticalArrangement = Arrangement.Center
-                            ) {
-                                Box(
-                                    modifier = Modifier
-                                        .size(80.dp)
-                                        .clip(CircleShape)
-                                        .background(Color.White.copy(alpha = 0.95f))
-                                        .border(4.dp, Color(0xFF1976D2), CircleShape),
-                                    contentAlignment = Alignment.Center
-                                ) {
-                                    Icon(
-                                        imageVector = Icons.Default.PlayArrow,
-                                        contentDescription = "Reproducir video",
-                                        tint = Color(0xFF1976D2),
-                                        modifier = Modifier.size(48.dp)
-                                    )
-                                }
-                                Spacer(modifier = Modifier.height(16.dp))
-                                Text(
-                                    text = "Toca para reproducir",
-                                    fontSize = 14.sp,
-                                    color = Color.White,
-                                    fontWeight = FontWeight.Medium
-                                )
-                            }
-                        }
+                        Log.d("ReportDetailSheet", "🎥 Mostrando reproductor de video")
+                        // Reproductor de video usando AndroidView con VideoView
+                        VideoPlayerComposable(videoUrl = mediaUrl)
                     } else {
                         Log.d("ReportDetailSheet", "🖼️ Cargando imagen con AsyncImage")
                         // Imagen con AsyncImage (como en la versión que funcionaba)
@@ -1025,4 +989,130 @@ private fun calculateDistance(lat1: Double, lon1: Double, lat2: Double, lon2: Do
     val c = 2 * atan2(sqrt(a), sqrt(1 - a))
 
     return (earthRadius * c).toFloat()
+}
+
+/**
+ * Reproductor de video usando VideoView de Android
+ */
+@Composable
+fun VideoPlayerComposable(videoUrl: String) {
+    Log.d("VideoPlayerComposable", "🎬 Inicializando reproductor de video")
+    Log.d("VideoPlayerComposable", "📎 URL: $videoUrl")
+
+    var isPlaying by remember { mutableStateOf(false) }
+    var showControls by remember { mutableStateOf(true) }
+    val context = LocalContext.current
+
+    Box(
+        modifier = Modifier
+            .fillMaxSize()
+            .background(Color.Black),
+        contentAlignment = Alignment.Center
+    ) {
+        // VideoView usando AndroidView
+        androidx.compose.ui.viewinterop.AndroidView(
+            factory = { ctx ->
+                android.widget.VideoView(ctx).apply {
+                    Log.d("VideoPlayerComposable", "🎥 Creando VideoView")
+
+                    setVideoPath(videoUrl)
+
+                    setOnPreparedListener { mediaPlayer ->
+                        Log.d("VideoPlayerComposable", "✅ Video preparado y listo")
+                        mediaPlayer.isLooping = false
+                        // Auto-start
+                        start()
+                        isPlaying = true
+                    }
+
+                    setOnCompletionListener {
+                        Log.d("VideoPlayerComposable", "🏁 Video completado")
+                        isPlaying = false
+                        showControls = true
+                    }
+
+                    setOnErrorListener { _, what, extra ->
+                        Log.e("VideoPlayerComposable", "❌ Error reproduciendo video")
+                        Log.e("VideoPlayerComposable", "❌ What: $what, Extra: $extra")
+                        Log.e("VideoPlayerComposable", "❌ URL: $videoUrl")
+                        true
+                    }
+                }
+            },
+            update = { videoView ->
+                Log.d("VideoPlayerComposable", "🔄 Update - isPlaying: $isPlaying")
+                if (isPlaying) {
+                    if (!videoView.isPlaying) {
+                        videoView.start()
+                        Log.d("VideoPlayerComposable", "▶️ Video iniciado")
+                    }
+                } else {
+                    if (videoView.isPlaying) {
+                        videoView.pause()
+                        Log.d("VideoPlayerComposable", "⏸️ Video pausado")
+                    }
+                }
+            },
+            modifier = Modifier.fillMaxSize()
+        )
+
+        // Controles superpuestos
+        if (showControls || !isPlaying) {
+            Box(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .background(Color.Black.copy(alpha = 0.3f))
+                    .clickable {
+                        showControls = !showControls
+                    },
+                contentAlignment = Alignment.Center
+            ) {
+                // Botón de Play/Pause
+                FloatingActionButton(
+                    onClick = {
+                        isPlaying = !isPlaying
+                        showControls = false
+                        Log.d("VideoPlayerComposable", "👆 Click - nuevo estado: $isPlaying")
+                    },
+                    containerColor = Color.White,
+                    modifier = Modifier.size(72.dp)
+                ) {
+                    Icon(
+                        imageVector = Icons.Default.PlayArrow,
+                        contentDescription = if (isPlaying) "Pausar" else "Reproducir",
+                        tint = Color(0xFF1976D2),
+                        modifier = Modifier.size(40.dp)
+                    )
+                }
+
+                // Badge de VIDEO en la esquina
+                Box(
+                    modifier = Modifier
+                        .align(Alignment.TopEnd)
+                        .padding(12.dp)
+                        .clip(RoundedCornerShape(8.dp))
+                        .background(Color(0xFFE53935))
+                        .padding(horizontal = 12.dp, vertical = 6.dp)
+                ) {
+                    Row(
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.spacedBy(6.dp)
+                    ) {
+                        Icon(
+                            imageVector = Icons.Default.VideoLibrary,
+                            contentDescription = null,
+                            tint = Color.White,
+                            modifier = Modifier.size(14.dp)
+                        )
+                        Text(
+                            text = "VIDEO",
+                            fontSize = 11.sp,
+                            color = Color.White,
+                            fontWeight = FontWeight.Bold
+                        )
+                    }
+                }
+            }
+        }
+    }
 }
