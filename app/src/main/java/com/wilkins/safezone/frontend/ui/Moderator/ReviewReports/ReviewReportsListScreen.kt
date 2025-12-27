@@ -234,7 +234,7 @@ fun RewiewReportsListScreen(
                 currentPage = currentPage,
                 totalPages = totalPages,
                 onReportClick = { reportId ->
-                    navController.navigate("report_rewiew_detail/$reportId")
+                    navController.navigate("report_review_detail/$reportId")
                 },
                 onNextPage = {
                     if (currentPage < totalPages) {

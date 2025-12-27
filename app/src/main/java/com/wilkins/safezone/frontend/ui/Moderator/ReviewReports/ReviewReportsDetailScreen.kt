@@ -1,5 +1,4 @@
-package com.wilkins.safezone.frontend.ui.GlobalAssociation.ReportSent
-
+package com.wilkins.safezone.frontend.ui.Moderator.ReviewReports
 import android.net.Uri
 import android.view.ViewGroup
 import android.widget.MediaController
@@ -69,14 +68,21 @@ fun ReportStatusScreen(
 
                     // Detectar si es video por la extensión del archivo
                     if (report.imageUrl != null) {
+                        android.util.Log.d("ReportStatusScreen", "━━━━━━━━━━━━━━━━━━━━━━━")
+                        android.util.Log.d("ReportStatusScreen", "📎 imageUrl: ${report.imageUrl}")
                         val url = report.imageUrl.lowercase()
                         isVideo = url.endsWith(".mp4") ||
                                 url.endsWith(".mov") ||
                                 url.endsWith(".avi") ||
                                 url.endsWith(".mkv") ||
                                 url.endsWith(".webm") ||
-                                url.contains("/video/") ||
-                                url.contains("video")
+                                url.endsWith(".3gp") ||
+                                url.endsWith(".flv")
+                        android.util.Log.d("ReportStatusScreen", "🎬 ¿Es video?: $isVideo")
+                        android.util.Log.d("ReportStatusScreen", "📏 URL length: ${report.imageUrl.length}")
+                        android.util.Log.d("ReportStatusScreen", "━━━━━━━━━━━━━━━━━━━━━━━")
+                    } else {
+                        android.util.Log.w("ReportStatusScreen", "⚠️ No hay imageUrl")
                     }
 
                     // Cargar el affair si existe
@@ -85,6 +91,7 @@ fun ReportStatusScreen(
                         affairName = affairResult.getOrNull()?.affairName
                     }
                 }
+
 
                 isLoading = false
             } catch (e: Exception) {
@@ -145,7 +152,7 @@ fun ReportStatusScreen(
         navController = navController,
         isMenuOpen = isMenuOpen,
         onMenuToggle = { isMenuOpen = it },
-        currentRoute = "report_status"
+        currentRoute = "report_review_detail"
     ) {
         Box(modifier = Modifier.fillMaxSize()) {
             when {
@@ -213,6 +220,7 @@ fun ReportStatusScreen(
                                 when {
                                     report.imageUrl != null && isVideo -> {
                                         // Mostrar video
+                                        android.util.Log.d("ReportStatusScreen", "🎥 Mostrando VideoPlayer")
                                         VideoPlayer(
                                             videoUrl = report.imageUrl,
                                             modifier = Modifier.fillMaxSize()
@@ -220,8 +228,27 @@ fun ReportStatusScreen(
                                     }
                                     report.imageUrl != null -> {
                                         // Mostrar imagen
+                                        android.util.Log.d("ReportStatusScreen", "🖼️ Cargando imagen con AsyncImage")
+                                        android.util.Log.d("ReportStatusScreen", "📎 URL: ${report.imageUrl}")
+
                                         AsyncImage(
-                                            model = report.imageUrl,
+                                            model = coil.request.ImageRequest.Builder(LocalContext.current)
+                                                .data(report.imageUrl)
+                                                .crossfade(true)
+                                                .placeholder(android.R.drawable.ic_menu_gallery)
+                                                .error(android.R.drawable.ic_menu_report_image)
+                                                .listener(
+                                                    onStart = {
+                                                        android.util.Log.d("ReportStatusScreen", "▶️ Carga de imagen iniciada")
+                                                    },
+                                                    onSuccess = { _, result ->
+                                                        android.util.Log.d("ReportStatusScreen", "✅ Imagen cargada exitosamente")
+                                                    },
+                                                    onError = { _, result ->
+                                                        android.util.Log.e("ReportStatusScreen", "❌ Error cargando imagen: ${result.throwable.message}")
+                                                    }
+                                                )
+                                                .build(),
                                             contentDescription = "Imagen del reporte",
                                             modifier = Modifier.fillMaxSize(),
                                             contentScale = ContentScale.Crop
@@ -696,6 +723,9 @@ fun VideoPlayer(
 ) {
     val context = LocalContext.current
 
+    android.util.Log.d("VideoPlayer", "🎬 Inicializando VideoPlayer")
+    android.util.Log.d("VideoPlayer", "📎 URL: $videoUrl")
+
     AndroidView(
         factory = { ctx ->
             VideoView(ctx).apply {
@@ -703,6 +733,8 @@ fun VideoPlayer(
                     ViewGroup.LayoutParams.MATCH_PARENT,
                     ViewGroup.LayoutParams.MATCH_PARENT
                 )
+
+                android.util.Log.d("VideoPlayer", "🎥 Configurando VideoView")
 
                 // Configurar controles de media
                 val mediaController = MediaController(ctx)
@@ -712,16 +744,24 @@ fun VideoPlayer(
                 // Establecer URI del video
                 setVideoURI(Uri.parse(videoUrl))
 
-                // Preparar y auto-reproducir
+// Preparar y auto-reproducir
                 setOnPreparedListener { mp ->
+                    android.util.Log.d("VideoPlayer", "✅ Video preparado y listo")
                     mp.isLooping = false
                     mp.setVolume(1f, 1f)
+                    start() // Auto-iniciar
                 }
 
                 // Manejar errores
                 setOnErrorListener { _, what, extra ->
-                    android.util.Log.e("VideoPlayer", "Error reproduciendo video: what=$what, extra=$extra")
+                    android.util.Log.e("VideoPlayer", "❌ Error reproduciendo video")
+                    android.util.Log.e("VideoPlayer", "❌ What: $what, Extra: $extra")
+                    android.util.Log.e("VideoPlayer", "❌ URL: $videoUrl")
                     true
+                }
+
+                setOnCompletionListener {
+                    android.util.Log.d("VideoPlayer", "🏁 Video completado")
                 }
 
                 // Iniciar preparación
@@ -729,6 +769,7 @@ fun VideoPlayer(
             }
         },
         update = { videoView ->
+            android.util.Log.d("VideoPlayer", "🔄 Update VideoView")
             videoView.setVideoURI(Uri.parse(videoUrl))
         },
         modifier = modifier

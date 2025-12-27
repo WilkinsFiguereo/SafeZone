@@ -6,7 +6,7 @@ import androidx.navigation.NavGraphBuilder
 import androidx.navigation.NavHostController
 import androidx.navigation.compose.composable
 import com.wilkins.safezone.backend.network.SupabaseService
-import com.wilkins.safezone.frontend.ui.GlobalAssociation.ReportSent.ReportStatusScreen
+import com.wilkins.safezone.frontend.ui.Moderator.ReviewReports.ReportStatusScreen
 import com.wilkins.safezone.frontend.ui.Moderator.Dashboard.ModeratorDashboard
 import com.wilkins.safezone.frontend.ui.Moderator.ReviewReports.RewiewReportsListScreen
 

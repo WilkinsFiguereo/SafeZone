@@ -111,7 +111,7 @@ class ReportRepository(private val context: Context) {
                 user_id = userId,
                 user_name = if (isAnonymous) null else userName,
                 id_affair = affairId,
-                id_reporting_status = 1 // 1 = Pendiente
+                id_reporting_status = 5
             )
 
             Log.d("ReportRepository", "💾 Insertando reporte en la base de datos...")
