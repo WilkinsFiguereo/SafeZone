@@ -3,6 +3,7 @@ package com.wilkins.safezone.frontend.ui.Map
 import android.Manifest
 import android.annotation.SuppressLint
 import android.content.Context
+import android.content.Intent
 import android.content.pm.PackageManager
 import android.graphics.Bitmap
 import android.graphics.Canvas
@@ -13,9 +14,7 @@ import android.util.Log
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.BorderStroke
-import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
-import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.CircleShape
@@ -27,7 +26,7 @@ import androidx.compose.material.icons.filled.Category
 import androidx.compose.material.icons.filled.LocationOn
 import androidx.compose.material.icons.filled.Person
 import androidx.compose.material.icons.filled.Photo
-import androidx.compose.material.icons.filled.PlayArrow
+import androidx.compose.material.icons.filled.Share
 import androidx.compose.material.icons.filled.VideoLibrary
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
@@ -52,8 +51,6 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.layout.ContentScale
 import androidx.core.content.ContextCompat
-import coil.compose.AsyncImagePainter
-import coil.compose.rememberAsyncImagePainter
 import coil.request.ImageRequest
 import com.google.android.gms.location.LocationServices
 import com.google.android.gms.maps.model.BitmapDescriptor
@@ -110,11 +107,6 @@ data class MapConfig(
 
 /**
  * Composable principal del mapa reutilizable
- *
- * @param modifier Modificador para el layout
- * @param config Configuración del mapa
- * @param onReportClick Callback cuando se hace click en un marcador
- * @param onBackClick Callback cuando se presiona el botón de volver
  */
 @OptIn(ExperimentalMaterial3Api::class)
 @SuppressLint("MissingPermission")
@@ -130,7 +122,6 @@ fun GoogleMapScreen(
     val context = LocalContext.current
     val scope = rememberCoroutineScope()
 
-    // Estados de permisos
     var hasLocationPermission by remember {
         mutableStateOf(
             ContextCompat.checkSelfPermission(
@@ -148,17 +139,14 @@ fun GoogleMapScreen(
         }
     )
 
-    // Estados del mapa
     var userLocation by remember { mutableStateOf<LatLng?>(null) }
     var reportMarkers by remember { mutableStateOf<List<ReportMarker>>(emptyList()) }
     var allReports by remember { mutableStateOf<List<ReportDto>>(emptyList()) }
     var isLoading by remember { mutableStateOf(true) }
 
-    // Estado para el marcador seleccionado
     var selectedMarker by remember { mutableStateOf<ReportMarker?>(null) }
     val sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
 
-    // Solicitar permisos
     LaunchedEffect(Unit) {
         Log.i("GoogleMapScreen", "📍 Permiso ubicación: ${if (hasLocationPermission) "OTORGADO" else "DENEGADO"}")
         if (!hasLocationPermission && config.showUserLocation) {
@@ -167,11 +155,9 @@ fun GoogleMapScreen(
         }
     }
 
-    // Cargar datos del mapa
     LaunchedEffect(hasLocationPermission, config) {
         scope.launch {
             try {
-                // 1. Obtener ubicación del usuario (si está habilitado y hay permiso)
                 var location: Location? = null
                 if (config.showUserLocation && hasLocationPermission) {
                     try {
@@ -196,27 +182,30 @@ fun GoogleMapScreen(
                     }
                 }
 
-                // 2. Obtener reportes desde el repositorio
                 val repository = ReportsRepository()
                 val result = repository.getAllReports()
-
-                // Obtener affairs para mapear los tipos
                 val affairsResult = repository.getAllAffairs()
                 val affairsMap = affairsResult.getOrNull()?.associateBy { it.id } ?: emptyMap()
 
                 if (result.isSuccess) {
                     val reports = result.getOrNull() ?: emptyList()
-                    allReports = reports
-                    Log.i("GoogleMapScreen", "📡 Reportes obtenidos: ${reports.size}")
+
+                    // ⚠️ FILTRAR SOLO REPORTES PENDIENTES (1) O EN PROCESO (2)
+                    val filteredReports = reports.filter { report ->
+                        report.idReportingStatus == 1 || report.idReportingStatus == 2
+                    }
+
+                    allReports = filteredReports
+                    Log.i("GoogleMapScreen", "📡 Reportes totales obtenidos: ${reports.size}")
+                    Log.i("GoogleMapScreen", "✅ Reportes filtrados (pendientes/en proceso): ${filteredReports.size}")
+                    Log.i("GoogleMapScreen", "❌ Reportes excluidos (cancelados/completados): ${reports.size - filteredReports.size}")
                     Log.i("GoogleMapScreen", "📋 Affairs obtenidos: ${affairsMap.size}")
 
-                    // 3. Geocodificar y crear marcadores
                     val markers = mutableListOf<ReportMarker>()
 
                     withContext(Dispatchers.IO) {
-                        reports.forEach { report ->
+                        filteredReports.forEach { report ->
                             try {
-                                // Validar que el reporte tenga los datos necesarios
                                 val addressLocation = report.reportLocation
                                 val reportDescription = report.description ?: "Sin descripción"
 
@@ -234,7 +223,6 @@ fun GoogleMapScreen(
                                     val address = addresses[0]
                                     val reportLatLng = LatLng(address.latitude, address.longitude)
 
-                                    // Calcular distancia si hay ubicación del usuario
                                     val distance = if (location != null) {
                                         calculateDistance(
                                             location.latitude, location.longitude,
@@ -244,20 +232,12 @@ fun GoogleMapScreen(
                                         0f
                                     }
 
-                                    // Decidir si agregar el marcador
                                     val shouldAdd = config.showAllReports ||
                                             location == null ||
                                             distance <= config.maxDistanceKm
 
                                     if (shouldAdd) {
                                         val affairName = report.idAffair?.let { affairsMap[it]?.affairName }
-
-                                        // LOG IMPORTANTE: Verificar URL de imagen/video
-                                        Log.d("GoogleMapScreen", "🎬 Reporte ID: ${report.id}")
-                                        Log.d("GoogleMapScreen", "📎 imageUrl: ${report.imageUrl}")
-                                        Log.d("GoogleMapScreen", "📏 Longitud URL: ${report.imageUrl?.length ?: 0}")
-                                        Log.d("GoogleMapScreen", "🔍 ¿Es null?: ${report.imageUrl == null}")
-                                        Log.d("GoogleMapScreen", "🔍 ¿Es blank?: ${report.imageUrl.isNullOrBlank()}")
 
                                         markers.add(
                                             ReportMarker(
@@ -273,10 +253,7 @@ fun GoogleMapScreen(
                                                 affairName = affairName
                                             )
                                         )
-                                        Log.i("GoogleMapScreen", "✅ Marcador: $reportDescription - ${if (distance > 0) "${String.format("%.2f", distance)}km" else "sin filtro"} - Tipo: $affairName")
                                     }
-                                } else {
-                                    Log.w("GoogleMapScreen", "⚠️ No se geocodificó: $addressLocation")
                                 }
                             } catch (e: Exception) {
                                 Log.e("GoogleMapScreen", "❌ Error geocodificando ${report.reportLocation ?: "ubicación desconocida"}", e)
@@ -284,7 +261,6 @@ fun GoogleMapScreen(
                         }
                     }
 
-                    // Ordenar por distancia si hay ubicación
                     reportMarkers = if (location != null && !config.showAllReports) {
                         markers.sortedBy { it.distance }
                     } else {
@@ -292,8 +268,6 @@ fun GoogleMapScreen(
                     }
 
                     Log.i("GoogleMapScreen", "✅ Total marcadores: ${markers.size}")
-                } else {
-                    Log.e("GoogleMapScreen", "❌ Error cargando reportes: ${result.exceptionOrNull()?.message}")
                 }
 
                 isLoading = false
@@ -305,15 +279,13 @@ fun GoogleMapScreen(
         }
     }
 
-    // Configurar cámara del mapa
-    val defaultLocation = LatLng(18.4861, -69.9312) // Santo Domingo
+    val defaultLocation = LatLng(18.4861, -69.9312)
     val mapCenter = userLocation ?: defaultLocation
 
     val cameraPositionState = rememberCameraPositionState {
         position = CameraPosition.fromLatLngZoom(mapCenter, config.initialZoom)
     }
 
-    // Actualizar cámara cuando cambia la ubicación del usuario
     LaunchedEffect(userLocation) {
         userLocation?.let { location ->
             cameraPositionState.position = CameraPosition.fromLatLngZoom(location, config.initialZoom)
@@ -333,9 +305,6 @@ fun GoogleMapScreen(
                 myLocationButtonEnabled = hasLocationPermission && config.showUserLocation
             )
         ) {
-            Log.i("GoogleMapScreen", "🗺 Dibujando ${reportMarkers.size} marcadores")
-
-            // Marcador por defecto de Santo Domingo (opcional)
             if (config.showDefaultMarker && userLocation == null) {
                 Marker(
                     state = MarkerState(position = defaultLocation),
@@ -344,7 +313,6 @@ fun GoogleMapScreen(
                 )
             }
 
-            // Marcador de ubicación del usuario (azul)
             userLocation?.let { location ->
                 Marker(
                     state = MarkerState(position = location),
@@ -354,7 +322,6 @@ fun GoogleMapScreen(
                 )
             }
 
-            // Marcadores de reportes con click
             reportMarkers.forEach { marker ->
                 Marker(
                     state = MarkerState(position = marker.position),
@@ -362,16 +329,13 @@ fun GoogleMapScreen(
                     snippet = marker.description.take(50) + "...",
                     icon = createCustomMarkerIcon(context, marker.userImageUrl),
                     onClick = {
-                        Log.d("GoogleMapScreen", "🖱️ Click en marcador: ${marker.id}")
-                        Log.d("GoogleMapScreen", "📎 URL del marcador: ${marker.reportImageUrl}")
                         selectedMarker = marker
-                        true // Retorna true para evitar el comportamiento por defecto
+                        true
                     }
                 )
             }
         }
 
-        // Botón de volver - Posicionado en la esquina superior izquierda
         onBackClick?.let { backAction ->
             FloatingActionButton(
                 onClick = backAction,
@@ -395,18 +359,13 @@ fun GoogleMapScreen(
             }
         }
 
-        // Indicador de carga
         if (isLoading) {
             CircularProgressIndicator(
                 modifier = Modifier.align(Alignment.Center)
             )
         }
 
-        // Bottom Sheet con detalles completos del reporte
         selectedMarker?.let { marker ->
-            Log.d("GoogleMapScreen", "📋 Mostrando Bottom Sheet para marcador: ${marker.id}")
-            Log.d("GoogleMapScreen", "📎 URL en Bottom Sheet: ${marker.reportImageUrl}")
-
             ModalBottomSheet(
                 onDismissRequest = { selectedMarker = null },
                 sheetState = sheetState,
@@ -419,20 +378,129 @@ fun GoogleMapScreen(
             }
         }
     }
-
-    Log.i("GoogleMapScreen", "🟢 GoogleMap renderizado")
 }
 
 /**
- * Bottom Sheet con detalles completos del reporte
+ * Función para compartir el reporte en redes sociales con imagen/video
  */
+private fun shareReport(context: Context, marker: ReportMarker) {
+    val shareText = buildString {
+        append("━━━━━━━━━━━━━━━━━━━━━━━\n")
+        append("🚨 ALERTA DE SEGURIDAD - SAFEZONE\n")
+        append("━━━━━━━━━━━━━━━━━━━━━━━\n\n")
+
+        append("📋 DETALLES DEL INCIDENTE:\n\n")
+
+        marker.affairName?.let {
+            append("🏷️ Tipo: $it\n")
+        }
+
+        append("📍 Descripción:\n")
+        append("   ${marker.description}\n\n")
+
+        marker.createdAt?.let {
+            append("📅 Fecha: ${formatDateTime(it)}\n")
+        }
+
+        if (marker.distance > 0) {
+            append("📏 Distancia: ${String.format("%.1f", marker.distance)} km de tu ubicación\n")
+        }
+
+        append("\n━━━━━━━━━━━━━━━━━━━━━━━\n")
+        append("⚠️ Mantente seguro y alerta\n")
+        append("📱 Descarga SafeZone en Play Store\n")
+        append("#SafeZone #SeguridadCiudadana #Alerta\n")
+    }
+
+    // Si hay imagen o video, compartir con multimedia
+    if (!marker.reportImageUrl.isNullOrBlank()) {
+        try {
+            // Descargar y compartir la imagen/video
+            val scope = kotlinx.coroutines.CoroutineScope(kotlinx.coroutines.Dispatchers.IO)
+            scope.launch {
+                try {
+                    val url = java.net.URL(marker.reportImageUrl)
+                    val connection = url.openConnection()
+                    connection.connect()
+
+                    val inputStream = connection.getInputStream()
+                    val bitmap = android.graphics.BitmapFactory.decodeStream(inputStream)
+
+                    // Guardar imagen temporalmente
+                    val cachePath = java.io.File(context.cacheDir, "shared_images")
+                    cachePath.mkdirs()
+
+                    val fileName = "safezone_report_${System.currentTimeMillis()}.jpg"
+                    val file = java.io.File(cachePath, fileName)
+
+                    val fileOutputStream = java.io.FileOutputStream(file)
+                    bitmap.compress(android.graphics.Bitmap.CompressFormat.JPEG, 90, fileOutputStream)
+                    fileOutputStream.flush()
+                    fileOutputStream.close()
+
+                    // Obtener URI del archivo
+                    val imageUri = androidx.core.content.FileProvider.getUriForFile(
+                        context,
+                        "${context.packageName}.fileprovider",
+                        file
+                    )
+
+                    kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.Main) {
+                        // Compartir con imagen
+                        val shareIntent = android.content.Intent().apply {
+                            action = android.content.Intent.ACTION_SEND
+                            putExtra(android.content.Intent.EXTRA_TEXT, shareText)
+                            putExtra(android.content.Intent.EXTRA_STREAM, imageUri)
+                            type = "image/*"
+                            addFlags(android.content.Intent.FLAG_GRANT_READ_URI_PERMISSION)
+                        }
+
+                        val chooserIntent = android.content.Intent.createChooser(shareIntent, "Compartir reporte de SafeZone")
+                        chooserIntent.addFlags(android.content.Intent.FLAG_ACTIVITY_NEW_TASK)
+                        context.startActivity(chooserIntent)
+
+                        Log.d("GoogleMapScreen", "📤 Compartiendo reporte con imagen: ${marker.id}")
+                    }
+                } catch (e: Exception) {
+                    Log.e("GoogleMapScreen", "❌ Error descargando imagen, compartiendo solo texto", e)
+                    kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.Main) {
+                        shareTextOnly(context, shareText, marker.id)
+                    }
+                }
+            }
+        } catch (e: Exception) {
+            Log.e("GoogleMapScreen", "❌ Error al compartir con imagen", e)
+            shareTextOnly(context, shareText, marker.id)
+        }
+    } else {
+        // Compartir solo texto si no hay imagen
+        shareTextOnly(context, shareText, marker.id)
+    }
+}
+
+/**
+ * Función auxiliar para compartir solo texto
+ */
+private fun shareTextOnly(context: Context, shareText: String, reportId: String) {
+    val sendIntent = Intent().apply {
+        action = Intent.ACTION_SEND
+        putExtra(Intent.EXTRA_TEXT, shareText)
+        type = "text/plain"
+    }
+
+    val shareIntent = Intent.createChooser(sendIntent, "Compartir reporte de SafeZone")
+    shareIntent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+    context.startActivity(shareIntent)
+
+    Log.d("GoogleMapScreen", "📤 Compartiendo reporte (solo texto): $reportId")
+}
+
 @Composable
 fun ReportDetailSheet(
     marker: ReportMarker,
     onClose: () -> Unit
 ) {
-    Log.d("ReportDetailSheet", "🎨 Renderizando detalles del reporte: ${marker.id}")
-    Log.d("ReportDetailSheet", "📎 reportImageUrl: ${marker.reportImageUrl}")
+    val context = LocalContext.current
 
     Column(
         modifier = Modifier
@@ -440,7 +508,6 @@ fun ReportDetailSheet(
             .padding(horizontal = 16.dp)
             .padding(bottom = 32.dp)
     ) {
-        // Encabezado
         Row(
             modifier = Modifier
                 .fillMaxWidth()
@@ -449,9 +516,7 @@ fun ReportDetailSheet(
             horizontalArrangement = Arrangement.SpaceBetween
         ) {
             Column(modifier = Modifier.weight(1f)) {
-                Row(
-                    verticalAlignment = Alignment.CenterVertically
-                ) {
+                Row(verticalAlignment = Alignment.CenterVertically) {
                     Box(
                         modifier = Modifier
                             .size(40.dp)
@@ -499,6 +564,14 @@ fun ReportDetailSheet(
                 }
             }
 
+            IconButton(onClick = { shareReport(context, marker) }) {
+                Icon(
+                    imageVector = Icons.Default.Share,
+                    contentDescription = "Compartir",
+                    tint = Color(0xFF1976D2)
+                )
+            }
+
             IconButton(onClick = onClose) {
                 Icon(
                     imageVector = Icons.Default.ArrowBack,
@@ -508,7 +581,6 @@ fun ReportDetailSheet(
             }
         }
 
-        // Fecha y hora
         marker.createdAt?.let { date ->
             Row(
                 verticalAlignment = Alignment.CenterVertically,
@@ -530,7 +602,6 @@ fun ReportDetailSheet(
             }
         }
 
-        // Tipo de incidente
         marker.affairName?.let { affairName ->
             Card(
                 modifier = Modifier
@@ -571,7 +642,6 @@ fun ReportDetailSheet(
             }
         }
 
-        // Descripción
         Text(
             text = "Descripción del Reporte",
             fontSize = 16.sp,
@@ -599,13 +669,7 @@ fun ReportDetailSheet(
             )
         }
 
-        // Imagen o Video del reporte - AQUÍ ES DONDE SE CARGA
         marker.reportImageUrl?.let { mediaUrl ->
-            Log.d("ReportDetailSheet", "🎬 Procesando media URL")
-            Log.d("ReportDetailSheet", "📎 URL completa: $mediaUrl")
-            Log.d("ReportDetailSheet", "🔍 ¿URL está vacía?: ${mediaUrl.isEmpty()}")
-            Log.d("ReportDetailSheet", "🔍 ¿URL está en blanco?: ${mediaUrl.isBlank()}")
-
             Text(
                 text = "Evidencia del Reporte",
                 fontSize = 16.sp,
@@ -615,7 +679,6 @@ fun ReportDetailSheet(
             )
 
             val isVideo = isVideoUrl(mediaUrl)
-            Log.d("ReportDetailSheet", "🎬 ¿Es video?: $isVideo")
 
             Card(
                 modifier = Modifier
@@ -629,29 +692,14 @@ fun ReportDetailSheet(
                     contentAlignment = Alignment.Center
                 ) {
                     if (isVideo) {
-                        Log.d("ReportDetailSheet", "🎥 Mostrando reproductor de video")
-                        // Reproductor de video usando AndroidView con VideoView
                         VideoPlayerComposable(videoUrl = mediaUrl)
                     } else {
-                        Log.d("ReportDetailSheet", "🖼️ Cargando imagen con AsyncImage")
-                        // Imagen con AsyncImage (como en la versión que funcionaba)
                         coil.compose.AsyncImage(
                             model = ImageRequest.Builder(LocalContext.current)
                                 .data(mediaUrl)
                                 .crossfade(true)
                                 .placeholder(android.R.drawable.ic_menu_gallery)
                                 .error(android.R.drawable.ic_menu_report_image)
-                                .listener(
-                                    onStart = {
-                                        Log.d("ReportDetailSheet", "▶️ Carga de imagen iniciada: $mediaUrl")
-                                    },
-                                    onSuccess = { _, result ->
-                                        Log.d("ReportDetailSheet", "✅ Imagen cargada exitosamente")
-                                    },
-                                    onError = { _, result ->
-                                        Log.e("ReportDetailSheet", "❌ Error cargando imagen: ${result.throwable.message}")
-                                    }
-                                )
                                 .build(),
                             contentDescription = "Imagen del reporte",
                             modifier = Modifier.fillMaxSize(),
@@ -661,7 +709,6 @@ fun ReportDetailSheet(
                 }
             }
 
-            // Etiqueta
             Row(
                 verticalAlignment = Alignment.CenterVertically,
                 modifier = Modifier.padding(top = 8.dp)
@@ -679,11 +726,8 @@ fun ReportDetailSheet(
                     color = Color(0xFF757575)
                 )
             }
-        } ?: run {
-            Log.w("ReportDetailSheet", "⚠️ NO HAY reportImageUrl - marker.reportImageUrl es NULL")
         }
 
-        // Badge de prioridad
         Row(
             verticalAlignment = Alignment.CenterVertically,
             modifier = Modifier
@@ -707,187 +751,11 @@ fun ReportDetailSheet(
     }
 }
 
-/**
- * Componente de imagen con manejo de estados de carga
- */
-@Composable
-fun ImageWithLoading(imageUrl: String) {
-    Log.d("ImageWithLoading", "🖼️ Iniciando carga de imagen")
-    Log.d("ImageWithLoading", "📎 URL: $imageUrl")
-    Log.d("ImageWithLoading", "📏 Longitud URL: ${imageUrl.length}")
-
-    val painter = rememberAsyncImagePainter(
-        model = ImageRequest.Builder(LocalContext.current)
-            .data(imageUrl)
-            .crossfade(true)
-            .listener(
-                onStart = {
-                    Log.d("ImageWithLoading", "▶️ Carga iniciada: $imageUrl")
-                },
-                onSuccess = { _, result ->
-                    Log.d("ImageWithLoading", "✅ Imagen cargada exitosamente: $imageUrl")
-                    Log.d("ImageWithLoading", "📊 Dimensiones: ${result.drawable.intrinsicWidth}x${result.drawable.intrinsicHeight}")
-                },
-                onError = { _, result ->
-                    Log.e("ImageWithLoading", "❌ Error cargando imagen: $imageUrl")
-                    Log.e("ImageWithLoading", "❌ Error: ${result.throwable.message}")
-                    Log.e("ImageWithLoading", "❌ Tipo de error: ${result.throwable.javaClass.simpleName}")
-                    Log.e("ImageWithLoading", "❌ Stack trace:", result.throwable)
-                }
-            )
-            .build()
-    )
-
-    Box(
-        modifier = Modifier.fillMaxSize(),
-        contentAlignment = Alignment.Center
-    ) {
-        when (val state = painter.state) {
-            is AsyncImagePainter.State.Loading -> {
-                Log.d("ImageWithLoading", "⏳ Estado: Cargando...")
-                CircularProgressIndicator(
-                    color = Color(0xFF1976D2),
-                    modifier = Modifier.size(48.dp)
-                )
-            }
-            is AsyncImagePainter.State.Error -> {
-                Log.e("ImageWithLoading", "❌ Estado: Error")
-                Log.e("ImageWithLoading", "❌ Detalle del error: ${state.result.throwable.message}")
-                Column(
-                    horizontalAlignment = Alignment.CenterHorizontally,
-                    verticalArrangement = Arrangement.Center
-                ) {
-                    Icon(
-                        imageVector = Icons.Default.Photo,
-                        contentDescription = null,
-                        tint = Color(0xFF757575),
-                        modifier = Modifier.size(48.dp)
-                    )
-                    Spacer(modifier = Modifier.height(8.dp))
-                    Text(
-                        text = "No se pudo cargar la imagen",
-                        fontSize = 12.sp,
-                        color = Color(0xFF757575)
-                    )
-                    Spacer(modifier = Modifier.height(4.dp))
-                    Text(
-                        text = state.result.throwable.message ?: "Error desconocido",
-                        fontSize = 10.sp,
-                        color = Color(0xFF757575)
-                    )
-                }
-            }
-            is AsyncImagePainter.State.Success -> {
-                Log.d("ImageWithLoading", "✅ Estado: Éxito - Mostrando imagen")
-                Image(
-                    painter = painter,
-                    contentDescription = "Imagen del reporte",
-                    modifier = Modifier.fillMaxSize(),
-                    contentScale = ContentScale.Crop
-                )
-            }
-            else -> {
-                Log.d("ImageWithLoading", "⚪ Estado: Empty/Inicial")
-            }
-        }
-    }
-}
-
-/**
- * Thumbnail de video con estado de carga
- */
-@Composable
-fun VideoThumbnailWithLoading(
-    videoUrl: String,
-    onClick: () -> Unit
-) {
-    Log.d("VideoThumbnailWithLoading", "🎥 Renderizando thumbnail de video")
-    Log.d("VideoThumbnailWithLoading", "📎 URL: $videoUrl")
-
-    Box(
-        modifier = Modifier
-            .fillMaxSize()
-            .background(Color.Black.copy(alpha = 0.7f))
-            .clickable(onClick = onClick),
-        contentAlignment = Alignment.Center
-    ) {
-        Column(
-            horizontalAlignment = Alignment.CenterHorizontally,
-            verticalArrangement = Arrangement.Center
-        ) {
-            // Botón de play
-            Box(
-                modifier = Modifier
-                    .size(80.dp)
-                    .clip(CircleShape)
-                    .background(Color.White.copy(alpha = 0.95f))
-                    .border(4.dp, Color(0xFF1976D2), CircleShape),
-                contentAlignment = Alignment.Center
-            ) {
-                Icon(
-                    imageVector = Icons.Default.PlayArrow,
-                    contentDescription = "Reproducir video",
-                    tint = Color(0xFF1976D2),
-                    modifier = Modifier.size(48.dp)
-                )
-            }
-
-            Spacer(modifier = Modifier.height(16.dp))
-
-            Text(
-                text = "Toca para reproducir",
-                fontSize = 14.sp,
-                color = Color.White,
-                fontWeight = FontWeight.Medium
-            )
-        }
-
-        // Badge de "Video"
-        Box(
-            modifier = Modifier
-                .align(Alignment.TopEnd)
-                .padding(12.dp)
-                .clip(RoundedCornerShape(8.dp))
-                .background(Color(0xFFE53935))
-                .padding(horizontal = 12.dp, vertical = 6.dp)
-        ) {
-            Row(
-                verticalAlignment = Alignment.CenterVertically,
-                horizontalArrangement = Arrangement.spacedBy(6.dp)
-            ) {
-                Icon(
-                    imageVector = Icons.Default.VideoLibrary,
-                    contentDescription = null,
-                    tint = Color.White,
-                    modifier = Modifier.size(14.dp)
-                )
-                Text(
-                    text = "VIDEO",
-                    fontSize = 11.sp,
-                    color = Color.White,
-                    fontWeight = FontWeight.Bold
-                )
-            }
-        }
-    }
-}
-
-/**
- * Función para detectar si una URL es de video basándose en la extensión
- */
 fun isVideoUrl(url: String): Boolean {
     val videoExtensions = listOf(".mp4", ".mov", ".avi", ".mkv", ".webm", ".3gp", ".flv")
-    val isVideo = videoExtensions.any { url.lowercase().contains(it) }
-
-    Log.d("isVideoUrl", "🔍 Verificando URL: $url")
-    Log.d("isVideoUrl", "🎬 ¿Es video?: $isVideo")
-
-    return isVideo
+    return videoExtensions.any { url.lowercase().contains(it) }
 }
 
-/**
- * Formatear fecha y hora de forma más legible
- */
 private fun formatDateTime(dateString: String): String {
     return try {
         val formats = listOf(
@@ -923,9 +791,6 @@ private fun formatDateTime(dateString: String): String {
     }
 }
 
-/**
- * Crear icono personalizado para el marcador (avatar circular)
- */
 private fun createCustomMarkerIcon(context: Context, imageUrl: String?): BitmapDescriptor {
     val size = 120
     val bitmap = Bitmap.createBitmap(size, size, Bitmap.Config.ARGB_8888)
@@ -950,16 +815,10 @@ private fun createCustomMarkerIcon(context: Context, imageUrl: String?): BitmapD
         strokeWidth = 8f
     }
 
-    // Círculo exterior (borde)
     canvas.drawCircle(size / 2f, size / 2f, size / 2f - 4f, paint)
-
-    // Círculo interior (blanco)
     canvas.drawCircle(size / 2f, size / 2f, size / 2.5f, circlePaint)
-
-    // Borde
     canvas.drawCircle(size / 2f, size / 2f, size / 2.5f, strokePaint)
 
-    // Icono de alerta en el centro
     val iconPaint = Paint().apply {
         isAntiAlias = true
         color = android.graphics.Color.parseColor("#E53935")
@@ -973,9 +832,6 @@ private fun createCustomMarkerIcon(context: Context, imageUrl: String?): BitmapD
     return BitmapDescriptorFactory.fromBitmap(bitmap)
 }
 
-/**
- * Calcular distancia entre dos puntos usando la fórmula de Haversine
- */
 private fun calculateDistance(lat1: Double, lon1: Double, lat2: Double, lon2: Double): Float {
     val earthRadius = 6371.0
 
@@ -991,16 +847,10 @@ private fun calculateDistance(lat1: Double, lon1: Double, lat2: Double, lon2: Do
     return (earthRadius * c).toFloat()
 }
 
-/**
- * Reproductor de video usando VideoView de Android
- */
 @Composable
 fun VideoPlayerComposable(videoUrl: String) {
-    Log.d("VideoPlayerComposable", "🎬 Inicializando reproductor de video")
-    Log.d("VideoPlayerComposable", "📎 URL: $videoUrl")
+    Log.d("VideoPlayerComposable", "🎬 Inicializando reproductor de video: $videoUrl")
 
-    var isPlaying by remember { mutableStateOf(false) }
-    var showControls by remember { mutableStateOf(true) }
     val context = LocalContext.current
 
     Box(
@@ -1009,109 +859,65 @@ fun VideoPlayerComposable(videoUrl: String) {
             .background(Color.Black),
         contentAlignment = Alignment.Center
     ) {
-        // VideoView usando AndroidView
         androidx.compose.ui.viewinterop.AndroidView(
             factory = { ctx ->
                 android.widget.VideoView(ctx).apply {
-                    Log.d("VideoPlayerComposable", "🎥 Creando VideoView")
+                    layoutParams = android.view.ViewGroup.LayoutParams(
+                        android.view.ViewGroup.LayoutParams.MATCH_PARENT,
+                        android.view.ViewGroup.LayoutParams.MATCH_PARENT
+                    )
 
-                    setVideoPath(videoUrl)
+                    val mediaController = android.widget.MediaController(ctx)
+                    mediaController.setAnchorView(this)
+                    setMediaController(mediaController)
 
-                    setOnPreparedListener { mediaPlayer ->
-                        Log.d("VideoPlayerComposable", "✅ Video preparado y listo")
-                        mediaPlayer.isLooping = false
-                        // Auto-start
+                    setVideoURI(android.net.Uri.parse(videoUrl))
+
+                    setOnPreparedListener { mp ->
+                        Log.d("VideoPlayerComposable", "✅ Video preparado")
+                        mp.isLooping = false
+                        mp.setVolume(1f, 1f)
                         start()
-                        isPlaying = true
-                    }
-
-                    setOnCompletionListener {
-                        Log.d("VideoPlayerComposable", "🏁 Video completado")
-                        isPlaying = false
-                        showControls = true
                     }
 
                     setOnErrorListener { _, what, extra ->
-                        Log.e("VideoPlayerComposable", "❌ Error reproduciendo video")
-                        Log.e("VideoPlayerComposable", "❌ What: $what, Extra: $extra")
-                        Log.e("VideoPlayerComposable", "❌ URL: $videoUrl")
+                        Log.e("VideoPlayerComposable", "❌ Error: what=$what, extra=$extra")
                         true
                     }
+
+                    requestFocus()
                 }
             },
             update = { videoView ->
-                Log.d("VideoPlayerComposable", "🔄 Update - isPlaying: $isPlaying")
-                if (isPlaying) {
-                    if (!videoView.isPlaying) {
-                        videoView.start()
-                        Log.d("VideoPlayerComposable", "▶️ Video iniciado")
-                    }
-                } else {
-                    if (videoView.isPlaying) {
-                        videoView.pause()
-                        Log.d("VideoPlayerComposable", "⏸️ Video pausado")
-                    }
-                }
+                videoView.setVideoURI(android.net.Uri.parse(videoUrl))
             },
             modifier = Modifier.fillMaxSize()
         )
 
-        // Controles superpuestos
-        if (showControls || !isPlaying) {
-            Box(
-                modifier = Modifier
-                    .fillMaxSize()
-                    .background(Color.Black.copy(alpha = 0.3f))
-                    .clickable {
-                        showControls = !showControls
-                    },
-                contentAlignment = Alignment.Center
+        Box(
+            modifier = Modifier
+                .align(Alignment.TopEnd)
+                .padding(12.dp)
+                .clip(RoundedCornerShape(8.dp))
+                .background(Color(0xFFE53935))
+                .padding(horizontal = 12.dp, vertical = 6.dp)
+        ) {
+            Row(
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(6.dp)
             ) {
-                // Botón de Play/Pause
-                FloatingActionButton(
-                    onClick = {
-                        isPlaying = !isPlaying
-                        showControls = false
-                        Log.d("VideoPlayerComposable", "👆 Click - nuevo estado: $isPlaying")
-                    },
-                    containerColor = Color.White,
-                    modifier = Modifier.size(72.dp)
-                ) {
-                    Icon(
-                        imageVector = Icons.Default.PlayArrow,
-                        contentDescription = if (isPlaying) "Pausar" else "Reproducir",
-                        tint = Color(0xFF1976D2),
-                        modifier = Modifier.size(40.dp)
-                    )
-                }
-
-                // Badge de VIDEO en la esquina
-                Box(
-                    modifier = Modifier
-                        .align(Alignment.TopEnd)
-                        .padding(12.dp)
-                        .clip(RoundedCornerShape(8.dp))
-                        .background(Color(0xFFE53935))
-                        .padding(horizontal = 12.dp, vertical = 6.dp)
-                ) {
-                    Row(
-                        verticalAlignment = Alignment.CenterVertically,
-                        horizontalArrangement = Arrangement.spacedBy(6.dp)
-                    ) {
-                        Icon(
-                            imageVector = Icons.Default.VideoLibrary,
-                            contentDescription = null,
-                            tint = Color.White,
-                            modifier = Modifier.size(14.dp)
-                        )
-                        Text(
-                            text = "VIDEO",
-                            fontSize = 11.sp,
-                            color = Color.White,
-                            fontWeight = FontWeight.Bold
-                        )
-                    }
-                }
+                Icon(
+                    imageVector = Icons.Default.VideoLibrary,
+                    contentDescription = null,
+                    tint = Color.White,
+                    modifier = Modifier.size(14.dp)
+                )
+                Text(
+                    text = "VIDEO",
+                    fontSize = 11.sp,
+                    color = Color.White,
+                    fontWeight = FontWeight.Bold
+                )
             }
         }
     }
