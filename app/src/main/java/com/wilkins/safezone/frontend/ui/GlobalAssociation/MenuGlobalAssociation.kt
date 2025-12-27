@@ -173,7 +173,7 @@ fun GovernmentMenu(
             title = "ANÁLISIS",
             items = listOf(
                 GovernmentMenuItem(Icons.Default.Analytics, "Estadísticas", "government_analytics"),
-                GovernmentMenuItem(Icons.Default.Map, "Mapa de Incidentes", "government_map"),
+                GovernmentMenuItem(Icons.Default.Map, "Mapa de Incidentes", "MapReports"),
             )
         ),
         GovernmentMenuSection(

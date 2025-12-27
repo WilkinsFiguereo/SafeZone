@@ -1,10 +1,11 @@
 package com.wilkins.safezone.frontend.ui.GlobalAssociation.ReportSent
-
+import android.net.Uri
+import android.view.ViewGroup
+import android.widget.MediaController
+import android.widget.VideoView
 import androidx.compose.foundation.background
-import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
-import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
@@ -13,12 +14,13 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.compose.ui.viewinterop.AndroidView
 import androidx.navigation.NavController
 import coil.compose.AsyncImage
 import com.wilkins.safezone.backend.network.GlobalAssociation.DateUtils
@@ -36,7 +38,7 @@ fun ReportDetailScreen(
 ) {
     var isMenuOpen by remember { mutableStateOf(false) }
     var showStatusDialog by remember { mutableStateOf(false) }
-    var selectedStatus by remember { mutableStateOf<ReportStatus?>(null) }
+    var selectedNewStatus by remember { mutableStateOf<Int?>(null) }
 
     // Estados para los datos
     var reportData by remember { mutableStateOf<ReportDto?>(null) }
@@ -45,6 +47,7 @@ fun ReportDetailScreen(
     var errorMessage by remember { mutableStateOf<String?>(null) }
     var isUpdating by remember { mutableStateOf(false) }
     var showSuccessMessage by remember { mutableStateOf(false) }
+    var isVideo by remember { mutableStateOf(false) }
 
     val scope = rememberCoroutineScope()
     val repository = remember { ReportsRepository() }
@@ -63,12 +66,32 @@ fun ReportDetailScreen(
                 if (report != null) {
                     reportData = report
 
+                    // Detectar si es video por la extensión del archivo
+                    if (report.imageUrl != null) {
+                        android.util.Log.d("ReportStatusScreen", "━━━━━━━━━━━━━━━━━━━━━━━")
+                        android.util.Log.d("ReportStatusScreen", "📎 imageUrl: ${report.imageUrl}")
+                        val url = report.imageUrl.lowercase()
+                        isVideo = url.endsWith(".mp4") ||
+                                url.endsWith(".mov") ||
+                                url.endsWith(".avi") ||
+                                url.endsWith(".mkv") ||
+                                url.endsWith(".webm") ||
+                                url.endsWith(".3gp") ||
+                                url.endsWith(".flv")
+                        android.util.Log.d("ReportStatusScreen", "🎬 ¿Es video?: $isVideo")
+                        android.util.Log.d("ReportStatusScreen", "📏 URL length: ${report.imageUrl.length}")
+                        android.util.Log.d("ReportStatusScreen", "━━━━━━━━━━━━━━━━━━━━━━━")
+                    } else {
+                        android.util.Log.w("ReportStatusScreen", "⚠️ No hay imageUrl")
+                    }
+
                     // Cargar el affair si existe
                     if (report.idAffair != null) {
                         val affairResult = repository.getAffairById(report.idAffair)
                         affairName = affairResult.getOrNull()?.affairName
                     }
                 }
+
 
                 isLoading = false
             } catch (e: Exception) {
@@ -79,16 +102,16 @@ fun ReportDetailScreen(
     }
 
     // Función para actualizar el estado
-    fun updateReportStatus(newStatus: ReportStatus) {
+    fun updateReportStatus(newStatusId: Int) {
         scope.launch {
             try {
                 isUpdating = true
 
-                val result = repository.updateReportStatus(reportId, newStatus.id)
+                val result = repository.updateReportStatus(reportId, newStatusId)
 
                 if (result.isSuccess) {
                     // Actualizar el estado local
-                    reportData = reportData?.copy(idReportingStatus = newStatus.id)
+                    reportData = reportData?.copy(idReportingStatus = newStatusId)
                     showSuccessMessage = true
                     showStatusDialog = false
 
@@ -107,11 +130,29 @@ fun ReportDetailScreen(
         }
     }
 
+    // Función para obtener el nombre del estado
+    fun getStatusName(statusId: Int): String {
+        return when (statusId) {
+            1 -> "Pendiente"
+            4 -> "Cancelado"
+            else -> "Desconocido"
+        }
+    }
+
+    // Función para obtener el color del estado
+    fun getStatusColor(statusId: Int): Color {
+        return when (statusId) {
+            1 -> Color(0xFFFFA726) // Naranja para pendiente
+            4 -> Color(0xFFE53935) // Rojo para cancelado
+            else -> Color.Gray
+        }
+    }
+
     GovernmentMenu(
         navController = navController,
         isMenuOpen = isMenuOpen,
         onMenuToggle = { isMenuOpen = it },
-        currentRoute = "report_detail"
+        currentRoute = "report_review_detail"
     ) {
         Box(modifier = Modifier.fillMaxSize()) {
             when {
@@ -159,7 +200,7 @@ fun ReportDetailScreen(
                 reportData != null -> {
                     // Contenido principal
                     val report = reportData!!
-                    val currentStatus = ReportStatus.fromId(report.idReportingStatus)
+                    val currentStatusId = report.idReportingStatus
 
                     Column(
                         modifier = Modifier
@@ -167,7 +208,7 @@ fun ReportDetailScreen(
                             .background(Color(0xFFF5F5F5))
                             .verticalScroll(rememberScrollState())
                     ) {
-                        // Imagen del reporte
+                        // Imagen o Video del reporte
                         Card(
                             modifier = Modifier
                                 .fillMaxWidth()
@@ -176,54 +217,117 @@ fun ReportDetailScreen(
                             elevation = CardDefaults.cardElevation(defaultElevation = 8.dp)
                         ) {
                             Box {
-                                if (report.imageUrl != null) {
-                                    AsyncImage(
-                                        model = report.imageUrl,
-                                        contentDescription = "Imagen del reporte",
-                                        modifier = Modifier.fillMaxSize(),
-                                        contentScale = ContentScale.Crop
-                                    )
-                                } else {
-                                    Box(
-                                        modifier = Modifier
-                                            .fillMaxSize()
-                                            .background(Color(0xFFE0E0E0)),
-                                        contentAlignment = Alignment.Center
-                                    ) {
-                                        Icon(
-                                            imageVector = Icons.Default.ImageNotSupported,
-                                            contentDescription = null,
-                                            modifier = Modifier.size(80.dp),
-                                            tint = Color(0xFF9E9E9E)
+                                when {
+                                    report.imageUrl != null && isVideo -> {
+                                        // Mostrar video
+                                        android.util.Log.d("ReportStatusScreen", "🎥 Mostrando VideoPlayer")
+                                        VideoPlayer(
+                                            videoUrl = report.imageUrl,
+                                            modifier = Modifier.fillMaxSize()
                                         )
+                                    }
+                                    report.imageUrl != null -> {
+                                        // Mostrar imagen
+                                        android.util.Log.d("ReportStatusScreen", "🖼️ Cargando imagen con AsyncImage")
+                                        android.util.Log.d("ReportStatusScreen", "📎 URL: ${report.imageUrl}")
+
+                                        AsyncImage(
+                                            model = coil.request.ImageRequest.Builder(LocalContext.current)
+                                                .data(report.imageUrl)
+                                                .crossfade(true)
+                                                .placeholder(android.R.drawable.ic_menu_gallery)
+                                                .error(android.R.drawable.ic_menu_report_image)
+                                                .listener(
+                                                    onStart = {
+                                                        android.util.Log.d("ReportStatusScreen", "▶️ Carga de imagen iniciada")
+                                                    },
+                                                    onSuccess = { _, result ->
+                                                        android.util.Log.d("ReportStatusScreen", "✅ Imagen cargada exitosamente")
+                                                    },
+                                                    onError = { _, result ->
+                                                        android.util.Log.e("ReportStatusScreen", "❌ Error cargando imagen: ${result.throwable.message}")
+                                                    }
+                                                )
+                                                .build(),
+                                            contentDescription = "Imagen del reporte",
+                                            modifier = Modifier.fillMaxSize(),
+                                            contentScale = ContentScale.Crop
+                                        )
+                                    }
+                                    else -> {
+                                        // Sin multimedia
+                                        Box(
+                                            modifier = Modifier
+                                                .fillMaxSize()
+                                                .background(Color(0xFFE0E0E0)),
+                                            contentAlignment = Alignment.Center
+                                        ) {
+                                            Icon(
+                                                imageVector = Icons.Default.ImageNotSupported,
+                                                contentDescription = null,
+                                                modifier = Modifier.size(80.dp),
+                                                tint = Color(0xFF9E9E9E)
+                                            )
+                                        }
                                     }
                                 }
 
-                                // Badge de estado
+                                // Badge de estado actual
                                 Surface(
                                     modifier = Modifier
                                         .align(Alignment.TopEnd)
                                         .padding(16.dp),
                                     shape = RoundedCornerShape(20.dp),
-                                    color = currentStatus.color
+                                    color = getStatusColor(currentStatusId)
                                 ) {
                                     Row(
                                         modifier = Modifier.padding(horizontal = 12.dp, vertical = 6.dp),
                                         verticalAlignment = Alignment.CenterVertically
                                     ) {
                                         Icon(
-                                            imageVector = currentStatus.icon,
+                                            imageVector = if (currentStatusId == 1) Icons.Default.Schedule else Icons.Default.Cancel,
                                             contentDescription = null,
                                             tint = Color.White,
                                             modifier = Modifier.size(16.dp)
                                         )
                                         Spacer(modifier = Modifier.width(4.dp))
                                         Text(
-                                            text = currentStatus.label,
+                                            text = getStatusName(currentStatusId),
                                             color = Color.White,
                                             fontSize = 12.sp,
                                             fontWeight = FontWeight.Bold
                                         )
+                                    }
+                                }
+
+                                // Badge indicador de tipo de media
+                                if (report.imageUrl != null) {
+                                    Surface(
+                                        modifier = Modifier
+                                            .align(Alignment.TopStart)
+                                            .padding(16.dp),
+                                        shape = RoundedCornerShape(20.dp),
+                                        color = Color.Black.copy(alpha = 0.6f)
+                                    ) {
+                                        Row(
+                                            modifier = Modifier.padding(horizontal = 12.dp, vertical = 6.dp),
+                                            verticalAlignment = Alignment.CenterVertically
+                                        ) {
+                                            Icon(
+                                                imageVector = if (isVideo) Icons.Default.VideoLibrary
+                                                else Icons.Default.Photo,
+                                                contentDescription = null,
+                                                tint = Color.White,
+                                                modifier = Modifier.size(16.dp)
+                                            )
+                                            Spacer(modifier = Modifier.width(4.dp))
+                                            Text(
+                                                text = if (isVideo) "Video" else "Imagen",
+                                                color = Color.White,
+                                                fontSize = 12.sp,
+                                                fontWeight = FontWeight.Bold
+                                            )
+                                        }
                                     }
                                 }
                             }
@@ -424,110 +528,96 @@ fun ReportDetailScreen(
 
                             Spacer(modifier = Modifier.height(24.dp))
 
-                            // Botones de Acción
+                            // Botones de Cambio de Estado
                             Text(
-                                text = "ACCIONES",
+                                text = "CAMBIAR ESTADO",
                                 color = Color.Gray,
                                 fontSize = 12.sp,
                                 fontWeight = FontWeight.Bold,
                                 modifier = Modifier.padding(bottom = 12.dp)
                             )
 
-                            // Botón Marcar como En Proceso
-                            if (currentStatus != ReportStatus.IN_PROGRESS) {
-                                Button(
-                                    onClick = {
-                                        selectedStatus = ReportStatus.IN_PROGRESS
-                                        showStatusDialog = true
-                                    },
-                                    modifier = Modifier
-                                        .fillMaxWidth()
-                                        .height(56.dp),
-                                    colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF2196F3)),
-                                    shape = RoundedCornerShape(12.dp),
-                                    enabled = !isUpdating
-                                ) {
-                                    if (isUpdating && selectedStatus == ReportStatus.IN_PROGRESS) {
-                                        CircularProgressIndicator(
-                                            color = Color.White,
-                                            modifier = Modifier.size(24.dp)
-                                        )
-                                    } else {
-                                        Icon(
-                                            imageVector = Icons.Default.Update,
-                                            contentDescription = null,
-                                            modifier = Modifier.size(24.dp)
-                                        )
-                                        Spacer(modifier = Modifier.width(12.dp))
-                                        Text(
-                                            text = "Marcar como En Proceso",
-                                            fontSize = 16.sp,
-                                            fontWeight = FontWeight.Bold
-                                        )
-                                    }
-                                }
-                                Spacer(modifier = Modifier.height(12.dp))
-                            }
-
                             Row(
                                 modifier = Modifier.fillMaxWidth(),
                                 horizontalArrangement = Arrangement.spacedBy(12.dp)
                             ) {
-                                // Botón Finalizar
-                                if (currentStatus != ReportStatus.COMPLETED) {
-                                    Button(
-                                        onClick = {
-                                            selectedStatus = ReportStatus.COMPLETED
-                                            showStatusDialog = true
-                                        },
-                                        modifier = Modifier
-                                            .weight(1f)
-                                            .height(56.dp),
-                                        colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF4CAF50)),
-                                        shape = RoundedCornerShape(12.dp),
-                                        enabled = !isUpdating
+                                // Botón Marcar como Pendiente (Estado 1)
+                                Button(
+                                    onClick = {
+                                        selectedNewStatus = 1
+                                        showStatusDialog = true
+                                    },
+                                    modifier = Modifier
+                                        .weight(1f)
+                                        .height(70.dp),
+                                    colors = ButtonDefaults.buttonColors(
+                                        containerColor = Color(0xFFFFA726),
+                                        disabledContainerColor = Color(0xFFFFCC80)
+                                    ),
+                                    shape = RoundedCornerShape(12.dp),
+                                    enabled = !isUpdating && currentStatusId != 1
+                                ) {
+                                    Column(
+                                        horizontalAlignment = Alignment.CenterHorizontally,
+                                        verticalArrangement = Arrangement.Center
                                     ) {
-                                        Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                                            Icon(
-                                                imageVector = Icons.Default.CheckCircle,
-                                                contentDescription = null,
-                                                modifier = Modifier.size(24.dp)
-                                            )
-                                            Spacer(modifier = Modifier.height(4.dp))
+                                        Icon(
+                                            imageVector = Icons.Default.Schedule,
+                                            contentDescription = null,
+                                            modifier = Modifier.size(28.dp)
+                                        )
+                                        Spacer(modifier = Modifier.height(4.dp))
+                                        Text(
+                                            text = "Pendiente",
+                                            fontSize = 14.sp,
+                                            fontWeight = FontWeight.Bold
+                                        )
+                                        if (currentStatusId == 1) {
                                             Text(
-                                                text = "Finalizar",
-                                                fontSize = 14.sp,
-                                                fontWeight = FontWeight.Bold
+                                                text = "(Actual)",
+                                                fontSize = 10.sp,
+                                                fontWeight = FontWeight.Normal
                                             )
                                         }
                                     }
                                 }
 
-                                // Botón Cancelar
-                                if (currentStatus != ReportStatus.CANCELLED) {
-                                    Button(
-                                        onClick = {
-                                            selectedStatus = ReportStatus.CANCELLED
-                                            showStatusDialog = true
-                                        },
-                                        modifier = Modifier
-                                            .weight(1f)
-                                            .height(56.dp),
-                                        colors = ButtonDefaults.buttonColors(containerColor = Color(0xFFE53935)),
-                                        shape = RoundedCornerShape(12.dp),
-                                        enabled = !isUpdating
+                                // Botón Marcar como Cancelado (Estado 4)
+                                Button(
+                                    onClick = {
+                                        selectedNewStatus = 4
+                                        showStatusDialog = true
+                                    },
+                                    modifier = Modifier
+                                        .weight(1f)
+                                        .height(70.dp),
+                                    colors = ButtonDefaults.buttonColors(
+                                        containerColor = Color(0xFFE53935),
+                                        disabledContainerColor = Color(0xFFEF9A9A)
+                                    ),
+                                    shape = RoundedCornerShape(12.dp),
+                                    enabled = !isUpdating && currentStatusId != 4
+                                ) {
+                                    Column(
+                                        horizontalAlignment = Alignment.CenterHorizontally,
+                                        verticalArrangement = Arrangement.Center
                                     ) {
-                                        Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                                            Icon(
-                                                imageVector = Icons.Default.Cancel,
-                                                contentDescription = null,
-                                                modifier = Modifier.size(24.dp)
-                                            )
-                                            Spacer(modifier = Modifier.height(4.dp))
+                                        Icon(
+                                            imageVector = Icons.Default.Cancel,
+                                            contentDescription = null,
+                                            modifier = Modifier.size(28.dp)
+                                        )
+                                        Spacer(modifier = Modifier.height(4.dp))
+                                        Text(
+                                            text = "Cancelado",
+                                            fontSize = 14.sp,
+                                            fontWeight = FontWeight.Bold
+                                        )
+                                        if (currentStatusId == 4) {
                                             Text(
-                                                text = "Cancelar",
-                                                fontSize = 14.sp,
-                                                fontWeight = FontWeight.Bold
+                                                text = "(Actual)",
+                                                fontSize = 10.sp,
+                                                fontWeight = FontWeight.Normal
                                             )
                                         }
                                     }
@@ -562,7 +652,10 @@ fun ReportDetailScreen(
         }
 
         // Diálogo de confirmación
-        if (showStatusDialog && selectedStatus != null) {
+        if (showStatusDialog && selectedNewStatus != null) {
+            val statusName = getStatusName(selectedNewStatus!!)
+            val statusColor = getStatusColor(selectedNewStatus!!)
+
             AlertDialog(
                 onDismissRequest = {
                     if (!isUpdating) {
@@ -571,9 +664,9 @@ fun ReportDetailScreen(
                 },
                 icon = {
                     Icon(
-                        imageVector = selectedStatus!!.icon,
+                        imageVector = if (selectedNewStatus == 1) Icons.Default.Schedule else Icons.Default.Cancel,
                         contentDescription = null,
-                        tint = selectedStatus!!.color,
+                        tint = statusColor,
                         modifier = Modifier.size(48.dp)
                     )
                 },
@@ -585,17 +678,17 @@ fun ReportDetailScreen(
                 },
                 text = {
                     Text(
-                        text = "¿Está seguro que desea marcar este reporte como '${selectedStatus!!.label}'?",
+                        text = "¿Está seguro que desea marcar este reporte como '$statusName'?",
                         fontSize = 14.sp
                     )
                 },
                 confirmButton = {
                     Button(
                         onClick = {
-                            updateReportStatus(selectedStatus!!)
+                            updateReportStatus(selectedNewStatus!!)
                         },
                         colors = ButtonDefaults.buttonColors(
-                            containerColor = selectedStatus!!.color
+                            containerColor = statusColor
                         ),
                         enabled = !isUpdating
                     ) {
@@ -621,4 +714,64 @@ fun ReportDetailScreen(
             )
         }
     }
+}
+
+@Composable
+fun VideoPlayer(
+    videoUrl: String,
+    modifier: Modifier = Modifier
+) {
+    val context = LocalContext.current
+
+    android.util.Log.d("VideoPlayer", "🎬 Inicializando VideoPlayer")
+    android.util.Log.d("VideoPlayer", "📎 URL: $videoUrl")
+
+    AndroidView(
+        factory = { ctx ->
+            VideoView(ctx).apply {
+                layoutParams = ViewGroup.LayoutParams(
+                    ViewGroup.LayoutParams.MATCH_PARENT,
+                    ViewGroup.LayoutParams.MATCH_PARENT
+                )
+
+                android.util.Log.d("VideoPlayer", "🎥 Configurando VideoView")
+
+                // Configurar controles de media
+                val mediaController = MediaController(ctx)
+                mediaController.setAnchorView(this)
+                setMediaController(mediaController)
+
+                // Establecer URI del video
+                setVideoURI(Uri.parse(videoUrl))
+
+// Preparar y auto-reproducir
+                setOnPreparedListener { mp ->
+                    android.util.Log.d("VideoPlayer", "✅ Video preparado y listo")
+                    mp.isLooping = false
+                    mp.setVolume(1f, 1f)
+                    start() // Auto-iniciar
+                }
+
+                // Manejar errores
+                setOnErrorListener { _, what, extra ->
+                    android.util.Log.e("VideoPlayer", "❌ Error reproduciendo video")
+                    android.util.Log.e("VideoPlayer", "❌ What: $what, Extra: $extra")
+                    android.util.Log.e("VideoPlayer", "❌ URL: $videoUrl")
+                    true
+                }
+
+                setOnCompletionListener {
+                    android.util.Log.d("VideoPlayer", "🏁 Video completado")
+                }
+
+                // Iniciar preparación
+                requestFocus()
+            }
+        },
+        update = { videoView ->
+            android.util.Log.d("VideoPlayer", "🔄 Update VideoView")
+            videoView.setVideoURI(Uri.parse(videoUrl))
+        },
+        modifier = modifier
+    )
 }
