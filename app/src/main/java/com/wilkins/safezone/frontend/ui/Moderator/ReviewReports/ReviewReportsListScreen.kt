@@ -11,6 +11,7 @@ import com.wilkins.safezone.frontend.ui.GlobalAssociation.ReportSent.ReportStatu
 import com.wilkins.safezone.frontend.ui.GlobalAssociation.ReportSent.SortOption
 import com.wilkins.safezone.frontend.ui.GlobalAssociation.ReportSent.convertToReportItem
 
+import android.content.Context
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
@@ -28,14 +29,16 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.platform.LocalConfiguration
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.navigation.NavController
 import com.wilkins.safezone.backend.network.GlobalAssociation.ReportsRepository
-import com.wilkins.safezone.frontend.ui.GlobalAssociation.GovernmentMenu
+import com.wilkins.safezone.frontend.ui.Moderator.ModeratorSideMenu
 import com.wilkins.safezone.ui.theme.PrimaryColor
+import io.github.jan.supabase.SupabaseClient
 import kotlinx.coroutines.launch
 
 // ============================================
@@ -46,10 +49,14 @@ import kotlinx.coroutines.launch
 // PANTALLA PRINCIPAL
 // ============================================
 
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun RewiewReportsListScreen(
     navController: NavController,
-    initialStatusId: Int?
+    initialStatusId: Int?,
+    moderatorId: String,
+    moderatorName: String = "Moderador",
+    supabaseClient: SupabaseClient
 ) {
     var isMenuOpen by remember { mutableStateOf(false) }
 
@@ -75,6 +82,7 @@ fun RewiewReportsListScreen(
     val configuration = LocalConfiguration.current
     val screenWidth = configuration.screenWidthDp.dp
     val isTablet = screenWidth >= 600.dp
+    val context = LocalContext.current
 
     // Función para cargar datos
     fun loadReports() {
@@ -156,102 +164,158 @@ fun RewiewReportsListScreen(
         )
     }
 
-    GovernmentMenu(
-        navController = navController,
-        isMenuOpen = isMenuOpen,
-        onMenuToggle = { isMenuOpen = it },
-        currentRoute = "reports_sent"
-    ) {
-        Column(
-            modifier = Modifier
-                .fillMaxSize()
-                .background(Color(0xFFF8F9FA))
-                .padding(if (isTablet) 8.dp else 0.dp)
-        ) {
-            // Header con título y estadísticas
-            HeaderSection(
-                totalReports = allReports.size,
-                stats = stats,
-                selectedFilter = filters.status,
-                onFilterClick = { status ->
-                    filters = filters.copy(status = if (filters.status == status) null else status)
-                    currentPage = 1 // Resetear a primera página
-                },
-                onRefreshClick = { loadReports() },
-                onOpenFilters = { showFiltersDialog = true },
-                isTablet = isTablet,
-                activeFiltersCount = countActiveFilters(filters)
-            )
-
-            // Barra de búsqueda
-            SearchBar(
-                searchQuery = filters.searchQuery,
-                onSearchChange = { query ->
-                    filters = filters.copy(searchQuery = query)
-                    currentPage = 1
-                },
-                selectedFilter = filters.status,
-                onClearFilter = {
-                    filters = filters.copy(status = null)
-                    currentPage = 1
-                },
-                isTablet = isTablet
-            )
-
-            Spacer(modifier = Modifier.height(if (isTablet) 16.dp else 12.dp))
-
-            // Controles de filtro y ordenamiento
-            FilterControlsRow(
-                filters = filters,
-                onSortChange = { sortOption ->
-                    filters = filters.copy(sortBy = sortOption)
-                    currentPage = 1
-                },
-                onOpenFilters = { showFiltersDialog = true },
-                isTablet = isTablet
-            )
-
-            Spacer(modifier = Modifier.height(if (isTablet) 16.dp else 12.dp))
-
-            // Contenido principal
-            ContentSection(
-                isLoading = isLoading,
-                errorMessage = errorMessage,
-                reports = paginatedReports,
-                totalResults = allReports.filter { report ->
-                    val matchesSearch = filters.searchQuery.isEmpty() ||
-                            report.title.contains(filters.searchQuery, ignoreCase = true) ||
-                            report.incidentType.contains(filters.searchQuery, ignoreCase = true) ||
-                            report.location.contains(filters.searchQuery, ignoreCase = true) ||
-                            report.description.contains(filters.searchQuery, ignoreCase = true) ||
-                            report.reporterName.contains(filters.searchQuery, ignoreCase = true)
-
-                    val matchesStatus = filters.status == null || report.status == filters.status
-                    val matchesPriority = filters.priority == null || report.priority == filters.priority
-
-                    matchesSearch && matchesStatus && matchesPriority
-                }.size,
-                currentPage = currentPage,
-                totalPages = totalPages,
-                onReportClick = { reportId ->
-                    navController.navigate("report_review_detail/$reportId")
-                },
-                onNextPage = {
-                    if (currentPage < totalPages) {
-                        currentPage++
+    // ============ CONTENIDO PRINCIPAL (IGUAL QUE DASHBOARD) ============
+    Box(modifier = Modifier.fillMaxSize()) {
+        Scaffold(
+            topBar = {
+                TopAppBar(
+                    title = {
+                        Column {
+                            Text(
+                                text = "Revisión de Reportes",
+                                style = MaterialTheme.typography.titleLarge,
+                                fontWeight = FontWeight.Bold
+                            )
+                            Text(
+                                text = "SafeZone",
+                                style = MaterialTheme.typography.bodySmall,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant
+                            )
+                        }
+                    },
+                    colors = TopAppBarDefaults.topAppBarColors(
+                        containerColor = PrimaryColor,
+                        titleContentColor = Color.White
+                    ),
+                    navigationIcon = {
+                        IconButton(onClick = { isMenuOpen = !isMenuOpen }) {
+                            Icon(
+                                imageVector = Icons.Default.Menu,
+                                contentDescription = "Menú",
+                                tint = Color.White
+                            )
+                        }
+                    },
+                    actions = {
+                        IconButton(onClick = { loadReports() }) {
+                            Icon(
+                                imageVector = Icons.Default.Refresh,
+                                contentDescription = "Refrescar",
+                                tint = Color.White
+                            )
+                        }
                     }
+                )
+            }
+        ) { paddingValues ->
+            Column(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .padding(paddingValues)
+                    .background(Color(0xFFF8F9FA))
+                    .padding(if (isTablet) 8.dp else 0.dp)
+            ) {
+                // Header con título y estadísticas
+                HeaderSection(
+                    totalReports = allReports.size,
+                    stats = stats,
+                    selectedFilter = filters.status,
+                    onFilterClick = { status ->
+                        filters = filters.copy(status = if (filters.status == status) null else status)
+                        currentPage = 1 // Resetear a primera página
+                    },
+                    onRefreshClick = { loadReports() },
+                    onOpenFilters = { showFiltersDialog = true },
+                    isTablet = isTablet,
+                    activeFiltersCount = countActiveFilters(filters)
+                )
+
+                // Barra de búsqueda
+                SearchBar(
+                    searchQuery = filters.searchQuery,
+                    onSearchChange = { query ->
+                        filters = filters.copy(searchQuery = query)
+                        currentPage = 1
+                    },
+                    selectedFilter = filters.status,
+                    onClearFilter = {
+                        filters = filters.copy(status = null)
+                        currentPage = 1
+                    },
+                    isTablet = isTablet
+                )
+
+                Spacer(modifier = Modifier.height(if (isTablet) 16.dp else 12.dp))
+
+                // Controles de filtro y ordenamiento
+                FilterControlsRow(
+                    filters = filters,
+                    onSortChange = { sortOption ->
+                        filters = filters.copy(sortBy = sortOption)
+                        currentPage = 1
+                    },
+                    onOpenFilters = { showFiltersDialog = true },
+                    isTablet = isTablet
+                )
+
+                Spacer(modifier = Modifier.height(if (isTablet) 16.dp else 12.dp))
+
+                // Contenido principal
+                ContentSection(
+                    isLoading = isLoading,
+                    errorMessage = errorMessage,
+                    reports = paginatedReports,
+                    totalResults = allReports.filter { report ->
+                        val matchesSearch = filters.searchQuery.isEmpty() ||
+                                report.title.contains(filters.searchQuery, ignoreCase = true) ||
+                                report.incidentType.contains(filters.searchQuery, ignoreCase = true) ||
+                                report.location.contains(filters.searchQuery, ignoreCase = true) ||
+                                report.description.contains(filters.searchQuery, ignoreCase = true) ||
+                                report.reporterName.contains(filters.searchQuery, ignoreCase = true)
+
+                        val matchesStatus = filters.status == null || report.status == filters.status
+                        val matchesPriority = filters.priority == null || report.priority == filters.priority
+
+                        matchesSearch && matchesStatus && matchesPriority
+                    }.size,
+                    currentPage = currentPage,
+                    totalPages = totalPages,
+                    onReportClick = { reportId ->
+                        navController.navigate("report_review_detail/$reportId")
+                    },
+                    onNextPage = {
+                        if (currentPage < totalPages) {
+                            currentPage++
+                        }
+                    },
+                    onPrevPage = {
+                        if (currentPage > 1) {
+                            currentPage--
+                        }
+                    },
+                    onGoToPage = { page ->
+                        if (page in 1..totalPages) {
+                            currentPage = page
+                        }
+                    },
+                    isTablet = isTablet
+                )
+            }
+        }
+
+        // ============ MENÚ LATERAL (IGUAL QUE DASHBOARD) ============
+        if (isMenuOpen) {
+            ModeratorSideMenu(
+                navController = navController,
+                moderatorId = moderatorId,
+                moderatorName = moderatorName,
+                currentRoute = "reports_review_list",
+                isMenuOpen = isMenuOpen,
+                onMenuToggle = { isOpen ->
+                    isMenuOpen = isOpen
                 },
-                onPrevPage = {
-                    if (currentPage > 1) {
-                        currentPage--
-                    }
-                },
-                onGoToPage = { page ->
-                    if (page in 1..totalPages) {
-                        currentPage = page
-                    }
-                },
-                isTablet = isTablet
+                context = context,
+                supabaseClient = supabaseClient
             )
         }
     }

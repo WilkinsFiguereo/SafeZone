@@ -1,5 +1,6 @@
 package com.wilkins.safezone.frontend.ui.Moderator.Dashboard
 
+
 import android.content.Context
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
@@ -356,8 +357,6 @@ fun ModeratorDashboard(
             }
         }
 
-        // Menú lateral superpuesto
-        // Menú lateral superpuesto
         if (isMenuOpen) {
             ModeratorSideMenu(
                 navController = navController,

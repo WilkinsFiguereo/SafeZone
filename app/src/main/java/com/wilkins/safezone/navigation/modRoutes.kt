@@ -57,7 +57,8 @@ fun NavGraphBuilder.moderatorRoutes(
             }
         } else {
             val reportId = backStackEntry.arguments?.getString("reportId") ?: return@composable
-            ReportStatusScreen(navController = navController, reportId)
+            val supabaseClient = SupabaseService.getInstance()
+            ReportStatusScreen(navController = navController, reportId = reportId, moderatorId = "MOD001",  supabaseClient = supabaseClient )
         }
     }
 
@@ -69,7 +70,7 @@ fun NavGraphBuilder.moderatorRoutes(
             }
         } else {
             val supabaseClient = SupabaseService.getInstance()
-            RewiewReportsListScreen(navController = navController, initialStatusId = 5)
+            RewiewReportsListScreen(navController = navController, initialStatusId = 5, moderatorId = "MOD001", moderatorName = "Moderador", supabaseClient = supabaseClient)
         }
     }
 }

@@ -52,7 +52,7 @@ fun ModeratorSideMenu(
         MenuSection(
             title = "Panel Principal",
             items = listOf(
-                ModeratorMenuItem(Icons.Default.Dashboard, "Dashboard", "moderatorDashboard"),
+                ModeratorMenuItem(Icons.Default.Dashboard, "Dashboard", "DashboardMod"),
                 ModeratorMenuItem(Icons.Default.BarChart, "Estadísticas", "moderatorStats")
             )
         ),
