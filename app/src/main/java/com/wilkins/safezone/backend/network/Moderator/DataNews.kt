@@ -6,7 +6,7 @@ import kotlinx.serialization.Serializable
 @Serializable
 data class News(
     @SerialName("id")
-    val id: String? = null,  // ← CAMBIADO de Int a String (porque es UUID)
+    val id: String? = null,
 
     @SerialName("title")
     val title: String,
@@ -17,7 +17,7 @@ data class News(
     @SerialName("image_url")
     val imageUrl: String,
 
-    @SerialName("is_featured")  // ← CAMBIADO de is_important a is_featured
+    @SerialName("is_featured")  // ✅ TU TABLA TIENE ESTA COLUMNA
     val isImportant: Boolean = false,
 
     @SerialName("user_id")

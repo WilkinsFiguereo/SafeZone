@@ -30,36 +30,45 @@ class NewsViewModel : ViewModel() {
     private val _isLoading = MutableStateFlow(false)
     val isLoading: StateFlow<Boolean> = _isLoading.asStateFlow()
 
-    // Cargar todas las noticias
+    private val _errorMessage = MutableStateFlow<String?>(null)
+    val errorMessage: StateFlow<String?> = _errorMessage.asStateFlow()
+
+    // 🔥 Cargar todas las noticias ordenadas por fecha (más recientes primero)
     fun loadNews() {
         viewModelScope.launch {
             try {
                 _isLoading.value = true
-                Log.d(TAG, "📥 Cargando noticias...")
+                _errorMessage.value = null
+                Log.d(TAG, "📥 Cargando noticias desde Supabase...")
 
                 val news = supabase.from("news")
                     .select()
                     .decodeList<News>()
 
-                _newsList.value = news.sortedByDescending { it.createdAt ?: "" }
-                Log.d(TAG, "✅ ${news.size} noticias cargadas")
+                // Ordenar por fecha de creación (más recientes primero)
+                val sortedNews = news.sortedByDescending { it.createdAt ?: "" }
+                _newsList.value = sortedNews
 
-                // Log detallado de cada noticia para debug
-                news.forEach {
-                    Log.d(TAG, "📰 Noticia: id=${it.id}, title=${it.title}, important=${it.isImportant}")
+                Log.d(TAG, "✅ ${news.size} noticias cargadas exitosamente")
+                Log.d(TAG, "📊 Destacadas: ${news.count { it.isImportant }}, Normales: ${news.count { !it.isImportant }}")
+
+                // Log detallado para debug
+                sortedNews.take(3).forEach {
+                    Log.d(TAG, "📰 ${it.title} | Destacada: ${it.isImportant} | Fecha: ${it.createdAt}")
                 }
 
             } catch (e: Exception) {
                 Log.e(TAG, "❌ Error al cargar noticias: ${e.message}", e)
                 e.printStackTrace()
                 _newsList.value = emptyList()
+                _errorMessage.value = "Error al cargar noticias: ${e.message}"
             } finally {
                 _isLoading.value = false
             }
         }
     }
 
-    // Crear noticia
+    // 🔥 Crear noticia con auto-refresh
     fun createNews(
         context: Context,
         title: String,
@@ -71,7 +80,8 @@ class NewsViewModel : ViewModel() {
     ) {
         viewModelScope.launch {
             try {
-                Log.d(TAG, "🔄 Iniciando creación de noticia...")
+                Log.d(TAG, "📝 Iniciando creación de noticia...")
+                _isLoading.value = true
 
                 val currentUser = supabase.auth.currentUserOrNull()
                 if (currentUser == null) {
@@ -81,6 +91,8 @@ class NewsViewModel : ViewModel() {
                     return@launch
                 }
 
+                // Subir imagen
+                Log.d(TAG, "📤 Subiendo imagen...")
                 val imageUrl = uploadImage(context, imageUri)
                 if (imageUrl == null) {
                     withContext(Dispatchers.Main) {
@@ -89,6 +101,7 @@ class NewsViewModel : ViewModel() {
                     return@launch
                 }
 
+                // Crear noticia
                 val news = News(
                     title = title,
                     description = description,
@@ -99,7 +112,9 @@ class NewsViewModel : ViewModel() {
 
                 supabase.from("news").insert(news)
                 Log.d(TAG, "✅ Noticia creada exitosamente")
+                Log.d(TAG, "📊 Título: $title | Destacada: $isImportant")
 
+                // 🔥 Recargar noticias automáticamente
                 loadNews()
 
                 withContext(Dispatchers.Main) {
@@ -112,14 +127,16 @@ class NewsViewModel : ViewModel() {
                 withContext(Dispatchers.Main) {
                     onError("Error: ${e.message ?: "Error desconocido"}")
                 }
+            } finally {
+                _isLoading.value = false
             }
         }
     }
 
-    // Actualizar noticia
+    // 🔥 Actualizar noticia con auto-refresh
     fun updateNews(
         context: Context,
-        newsId: String,  // ← CAMBIADO de Int a String
+        newsId: String,
         title: String,
         description: String,
         isImportant: Boolean,
@@ -130,7 +147,8 @@ class NewsViewModel : ViewModel() {
     ) {
         viewModelScope.launch {
             try {
-                Log.d(TAG, "🔄 Actualizando noticia ID: $newsId")
+                Log.d(TAG, "📝 Actualizando noticia ID: $newsId")
+                _isLoading.value = true
 
                 val currentUser = supabase.auth.currentUserOrNull()
                 if (currentUser == null) {
@@ -164,6 +182,8 @@ class NewsViewModel : ViewModel() {
                     }
 
                 Log.d(TAG, "✅ Noticia actualizada exitosamente")
+
+                // 🔥 Recargar noticias automáticamente
                 loadNews()
 
                 withContext(Dispatchers.Main) {
@@ -176,13 +196,15 @@ class NewsViewModel : ViewModel() {
                 withContext(Dispatchers.Main) {
                     onError("Error: ${e.message}")
                 }
+            } finally {
+                _isLoading.value = false
             }
         }
     }
 
-    // Eliminar noticia
+    // 🔥 Eliminar noticia con auto-refresh
     fun deleteNews(
-        newsId: String,  // ← CAMBIADO de Int a String
+        newsId: String,
         imageUrl: String,
         onSuccess: () -> Unit,
         onError: (String) -> Unit
@@ -190,6 +212,7 @@ class NewsViewModel : ViewModel() {
         viewModelScope.launch {
             try {
                 Log.d(TAG, "🗑️ Eliminando noticia ID: $newsId")
+                _isLoading.value = true
 
                 supabase.from("news").delete {
                     filter {
@@ -197,6 +220,7 @@ class NewsViewModel : ViewModel() {
                     }
                 }
 
+                // Intentar eliminar la imagen del storage
                 try {
                     val fileName = imageUrl.substringAfterLast("/")
                     if (fileName.isNotBlank()) {
@@ -208,6 +232,8 @@ class NewsViewModel : ViewModel() {
                 }
 
                 Log.d(TAG, "✅ Noticia eliminada")
+
+                // 🔥 Recargar noticias automáticamente
                 loadNews()
 
                 withContext(Dispatchers.Main) {
@@ -220,10 +246,13 @@ class NewsViewModel : ViewModel() {
                 withContext(Dispatchers.Main) {
                     onError("Error: ${e.message}")
                 }
+            } finally {
+                _isLoading.value = false
             }
         }
     }
 
+    // 🔥 Subir imagen a Supabase Storage
     private suspend fun uploadImage(context: Context, imageUri: Uri): String? {
         return withContext(Dispatchers.IO) {
             var file: File? = null
@@ -232,8 +261,13 @@ class NewsViewModel : ViewModel() {
                 val randomId = UUID.randomUUID().toString().take(8)
                 val fileName = "news_${timestamp}_${randomId}.jpg"
 
+                Log.d(TAG, "📁 Preparando archivo: $fileName")
+
                 val inputStream = context.contentResolver.openInputStream(imageUri)
-                    ?: return@withContext null
+                    ?: run {
+                        Log.e(TAG, "❌ No se pudo abrir el InputStream")
+                        return@withContext null
+                    }
 
                 file = File(context.cacheDir, fileName)
                 val outputStream = FileOutputStream(file)
@@ -245,16 +279,19 @@ class NewsViewModel : ViewModel() {
                 }
 
                 if (!file.exists() || file.length() == 0L) {
+                    Log.e(TAG, "❌ Archivo vacío o no existe")
                     file?.delete()
                     return@withContext null
                 }
 
-                val maxSize = 5 * 1024 * 1024
+                val maxSize = 5 * 1024 * 1024 // 5MB
                 if (file.length() > maxSize) {
+                    Log.e(TAG, "❌ Archivo muy grande: ${file.length()} bytes")
                     file.delete()
                     return@withContext null
                 }
 
+                Log.d(TAG, "📤 Subiendo a Supabase Storage...")
                 val bucket = supabase.storage.from("news-images")
                 val fileBytes = file.readBytes()
 
@@ -265,6 +302,7 @@ class NewsViewModel : ViewModel() {
                 )
 
                 val publicUrl = bucket.publicUrl(fileName)
+                Log.d(TAG, "✅ Imagen subida exitosamente: $publicUrl")
 
                 file.delete()
 
@@ -277,5 +315,10 @@ class NewsViewModel : ViewModel() {
                 null
             }
         }
+    }
+
+    // 🔥 Limpiar error
+    fun clearError() {
+        _errorMessage.value = null
     }
 }
