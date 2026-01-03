@@ -9,6 +9,7 @@ import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.ArrowBack
 import androidx.compose.material.icons.filled.Image
+import androidx.compose.material.icons.filled.VideoLibrary
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -18,9 +19,12 @@ import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.viewinterop.AndroidView
 import androidx.lifecycle.viewmodel.compose.viewModel
 import coil.compose.AsyncImage
 import com.wilkins.safezone.backend.network.Moderator.NewsViewModel
+import android.widget.MediaController
+import android.widget.VideoView
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -33,6 +37,7 @@ fun NewsSaveScreen(
     var description by remember { mutableStateOf("") }
     var isImportant by remember { mutableStateOf(false) }
     var selectedImageUri by remember { mutableStateOf<Uri?>(null) }
+    var selectedVideoUri by remember { mutableStateOf<Uri?>(null) }
     var isLoading by remember { mutableStateOf(false) }
     var errorMessage by remember { mutableStateOf<String?>(null) }
     var successMessage by remember { mutableStateOf<String?>(null) }
@@ -41,6 +46,12 @@ fun NewsSaveScreen(
         contract = ActivityResultContracts.GetContent()
     ) { uri: Uri? ->
         selectedImageUri = uri
+    }
+
+    val videoPickerLauncher = rememberLauncherForActivityResult(
+        contract = ActivityResultContracts.GetContent()
+    ) { uri: Uri? ->
+        selectedVideoUri = uri
     }
 
     Scaffold(
@@ -104,7 +115,15 @@ fun NewsSaveScreen(
                 )
             }
 
-            // Botón para seleccionar imagen
+            Divider()
+
+            // Sección de Imagen
+            Text(
+                text = "📷 Imagen (Opcional)",
+                style = MaterialTheme.typography.titleMedium,
+                fontWeight = FontWeight.Bold
+            )
+
             Button(
                 onClick = { imagePickerLauncher.launch("image/*") },
                 modifier = Modifier.fillMaxWidth()
@@ -122,13 +141,106 @@ fun NewsSaveScreen(
                         .height(200.dp),
                     elevation = CardDefaults.cardElevation(4.dp)
                 ) {
-                    AsyncImage(
-                        model = uri,
-                        contentDescription = "Imagen seleccionada",
-                        modifier = Modifier.fillMaxSize(),
-                        contentScale = ContentScale.Crop
-                    )
+                    Box(modifier = Modifier.fillMaxSize()) {
+                        AsyncImage(
+                            model = uri,
+                            contentDescription = "Imagen seleccionada",
+                            modifier = Modifier.fillMaxSize(),
+                            contentScale = ContentScale.Crop
+                        )
+
+                        // Botón para eliminar imagen
+                        IconButton(
+                            onClick = { selectedImageUri = null },
+                            modifier = Modifier
+                                .align(Alignment.TopEnd)
+                                .padding(8.dp)
+                        ) {
+                            Surface(
+                                shape = MaterialTheme.shapes.small,
+                                color = MaterialTheme.colorScheme.errorContainer
+                            ) {
+                                Text(
+                                    "✕",
+                                    modifier = Modifier.padding(8.dp),
+                                    color = MaterialTheme.colorScheme.onErrorContainer,
+                                    fontWeight = FontWeight.Bold
+                                )
+                            }
+                        }
+                    }
                 }
+            }
+
+            Divider()
+
+            // Sección de Video
+            Text(
+                text = "🎥 Video (Opcional - Máx. 2 min)",
+                style = MaterialTheme.typography.titleMedium,
+                fontWeight = FontWeight.Bold
+            )
+
+            Button(
+                onClick = { videoPickerLauncher.launch("video/*") },
+                modifier = Modifier.fillMaxWidth(),
+                colors = ButtonDefaults.buttonColors(
+                    containerColor = MaterialTheme.colorScheme.secondary
+                )
+            ) {
+                Icon(Icons.Default.VideoLibrary, contentDescription = null)
+                Spacer(modifier = Modifier.width(8.dp))
+                Text("Seleccionar Video")
+            }
+
+            // Vista previa del video
+            selectedVideoUri?.let { uri ->
+                Card(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .height(250.dp),
+                    elevation = CardDefaults.cardElevation(4.dp)
+                ) {
+                    Box(modifier = Modifier.fillMaxSize()) {
+                        AndroidView(
+                            factory = { ctx ->
+                                VideoView(ctx).apply {
+                                    setVideoURI(uri)
+                                    val mediaController = MediaController(ctx)
+                                    mediaController.setAnchorView(this)
+                                    setMediaController(mediaController)
+                                }
+                            },
+                            modifier = Modifier.fillMaxSize()
+                        )
+
+                        // Botón para eliminar video
+                        IconButton(
+                            onClick = { selectedVideoUri = null },
+                            modifier = Modifier
+                                .align(Alignment.TopEnd)
+                                .padding(8.dp)
+                        ) {
+                            Surface(
+                                shape = MaterialTheme.shapes.small,
+                                color = MaterialTheme.colorScheme.errorContainer
+                            ) {
+                                Text(
+                                    "✕",
+                                    modifier = Modifier.padding(8.dp),
+                                    color = MaterialTheme.colorScheme.onErrorContainer,
+                                    fontWeight = FontWeight.Bold
+                                )
+                            }
+                        }
+                    }
+                }
+
+                Text(
+                    text = "💡 El video se reproducirá automáticamente en la vista de noticias",
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
             }
 
             // Mensajes de error o éxito
@@ -176,8 +288,8 @@ fun NewsSaveScreen(
                         description.isBlank() -> {
                             errorMessage = "La descripción es obligatoria"
                         }
-                        selectedImageUri == null -> {
-                            errorMessage = "Debes seleccionar una imagen"
+                        selectedImageUri == null && selectedVideoUri == null -> {
+                            errorMessage = "Debes seleccionar al menos una imagen o un video"
                         }
                         else -> {
                             isLoading = true
@@ -186,7 +298,8 @@ fun NewsSaveScreen(
                                 title = title,
                                 description = description,
                                 isImportant = isImportant,
-                                imageUri = selectedImageUri!!,
+                                imageUri = selectedImageUri,
+                                videoUri = selectedVideoUri,
                                 onSuccess = {
                                     isLoading = false
                                     successMessage = "Noticia creada exitosamente"
@@ -195,6 +308,7 @@ fun NewsSaveScreen(
                                     description = ""
                                     isImportant = false
                                     selectedImageUri = null
+                                    selectedVideoUri = null
                                 },
                                 onError = { error ->
                                     isLoading = false

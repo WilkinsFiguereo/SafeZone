@@ -66,113 +66,113 @@ fun NewsListScreen(
             )
         }
     ) { padding ->
+
         Box(
             modifier = Modifier
                 .fillMaxSize()
                 .padding(padding)
         ) {
-            if (isLoading) {
-                CircularProgressIndicator(
-                    modifier = Modifier.align(Alignment.Center)
-                )
-            } else if (newsList.isEmpty()) {
-                Column(
-                    modifier = Modifier
-                        .fillMaxSize()
-                        .padding(32.dp),
-                    horizontalAlignment = Alignment.CenterHorizontally,
-                    verticalArrangement = Arrangement.Center
-                ) {
-                    Icon(
-                        imageVector = Icons.Default.Newspaper,
-                        contentDescription = null,
-                        modifier = Modifier.size(64.dp),
-                        tint = Color.Gray
-                    )
-                    Spacer(modifier = Modifier.height(16.dp))
-                    Text(
-                        text = "No hay noticias disponibles",
-                        style = MaterialTheme.typography.titleMedium,
-                        color = Color.Gray
-                    )
+            when {
+                isLoading -> {
+                    CircularProgressIndicator(Modifier.align(Alignment.Center))
                 }
-            } else {
-                LazyColumn(
-                    modifier = Modifier.fillMaxSize(),
-                    contentPadding = PaddingValues(16.dp),
-                    verticalArrangement = Arrangement.spacedBy(12.dp)
-                ) {
-                    items(newsList) { news ->
-                        NewsItemCard(
-                            news = news,
-                            onEdit = {
-                                selectedNews = news
-                                showEditDialog = true
-                            },
-                            onDelete = {
-                                selectedNews = news
-                                showDeleteDialog = true
-                            }
+
+                newsList.isEmpty() -> {
+                    Column(
+                        modifier = Modifier.fillMaxSize(),
+                        verticalArrangement = Arrangement.Center,
+                        horizontalAlignment = Alignment.CenterHorizontally
+                    ) {
+                        Icon(
+                            Icons.Default.Newspaper,
+                            contentDescription = null,
+                            tint = Color.Gray,
+                            modifier = Modifier.size(64.dp)
                         )
+                        Spacer(modifier = Modifier.height(16.dp))
+                        Text("No hay noticias disponibles", color = Color.Gray)
+                    }
+                }
+
+                else -> {
+                    LazyColumn(
+                        modifier = Modifier.fillMaxSize(),
+                        contentPadding = PaddingValues(16.dp),
+                        verticalArrangement = Arrangement.spacedBy(12.dp)
+                    ) {
+                        items(newsList) { news ->
+                            NewsItemCard(
+                                news = news,
+                                onEdit = {
+                                    selectedNews = news
+                                    showEditDialog = true
+                                },
+                                onDelete = {
+                                    selectedNews = news
+                                    showDeleteDialog = true
+                                }
+                            )
+                        }
                     }
                 }
             }
         }
 
-        // Diálogo de edición
+        // ================= EDITAR =================
         if (showEditDialog && selectedNews != null) {
             EditNewsDialog(
                 news = selectedNews!!,
                 onDismiss = { showEditDialog = false },
                 onConfirm = { updatedNews, newImageUri ->
+
                     viewModel.updateNews(
                         context = context,
-                        newsId = updatedNews.id ?: "",  // ← CAMBIADO: ahora es String
+                        newsId = updatedNews.id ?: "",
                         title = updatedNews.title,
                         description = updatedNews.description,
                         isImportant = updatedNews.isImportant,
+
+                        // ✅ IMAGEN
                         newImageUri = newImageUri,
                         currentImageUrl = updatedNews.imageUrl,
+
+                        // ✅ VIDEO (OBLIGATORIOS)
+                        newVideoUri = null,
+                        currentVideoUrl = updatedNews.videoUrl,
+
                         onSuccess = {
                             showEditDialog = false
                             selectedNews = null
                         },
-                        onError = { error ->
-                            // Manejar error si es necesario
-                        }
+                        onError = { }
                     )
                 }
             )
         }
 
-        // Diálogo de eliminación
+        // ================= ELIMINAR =================
         if (showDeleteDialog && selectedNews != null) {
             AlertDialog(
                 onDismissRequest = { showDeleteDialog = false },
                 icon = {
-                    Icon(
-                        Icons.Default.Warning,
-                        contentDescription = null,
-                        tint = MaterialTheme.colorScheme.error
-                    )
+                    Icon(Icons.Default.Warning, contentDescription = null)
                 },
                 title = { Text("Confirmar eliminación") },
                 text = {
-                    Text("¿Estás seguro de que deseas eliminar la noticia '${selectedNews!!.title}'? Esta acción no se puede deshacer.")
+                    Text("¿Eliminar la noticia '${selectedNews!!.title}'?")
                 },
                 confirmButton = {
                     Button(
                         onClick = {
                             viewModel.deleteNews(
-                                newsId = selectedNews!!.id ?: "",  // ← CAMBIADO: ahora es String
+                                newsId = selectedNews!!.id ?: "",
                                 imageUrl = selectedNews!!.imageUrl,
+                                videoUrl = selectedNews!!.videoUrl,
                                 onSuccess = {
                                     showDeleteDialog = false
                                     selectedNews = null
                                 },
-                                onError = { error ->
-                                    // Manejar error si es necesario
-                                }
+                                onError = {}
                             )
                         },
                         colors = ButtonDefaults.buttonColors(
@@ -199,114 +199,44 @@ fun NewsItemCard(
     onDelete: () -> Unit
 ) {
     Card(
-        modifier = Modifier
-            .fillMaxWidth()
-            .clickable(enabled = false) {},
-        elevation = CardDefaults.cardElevation(4.dp),
-        colors = CardDefaults.cardColors(
-            containerColor = MaterialTheme.colorScheme.surface
-        )
+        modifier = Modifier.fillMaxWidth(),
+        elevation = CardDefaults.cardElevation(4.dp)
     ) {
-        Row(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(12.dp)
-        ) {
-            // Imagen
+        Row(Modifier.padding(12.dp)) {
+
             AsyncImage(
                 model = news.imageUrl,
-                contentDescription = "Imagen de noticia",
+                contentDescription = null,
                 modifier = Modifier
                     .size(100.dp)
                     .clip(RoundedCornerShape(8.dp)),
                 contentScale = ContentScale.Crop
             )
 
-            Spacer(modifier = Modifier.width(12.dp))
+            Spacer(Modifier.width(12.dp))
 
-            // Contenido
-            Column(
-                modifier = Modifier
-                    .weight(1f)
-                    .padding(vertical = 4.dp)
-            ) {
-                // Título
+            Column(Modifier.weight(1f)) {
                 Text(
-                    text = news.title,
-                    style = MaterialTheme.typography.titleMedium,
+                    news.title,
                     fontWeight = FontWeight.Bold,
                     maxLines = 2,
                     overflow = TextOverflow.Ellipsis
                 )
 
-                Spacer(modifier = Modifier.height(4.dp))
-
-                // Descripción
                 Text(
-                    text = news.description,
-                    style = MaterialTheme.typography.bodySmall,
-                    color = Color.Gray,
+                    news.description,
                     maxLines = 2,
-                    overflow = TextOverflow.Ellipsis
+                    overflow = TextOverflow.Ellipsis,
+                    color = Color.Gray
                 )
-
-                Spacer(modifier = Modifier.height(8.dp))
-
-                // Badge de importancia
-                if (news.isImportant) {
-                    Surface(
-                        color = Color(0xFFFFD700).copy(alpha = 0.2f),
-                        shape = RoundedCornerShape(4.dp)
-                    ) {
-                        Row(
-                            modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp),
-                            verticalAlignment = Alignment.CenterVertically
-                        ) {
-                            Icon(
-                                imageVector = Icons.Default.Star,
-                                contentDescription = null,
-                                tint = Color(0xFFFFD700),
-                                modifier = Modifier.size(14.dp)
-                            )
-                            Spacer(modifier = Modifier.width(4.dp))
-                            Text(
-                                text = "Destacada",
-                                style = MaterialTheme.typography.labelSmall,
-                                color = Color(0xFFFFD700)
-                            )
-                        }
-                    }
-                }
             }
 
-            // Botones de acción
-            Column(
-                verticalArrangement = Arrangement.spacedBy(8.dp)
-            ) {
-                IconButton(
-                    onClick = onEdit,
-                    colors = IconButtonDefaults.iconButtonColors(
-                        containerColor = PrimaryColor.copy(alpha = 0.1f)
-                    )
-                ) {
-                    Icon(
-                        Icons.Default.Edit,
-                        contentDescription = "Editar",
-                        tint = PrimaryColor
-                    )
+            Column {
+                IconButton(onClick = onEdit) {
+                    Icon(Icons.Default.Edit, contentDescription = null)
                 }
-
-                IconButton(
-                    onClick = onDelete,
-                    colors = IconButtonDefaults.iconButtonColors(
-                        containerColor = MaterialTheme.colorScheme.error.copy(alpha = 0.1f)
-                    )
-                ) {
-                    Icon(
-                        Icons.Default.Delete,
-                        contentDescription = "Eliminar",
-                        tint = MaterialTheme.colorScheme.error
-                    )
+                IconButton(onClick = onDelete) {
+                    Icon(Icons.Default.Delete, contentDescription = null)
                 }
             }
         }
@@ -324,153 +254,65 @@ fun EditNewsDialog(
     var isImportant by remember { mutableStateOf(news.isImportant) }
     var selectedImageUri by remember { mutableStateOf<Uri?>(null) }
 
-    val imagePickerLauncher = rememberLauncherForActivityResult(
-        contract = ActivityResultContracts.GetContent()
-    ) { uri: Uri? ->
-        selectedImageUri = uri
-    }
+    val launcher = rememberLauncherForActivityResult(
+        ActivityResultContracts.GetContent()
+    ) { selectedImageUri = it }
 
     Dialog(onDismissRequest = onDismiss) {
         Card(
-            modifier = Modifier
-                .fillMaxWidth()
-                .fillMaxHeight(0.9f),
-            shape = RoundedCornerShape(16.dp),
-            elevation = CardDefaults.cardElevation(8.dp)
+            modifier = Modifier.fillMaxWidth(),
+            shape = RoundedCornerShape(16.dp)
         ) {
-            Column(
-                modifier = Modifier
-                    .fillMaxSize()
-                    .background(MaterialTheme.colorScheme.surface)
-            ) {
-                // Header
-                Box(
+            Column(Modifier.padding(16.dp)) {
+
+                OutlinedTextField(
+                    value = title,
+                    onValueChange = { title = it },
+                    label = { Text("Título") },
+                    modifier = Modifier.fillMaxWidth()
+                )
+
+                OutlinedTextField(
+                    value = description,
+                    onValueChange = { description = it },
+                    label = { Text("Descripción") },
+                    modifier = Modifier.fillMaxWidth()
+                )
+
+                Switch(
+                    checked = isImportant,
+                    onCheckedChange = { isImportant = it }
+                )
+
+                AsyncImage(
+                    model = selectedImageUri ?: news.imageUrl,
+                    contentDescription = null,
                     modifier = Modifier
                         .fillMaxWidth()
-                        .background(PrimaryColor)
-                        .padding(16.dp)
+                        .height(180.dp)
+                )
+
+                OutlinedButton(
+                    onClick = { launcher.launch("image/*") }
                 ) {
-                    Row(
-                        modifier = Modifier.fillMaxWidth(),
-                        horizontalArrangement = Arrangement.SpaceBetween,
-                        verticalAlignment = Alignment.CenterVertically
-                    ) {
-                        Text(
-                            text = "Editar Noticia",
-                            style = MaterialTheme.typography.titleLarge,
-                            fontWeight = FontWeight.Bold,
-                            color = Color.White
-                        )
-                        IconButton(onClick = onDismiss) {
-                            Icon(
-                                Icons.Default.Close,
-                                contentDescription = "Cerrar",
-                                tint = Color.White
-                            )
-                        }
-                    }
+                    Text("Cambiar imagen")
                 }
 
-                // Contenido scrolleable
-                Column(
-                    modifier = Modifier
-                        .weight(1f)
-                        .verticalScroll(rememberScrollState())
-                        .padding(16.dp),
-                    verticalArrangement = Arrangement.spacedBy(16.dp)
-                ) {
-                    // Título
-                    OutlinedTextField(
-                        value = title,
-                        onValueChange = { title = it },
-                        label = { Text("Título") },
-                        modifier = Modifier.fillMaxWidth(),
-                        singleLine = true
-                    )
+                Spacer(Modifier.height(12.dp))
 
-                    // Descripción
-                    OutlinedTextField(
-                        value = description,
-                        onValueChange = { description = it },
-                        label = { Text("Descripción") },
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .height(150.dp),
-                        maxLines = 6
-                    )
-
-                    // Switch importante
-                    Row(
-                        modifier = Modifier.fillMaxWidth(),
-                        horizontalArrangement = Arrangement.SpaceBetween,
-                        verticalAlignment = Alignment.CenterVertically
-                    ) {
-                        Text(
-                            text = "Noticia Importante",
-                            style = MaterialTheme.typography.bodyLarge
-                        )
-                        Switch(
-                            checked = isImportant,
-                            onCheckedChange = { isImportant = it }
-                        )
-                    }
-
-                    // Imagen actual
-                    Text(
-                        text = "Imagen actual:",
-                        style = MaterialTheme.typography.labelMedium,
-                        color = Color.Gray
-                    )
-
-                    AsyncImage(
-                        model = selectedImageUri ?: news.imageUrl,
-                        contentDescription = "Vista previa",
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .height(200.dp)
-                            .clip(RoundedCornerShape(8.dp)),
-                        contentScale = ContentScale.Crop
-                    )
-
-                    // Botón cambiar imagen
-                    OutlinedButton(
-                        onClick = { imagePickerLauncher.launch("image/*") },
-                        modifier = Modifier.fillMaxWidth()
-                    ) {
-                        Icon(Icons.Default.Image, contentDescription = null)
-                        Spacer(modifier = Modifier.width(8.dp))
-                        Text("Cambiar Imagen")
-                    }
-                }
-
-                // Botones de acción
-                Row(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(16.dp),
-                    horizontalArrangement = Arrangement.spacedBy(12.dp)
-                ) {
-                    OutlinedButton(
-                        onClick = onDismiss,
-                        modifier = Modifier.weight(1f)
-                    ) {
-                        Text("Cancelar")
-                    }
-
-                    Button(
-                        onClick = {
-                            val updatedNews = news.copy(
+                Button(
+                    onClick = {
+                        onConfirm(
+                            news.copy(
                                 title = title,
                                 description = description,
                                 isImportant = isImportant
-                            )
-                            onConfirm(updatedNews, selectedImageUri)
-                        },
-                        modifier = Modifier.weight(1f),
-                        enabled = title.isNotBlank() && description.isNotBlank()
-                    ) {
-                        Text("Guardar")
+                            ),
+                            selectedImageUri
+                        )
                     }
+                ) {
+                    Text( "Guardar")
                 }
             }
         }

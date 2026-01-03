@@ -17,7 +17,10 @@ data class News(
     @SerialName("image_url")
     val imageUrl: String,
 
-    @SerialName("is_featured")  // ✅ TU TABLA TIENE ESTA COLUMNA
+    @SerialName("video_url")  // 🔥 NUEVA COLUMNA
+    val videoUrl: String? = null,
+
+    @SerialName("is_featured")
     val isImportant: Boolean = false,
 
     @SerialName("user_id")

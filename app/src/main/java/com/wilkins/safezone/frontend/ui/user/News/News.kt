@@ -38,7 +38,6 @@ fun NewsScreen(
     var searchQuery by remember { mutableStateOf("") }
     var selectedFilter by remember { mutableStateOf(NewsFilter.ALL) }
 
-    // 🔥 Estados del ViewModel
     val supabaseNewsList by viewModel.newsList.collectAsState()
     val isLoading by viewModel.isLoading.collectAsState()
 
@@ -47,17 +46,14 @@ fun NewsScreen(
     }
     val user = userState.value
 
-    // 🔥 Cargar noticias al iniciar
     LaunchedEffect(Unit) {
         viewModel.loadNews()
     }
 
-    // 🔥 Convertir noticias de Supabase al formato UI
     val convertedNews = remember(supabaseNewsList) {
         supabaseNewsList.map { convertSupabaseNewsToUINews(it) }
     }
 
-    // 🔥 Separar noticias destacadas de las normales
     val featuredNews = remember(convertedNews) {
         convertedNews.filter { it.category == "Destacada" }
     }
@@ -66,7 +62,6 @@ fun NewsScreen(
         convertedNews.filter { it.category != "Destacada" }
     }
 
-    // 🔥 Filtrar noticias según búsqueda
     val filteredRegularNews = remember(regularNews, searchQuery) {
         if (searchQuery.isEmpty()) {
             regularNews
@@ -90,7 +85,6 @@ fun NewsScreen(
     }
 
     Box(modifier = Modifier.fillMaxSize()) {
-        // Contenido principal
         Column(modifier = Modifier.fillMaxSize()) {
             LazyColumn(
                 modifier = Modifier
@@ -99,7 +93,6 @@ fun NewsScreen(
                 verticalArrangement = Arrangement.spacedBy(16.dp),
                 contentPadding = PaddingValues(top = 72.dp, bottom = 100.dp)
             ) {
-                // Buscador y botón de refresh
                 item {
                     Column(modifier = Modifier.fillMaxWidth()) {
                         NewsSearchBar(
@@ -109,7 +102,6 @@ fun NewsScreen(
                             onFilterChange = { selectedFilter = it }
                         )
 
-                        // Botón de refresh
                         Row(
                             modifier = Modifier
                                 .fillMaxWidth()
@@ -137,7 +129,6 @@ fun NewsScreen(
                     }
                 }
 
-                // 🔥 Indicador de carga
                 if (isLoading) {
                     item {
                         Box(
@@ -151,7 +142,6 @@ fun NewsScreen(
                     }
                 }
 
-                // 🔥 Noticias destacadas
                 if (!isLoading && filteredFeaturedNews.isNotEmpty()) {
                     item {
                         Column(modifier = Modifier.padding(horizontal = 16.dp)) {
@@ -186,7 +176,6 @@ fun NewsScreen(
                     }
                 }
 
-                // 🔥 Últimas noticias
                 if (!isLoading) {
                     item {
                         Row(
@@ -235,7 +224,6 @@ fun NewsScreen(
             }
         }
 
-        // Bottom Navigation Menu
         Box(
             modifier = Modifier
                 .align(Alignment.BottomCenter)
@@ -261,7 +249,6 @@ fun NewsScreen(
             )
         }
 
-        // Side Menu
         Box(
             modifier = Modifier
                 .fillMaxSize()
@@ -278,28 +265,27 @@ fun NewsScreen(
     }
 }
 
-// 🔥 Función para convertir News de Supabase al formato UI (News del NewsData.kt)
+// 🔥 Función para convertir News de Supabase al formato UI - AHORA CON VIDEO
 private fun convertSupabaseNewsToUINews(supabaseNews: SupabaseNews): News {
     return News(
-        id = supabaseNews.id?.hashCode() ?: 0, // Convertir UUID string a Int
+        id = supabaseNews.id?.hashCode() ?: 0,
         title = supabaseNews.title,
         description = supabaseNews.description,
         imageUrl = supabaseNews.imageUrl,
+        videoUrl = supabaseNews.videoUrl,  // 🎥 NUEVO: Pasar el videoUrl
         date = formatTimestamp(supabaseNews.createdAt),
-        author = "SafeZone Moderador", // Puedes mejorarlo obteniendo el nombre real del usuario
-        authorAvatar = "", // Vacío por ahora
-        likes = (0..500).random(), // Likes aleatorios por ahora
-        comments = emptyList(), // Sin comentarios por ahora
+        author = "SafeZone Moderador",
+        authorAvatar = "",
+        likes = (0..500).random(),
+        comments = emptyList(),
         category = if (supabaseNews.isImportant) "Destacada" else "General"
     )
 }
 
-// 🔥 Formatear timestamp
 private fun formatTimestamp(timestamp: String?): String {
     if (timestamp == null) return "Hace un momento"
 
     return try {
-        // Formato: 2024-01-15T10:30:00Z -> "Hace X horas/días"
         val dateTime = timestamp.substringBefore("T")
         val parts = dateTime.split("-")
         if (parts.size == 3) {

@@ -1,12 +1,14 @@
 package com.wilkins.safezone.frontend.ui.user.News.components
 
-import android.widget.Toast
+import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Favorite
+import androidx.compose.material.icons.filled.Image
+import androidx.compose.material.icons.filled.PlayCircle
 import androidx.compose.material.icons.outlined.FavoriteBorder
 import androidx.compose.material.icons.filled.ChatBubbleOutline
 import androidx.compose.material3.*
@@ -14,7 +16,6 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
@@ -29,20 +30,13 @@ fun NewsListItem(
 ) {
     var liked by remember { mutableStateOf(false) }
     var localLikes by remember { mutableStateOf(news.likes) }
+    var showDialog by remember { mutableStateOf(false) }
     val context = LocalContext.current
 
     Card(
         modifier = modifier
             .fillMaxWidth()
-            .clickable {
-                Toast
-                    .makeText(
-                        context,
-                        "Proximamente: Ver detalles completos de \"${news.title}\"",
-                        Toast.LENGTH_SHORT
-                    )
-                    .show()
-            },
+            .clickable { showDialog = true },
         elevation = CardDefaults.cardElevation(defaultElevation = 4.dp),
         colors = CardDefaults.cardColors(
             containerColor = MaterialTheme.colorScheme.surface
@@ -59,7 +53,6 @@ fun NewsListItem(
                 horizontalArrangement = Arrangement.spacedBy(10.dp),
                 verticalAlignment = Alignment.CenterVertically
             ) {
-                // Avatar del autor
                 Surface(
                     shape = CircleShape,
                     color = MaterialTheme.colorScheme.primary,
@@ -94,15 +87,41 @@ fun NewsListItem(
                 modifier = Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.spacedBy(12.dp)
             ) {
-                // ✅ IMAGEN MINIATURA DESDE SUPABASE CON COIL
-                AsyncImage(
-                    model = news.imageUrl,
-                    contentDescription = news.title,
+                // Miniatura con indicador de video
+                Box(
                     modifier = Modifier
                         .size(100.dp)
-                        .clip(RoundedCornerShape(10.dp)),
-                    contentScale = ContentScale.Crop
-                )
+                        .clip(RoundedCornerShape(10.dp))
+                        .background(MaterialTheme.colorScheme.surfaceVariant),
+                    contentAlignment = Alignment.Center
+                ) {
+                    if (news.imageUrl.isNotBlank() && news.imageUrl.startsWith("http")) {
+                        AsyncImage(
+                            model = news.imageUrl,
+                            contentDescription = "Imagen miniatura",
+                            modifier = Modifier.fillMaxSize()
+                        )
+                    } else {
+                        Icon(
+                            imageVector = Icons.Default.Image,
+                            contentDescription = "Imagen miniatura",
+                            modifier = Modifier.size(40.dp),
+                            tint = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                    }
+
+                    // 🎥 Indicador de video
+                    if (!news.videoUrl.isNullOrBlank()) {
+                        Icon(
+                            imageVector = Icons.Default.PlayCircle,
+                            contentDescription = "Tiene video",
+                            modifier = Modifier
+                                .size(48.dp)
+                                .align(Alignment.Center),
+                            tint = MaterialTheme.colorScheme.primary
+                        )
+                    }
+                }
 
                 // Contenido
                 Column(
@@ -137,7 +156,6 @@ fun NewsListItem(
                 horizontalArrangement = Arrangement.spacedBy(20.dp),
                 verticalAlignment = Alignment.CenterVertically
             ) {
-                // Likes
                 Row(
                     verticalAlignment = Alignment.CenterVertically,
                     horizontalArrangement = Arrangement.spacedBy(4.dp)
@@ -164,7 +182,6 @@ fun NewsListItem(
                     )
                 }
 
-                // Comentarios
                 Row(
                     verticalAlignment = Alignment.CenterVertically,
                     horizontalArrangement = Arrangement.spacedBy(4.dp)
@@ -184,13 +201,20 @@ fun NewsListItem(
                 }
             }
 
-            HorizontalDivider(
+            Divider(
                 color = MaterialTheme.colorScheme.outlineVariant,
                 modifier = Modifier.padding(vertical = 4.dp)
             )
 
-            // Sección de comentarios (sin cambios)
             CommentSection(comments = news.comments)
         }
+    }
+
+    // 🎯 DIÁLOGO DE DETALLES
+    if (showDialog) {
+        NewsDetailDialog(
+            news = news,
+            onDismiss = { showDialog = false }
+        )
     }
 }

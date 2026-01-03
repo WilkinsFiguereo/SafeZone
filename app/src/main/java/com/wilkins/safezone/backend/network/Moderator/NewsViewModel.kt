@@ -1,6 +1,7 @@
 package com.wilkins.safezone.backend.network.Moderator
 
 import android.content.Context
+import android.media.MediaMetadataRetriever
 import android.net.Uri
 import android.util.Log
 import androidx.lifecycle.ViewModel
@@ -33,7 +34,7 @@ class NewsViewModel : ViewModel() {
     private val _errorMessage = MutableStateFlow<String?>(null)
     val errorMessage: StateFlow<String?> = _errorMessage.asStateFlow()
 
-    // 🔥 Cargar todas las noticias ordenadas por fecha (más recientes primero)
+    // 🔥 Cargar todas las noticias
     fun loadNews() {
         viewModelScope.launch {
             try {
@@ -45,17 +46,12 @@ class NewsViewModel : ViewModel() {
                     .select()
                     .decodeList<News>()
 
-                // Ordenar por fecha de creación (más recientes primero)
                 val sortedNews = news.sortedByDescending { it.createdAt ?: "" }
                 _newsList.value = sortedNews
 
                 Log.d(TAG, "✅ ${news.size} noticias cargadas exitosamente")
                 Log.d(TAG, "📊 Destacadas: ${news.count { it.isImportant }}, Normales: ${news.count { !it.isImportant }}")
-
-                // Log detallado para debug
-                sortedNews.take(3).forEach {
-                    Log.d(TAG, "📰 ${it.title} | Destacada: ${it.isImportant} | Fecha: ${it.createdAt}")
-                }
+                Log.d(TAG, "🎥 Con video: ${news.count { !it.videoUrl.isNullOrBlank() }}")
 
             } catch (e: Exception) {
                 Log.e(TAG, "❌ Error al cargar noticias: ${e.message}", e)
@@ -68,13 +64,14 @@ class NewsViewModel : ViewModel() {
         }
     }
 
-    // 🔥 Crear noticia con auto-refresh
+    // 🔥 Crear noticia con imagen Y/O video
     fun createNews(
         context: Context,
         title: String,
         description: String,
         isImportant: Boolean,
-        imageUri: Uri,
+        imageUri: Uri?,
+        videoUri: Uri?,
         onSuccess: () -> Unit,
         onError: (String) -> Unit
     ) {
@@ -91,30 +88,65 @@ class NewsViewModel : ViewModel() {
                     return@launch
                 }
 
-                // Subir imagen
-                Log.d(TAG, "📤 Subiendo imagen...")
-                val imageUrl = uploadImage(context, imageUri)
-                if (imageUrl == null) {
+                // Validar que tenga al menos imagen o video
+                if (imageUri == null && videoUri == null) {
                     withContext(Dispatchers.Main) {
-                        onError("Error al subir la imagen.")
+                        onError("Debes seleccionar al menos una imagen o un video")
                     }
                     return@launch
+                }
+
+                // Subir imagen (si existe)
+                var imageUrl: String? = null
+                if (imageUri != null) {
+                    Log.d(TAG, "📤 Subiendo imagen...")
+                    imageUrl = uploadImage(context, imageUri)
+                    if (imageUrl == null) {
+                        withContext(Dispatchers.Main) {
+                            onError("Error al subir la imagen.")
+                        }
+                        return@launch
+                    }
+                }
+
+                // Subir video (si existe)
+                var videoUrl: String? = null
+                if (videoUri != null) {
+                    Log.d(TAG, "🎥 Subiendo video...")
+
+                    // Validar duración del video
+                    val duration = getVideoDuration(context, videoUri)
+                    if (duration > 120000) { // 120 segundos = 2 minutos
+                        withContext(Dispatchers.Main) {
+                            onError("El video no debe superar los 2 minutos de duración")
+                        }
+                        return@launch
+                    }
+
+                    videoUrl = uploadVideo(context, videoUri)
+                    if (videoUrl == null) {
+                        withContext(Dispatchers.Main) {
+                            onError("Error al subir el video.")
+                        }
+                        return@launch
+                    }
                 }
 
                 // Crear noticia
                 val news = News(
                     title = title,
                     description = description,
-                    imageUrl = imageUrl,
+                    imageUrl = imageUrl ?: "",
+                    videoUrl = videoUrl,
                     isImportant = isImportant,
                     userId = currentUser.id
                 )
 
                 supabase.from("news").insert(news)
                 Log.d(TAG, "✅ Noticia creada exitosamente")
-                Log.d(TAG, "📊 Título: $title | Destacada: $isImportant")
+                Log.d(TAG, "📊 Título: $title | Destacada: $isImportant | Tiene video: ${videoUrl != null}")
 
-                // 🔥 Recargar noticias automáticamente
+                // Recargar noticias
                 loadNews()
 
                 withContext(Dispatchers.Main) {
@@ -133,7 +165,7 @@ class NewsViewModel : ViewModel() {
         }
     }
 
-    // 🔥 Actualizar noticia con auto-refresh
+    // 🔥 Actualizar noticia
     fun updateNews(
         context: Context,
         newsId: String,
@@ -141,7 +173,9 @@ class NewsViewModel : ViewModel() {
         description: String,
         isImportant: Boolean,
         newImageUri: Uri?,
+        newVideoUri: Uri?,
         currentImageUrl: String,
+        currentVideoUrl: String?,
         onSuccess: () -> Unit,
         onError: (String) -> Unit
     ) {
@@ -158,6 +192,7 @@ class NewsViewModel : ViewModel() {
                     return@launch
                 }
 
+                // Actualizar imagen si hay una nueva
                 val finalImageUrl = if (newImageUri != null) {
                     Log.d(TAG, "📤 Subiendo nueva imagen...")
                     uploadImage(context, newImageUri) ?: currentImageUrl
@@ -165,11 +200,29 @@ class NewsViewModel : ViewModel() {
                     currentImageUrl
                 }
 
+                // Actualizar video si hay uno nuevo
+                val finalVideoUrl = if (newVideoUri != null) {
+                    Log.d(TAG, "🎥 Subiendo nuevo video...")
+
+                    val duration = getVideoDuration(context, newVideoUri)
+                    if (duration > 120000) {
+                        withContext(Dispatchers.Main) {
+                            onError("El video no debe superar los 2 minutos de duración")
+                        }
+                        return@launch
+                    }
+
+                    uploadVideo(context, newVideoUri)
+                } else {
+                    currentVideoUrl
+                }
+
                 val updatedNews = News(
                     id = newsId,
                     title = title,
                     description = description,
                     imageUrl = finalImageUrl,
+                    videoUrl = finalVideoUrl,
                     isImportant = isImportant,
                     userId = currentUser.id
                 )
@@ -182,8 +235,6 @@ class NewsViewModel : ViewModel() {
                     }
 
                 Log.d(TAG, "✅ Noticia actualizada exitosamente")
-
-                // 🔥 Recargar noticias automáticamente
                 loadNews()
 
                 withContext(Dispatchers.Main) {
@@ -202,10 +253,11 @@ class NewsViewModel : ViewModel() {
         }
     }
 
-    // 🔥 Eliminar noticia con auto-refresh
+    // 🔥 Eliminar noticia
     fun deleteNews(
         newsId: String,
         imageUrl: String,
+        videoUrl: String?,
         onSuccess: () -> Unit,
         onError: (String) -> Unit
     ) {
@@ -220,7 +272,7 @@ class NewsViewModel : ViewModel() {
                     }
                 }
 
-                // Intentar eliminar la imagen del storage
+                // Eliminar imagen
                 try {
                     val fileName = imageUrl.substringAfterLast("/")
                     if (fileName.isNotBlank()) {
@@ -231,9 +283,20 @@ class NewsViewModel : ViewModel() {
                     Log.w(TAG, "⚠️ No se pudo eliminar imagen: ${e.message}")
                 }
 
-                Log.d(TAG, "✅ Noticia eliminada")
+                // Eliminar video
+                if (!videoUrl.isNullOrBlank()) {
+                    try {
+                        val fileName = videoUrl.substringAfterLast("/")
+                        if (fileName.isNotBlank()) {
+                            supabase.storage.from("news-videos").delete(fileName)
+                            Log.d(TAG, "🗑️ Video eliminado: $fileName")
+                        }
+                    } catch (e: Exception) {
+                        Log.w(TAG, "⚠️ No se pudo eliminar video: ${e.message}")
+                    }
+                }
 
-                // 🔥 Recargar noticias automáticamente
+                Log.d(TAG, "✅ Noticia eliminada")
                 loadNews()
 
                 withContext(Dispatchers.Main) {
@@ -252,7 +315,7 @@ class NewsViewModel : ViewModel() {
         }
     }
 
-    // 🔥 Subir imagen a Supabase Storage
+    // 🔥 Subir imagen
     private suspend fun uploadImage(context: Context, imageUri: Uri): String? {
         return withContext(Dispatchers.IO) {
             var file: File? = null
@@ -261,7 +324,7 @@ class NewsViewModel : ViewModel() {
                 val randomId = UUID.randomUUID().toString().take(8)
                 val fileName = "news_${timestamp}_${randomId}.jpg"
 
-                Log.d(TAG, "📁 Preparando archivo: $fileName")
+                Log.d(TAG, "📁 Preparando imagen: $fileName")
 
                 val inputStream = context.contentResolver.openInputStream(imageUri)
                     ?: run {
@@ -286,12 +349,12 @@ class NewsViewModel : ViewModel() {
 
                 val maxSize = 5 * 1024 * 1024 // 5MB
                 if (file.length() > maxSize) {
-                    Log.e(TAG, "❌ Archivo muy grande: ${file.length()} bytes")
+                    Log.e(TAG, "❌ Imagen muy grande: ${file.length()} bytes")
                     file.delete()
                     return@withContext null
                 }
 
-                Log.d(TAG, "📤 Subiendo a Supabase Storage...")
+                Log.d(TAG, "📤 Subiendo imagen a Supabase Storage...")
                 val bucket = supabase.storage.from("news-images")
                 val fileBytes = file.readBytes()
 
@@ -302,7 +365,7 @@ class NewsViewModel : ViewModel() {
                 )
 
                 val publicUrl = bucket.publicUrl(fileName)
-                Log.d(TAG, "✅ Imagen subida exitosamente: $publicUrl")
+                Log.d(TAG, "✅ Imagen subida exitosamente")
 
                 file.delete()
 
@@ -317,7 +380,85 @@ class NewsViewModel : ViewModel() {
         }
     }
 
-    // 🔥 Limpiar error
+    // 🔥 Subir video
+    private suspend fun uploadVideo(context: Context, videoUri: Uri): String? {
+        return withContext(Dispatchers.IO) {
+            var file: File? = null
+            try {
+                val timestamp = System.currentTimeMillis()
+                val randomId = UUID.randomUUID().toString().take(8)
+                val fileName = "news_video_${timestamp}_${randomId}.mp4"
+
+                Log.d(TAG, "📁 Preparando video: $fileName")
+
+                val inputStream = context.contentResolver.openInputStream(videoUri)
+                    ?: run {
+                        Log.e(TAG, "❌ No se pudo abrir el InputStream del video")
+                        return@withContext null
+                    }
+
+                file = File(context.cacheDir, fileName)
+                val outputStream = FileOutputStream(file)
+
+                inputStream.use { input ->
+                    outputStream.use { output ->
+                        input.copyTo(output)
+                    }
+                }
+
+                if (!file.exists() || file.length() == 0L) {
+                    Log.e(TAG, "❌ Video vacío o no existe")
+                    file?.delete()
+                    return@withContext null
+                }
+
+                val maxSize = 50 * 1024 * 1024 // 50MB (2 minutos aproximado)
+                if (file.length() > maxSize) {
+                    Log.e(TAG, "❌ Video muy grande: ${file.length()} bytes")
+                    file.delete()
+                    return@withContext null
+                }
+
+                Log.d(TAG, "📤 Subiendo video a Supabase Storage...")
+                val bucket = supabase.storage.from("news-videos")
+                val fileBytes = file.readBytes()
+
+                bucket.upload(
+                    path = fileName,
+                    data = fileBytes,
+                    upsert = false
+                )
+
+                val publicUrl = bucket.publicUrl(fileName)
+                Log.d(TAG, "✅ Video subido exitosamente")
+
+                file.delete()
+
+                publicUrl.takeIf { it.isNotBlank() }
+
+            } catch (e: Exception) {
+                Log.e(TAG, "❌ Error al subir video: ${e.message}", e)
+                e.printStackTrace()
+                file?.delete()
+                null
+            }
+        }
+    }
+
+    // 🔥 Obtener duración del video en milisegundos
+    private fun getVideoDuration(context: Context, videoUri: Uri): Long {
+        return try {
+            val retriever = MediaMetadataRetriever()
+            retriever.setDataSource(context, videoUri)
+            val duration = retriever.extractMetadata(MediaMetadataRetriever.METADATA_KEY_DURATION)
+            retriever.release()
+            duration?.toLongOrNull() ?: 0L
+        } catch (e: Exception) {
+            Log.e(TAG, "❌ Error al obtener duración del video: ${e.message}")
+            0L
+        }
+    }
+
     fun clearError() {
         _errorMessage.value = null
     }
