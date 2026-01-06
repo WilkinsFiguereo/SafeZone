@@ -1,5 +1,4 @@
 package com.wilkins.safezone.frontend.ui.GlobalAssociation.Screens.Statics
-
 import android.util.Log
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
@@ -16,14 +15,17 @@ import com.wilkins.safezone.backend.network.GlobalAssociation.GovernmentAnalytic
 import com.wilkins.safezone.frontend.ui.GlobalAssociation.GovernmentMenu
 import com.wilkins.safezone.frontend.ui.GlobalAssociation.Screens.Dashboard.Components.DashboardHeader
 import com.wilkins.safezone.frontend.ui.GlobalAssociation.Screens.Dashboard.Components.DashboardSection
+import com.wilkins.safezone.frontend.ui.GlobalAssociation.Screens.Dashboard.Components.EmptyCard
 import com.wilkins.safezone.frontend.ui.GlobalAssociation.Screens.Dashboard.Components.ErrorScreenAssoication
 import com.wilkins.safezone.frontend.ui.GlobalAssociation.Screens.Dashboard.Components.LoadingScreenAssoication
 import com.wilkins.safezone.frontend.ui.GlobalAssociation.Screens.Statics.Components.CompactMetricCard
+import com.wilkins.safezone.frontend.ui.GlobalAssociation.Screens.Statics.Components.LocationComparisonTable
 import com.wilkins.safezone.frontend.ui.GlobalAssociation.Screens.Statics.Components.MetricCard
 import com.wilkins.safezone.frontend.ui.GlobalAssociation.Screens.Statics.Components.MonthlyBarChart
 import com.wilkins.safezone.frontend.ui.GlobalAssociation.Screens.Statics.Components.MonthlyDetailTable
 import com.wilkins.safezone.frontend.ui.GlobalAssociation.Screens.Statics.Components.RankingList
 import com.wilkins.safezone.frontend.ui.GlobalAssociation.Screens.Statics.Components.StatusPieChart
+import com.wilkins.safezone.frontend.ui.GlobalAssociation.Screens.Statics.Components.StatusSummaryTable
 import com.wilkins.safezone.frontend.ui.GlobalAssociation.Screens.Statics.Components.TopItemCard
 import com.wilkins.safezone.ui.theme.PrimaryColor
 
@@ -101,7 +103,7 @@ private fun AnalyticsContent(
         item {
             DashboardHeader(
                 title = "Análisis y Estadísticas",
-                subtitle = "Datos y métricas del sistema"
+                subtitle = "Datos y métricas del sistema de reportes"
             )
         }
 
@@ -118,14 +120,30 @@ private fun AnalyticsContent(
                         backgroundColor = PrimaryColor
                     )
 
-                    // Promedio mensual
-                    MetricCard(
-                        title = "Promedio Mensual",
-                        value = String.format("%.1f", state.averageReportsPerMonth),
-                        subtitle = "Reportes por mes",
-                        icon = Icons.Default.TrendingUp,
-                        backgroundColor = Color(0xFF4CAF50)
-                    )
+                    // Grid de métricas secundarias
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.spacedBy(12.dp)
+                    ) {
+                        Box(modifier = Modifier.weight(1f)) {
+                            MetricCard(
+                                title = "Promedio Mensual",
+                                value = String.format("%.1f", state.averageReportsPerMonth),
+                                subtitle = "Reportes por mes",
+                                icon = Icons.Default.TrendingUp,
+                                backgroundColor = Color(0xFF4CAF50)
+                            )
+                        }
+                        Box(modifier = Modifier.weight(1f)) {
+                            MetricCard(
+                                title = "Ubicaciones",
+                                value = state.locationStats.size.toString(),
+                                subtitle = "Diferentes lugares",
+                                icon = Icons.Default.LocationOn,
+                                backgroundColor = Color(0xFFFF9800)
+                            )
+                        }
+                    }
                 }
             }
         }
@@ -143,6 +161,11 @@ private fun AnalyticsContent(
                             count = topMonth.count,
                             color = Color(0xFF2196F3)
                         )
+                    } ?: run {
+                        EmptyCard(
+                            icon = Icons.Default.CalendarMonth,
+                            message = "No hay datos mensuales disponibles"
+                        )
                     }
 
                     // Ubicación con más reportes
@@ -153,6 +176,11 @@ private fun AnalyticsContent(
                             value = topLocation.location,
                             count = topLocation.count,
                             color = Color(0xFFFF9800)
+                        )
+                    } ?: run {
+                        EmptyCard(
+                            icon = Icons.Default.LocationOn,
+                            message = "No hay datos de ubicaciones disponibles"
                         )
                     }
 
@@ -165,6 +193,11 @@ private fun AnalyticsContent(
                             count = topAffair.count,
                             color = Color(0xFF9C27B0)
                         )
+                    } ?: run {
+                        EmptyCard(
+                            icon = Icons.Default.Category,
+                            message = "No hay datos de tipos de reporte disponibles"
+                        )
                     }
                 }
             }
@@ -174,35 +207,40 @@ private fun AnalyticsContent(
         item {
             DashboardSection(title = "Tendencias Temporales") {
                 Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
-                    // Métricas de rango de tiempo
-                    Row(
-                        modifier = Modifier.fillMaxWidth(),
-                        horizontalArrangement = Arrangement.spacedBy(12.dp)
-                    ) {
-                        state.timeRangeStats.take(2).forEach { stat ->
-                            Box(modifier = Modifier.weight(1f)) {
-                                CompactMetricCard(
-                                    label = stat.label,
-                                    value = stat.count.toString(),
-                                    color = PrimaryColor
-                                )
+                    if (state.timeRangeStats.isNotEmpty()) {
+                        // Métricas de rango de tiempo - Primera fila
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.spacedBy(12.dp)
+                        ) {
+                            state.timeRangeStats.take(2).forEach { stat ->
+                                Box(modifier = Modifier.weight(1f)) {
+                                    CompactMetricCard(
+                                        label = stat.label,
+                                        value = stat.count.toString(),
+                                        color = PrimaryColor
+                                    )
+                                }
                             }
                         }
-                    }
 
-                    Row(
-                        modifier = Modifier.fillMaxWidth(),
-                        horizontalArrangement = Arrangement.spacedBy(12.dp)
-                    ) {
-                        state.timeRangeStats.drop(2).take(2).forEach { stat ->
-                            Box(modifier = Modifier.weight(1f)) {
-                                CompactMetricCard(
-                                    label = stat.label,
-                                    value = stat.count.toString(),
-                                    color = Color(0xFF4CAF50)
-                                )
+                        // Segunda fila
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.spacedBy(12.dp)
+                        ) {
+                            state.timeRangeStats.drop(2).take(2).forEach { stat ->
+                                Box(modifier = Modifier.weight(1f)) {
+                                    CompactMetricCard(
+                                        label = stat.label,
+                                        value = stat.count.toString(),
+                                        color = Color(0xFF4CAF50)
+                                    )
+                                }
                             }
                         }
+                    } else {
+                        EmptyCard(message = "No hay datos de tendencias temporales")
                     }
                 }
             }
@@ -254,9 +292,65 @@ private fun AnalyticsContent(
             }
         }
 
+        // Resumen adicional de estados
+        item {
+            DashboardSection(title = "Resumen por Estado") {
+                val pendingCount = state.statusStats.find { it.statusId == 1 }?.count ?: 0
+                val inProgressCount = state.statusStats.find { it.statusId == 2 }?.count ?: 0
+                val completedCount = state.statusStats.find { it.statusId == 3 }?.count ?: 0
+                val cancelledCount = state.statusStats.find { it.statusId == 4 }?.count ?: 0
+
+                StatusSummaryTable(
+                    pendingCount = pendingCount,
+                    inProgressCount = inProgressCount,
+                    completedCount = completedCount,
+                    cancelledCount = cancelledCount,
+                    totalCount = state.totalReports
+                )
+            }
+        }
+
+        // Comparación de ubicaciones (tabla adicional)
+        item {
+            if (state.locationStats.isNotEmpty()) {
+                DashboardSection(title = "Análisis de Ubicaciones") {
+                    LocationComparisonTable(
+                        data = state.locationStats.map { it.location to it.count }
+                    )
+                }
+            }
+        }
+
+        // Estadísticas adicionales
+        item {
+            DashboardSection(title = "Información Adicional") {
+                Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.spacedBy(12.dp)
+                    ) {
+                        Box(modifier = Modifier.weight(1f)) {
+                            CompactMetricCard(
+                                label = "Total Tipos",
+                                value = state.affairStats.size.toString(),
+                                color = Color(0xFF9C27B0)
+                            )
+                        }
+                        Box(modifier = Modifier.weight(1f)) {
+                            CompactMetricCard(
+                                label = "Total Meses",
+                                value = state.monthlyStats.size.toString(),
+                                color = Color(0xFF2196F3)
+                            )
+                        }
+                    }
+                }
+            }
+        }
+
         // Espaciado final
         item {
-            Spacer(modifier = Modifier.height(16.dp))
+            Spacer(modifier = Modifier.height(32.dp))
         }
     }
 }

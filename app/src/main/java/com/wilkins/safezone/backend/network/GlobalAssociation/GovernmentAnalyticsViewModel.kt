@@ -3,6 +3,7 @@ package com.wilkins.safezone.backend.network.GlobalAssociation
 import android.util.Log
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.wilkins.safezone.backend.network.Admin.Dashboard.DateParser
 import com.wilkins.safezone.backend.network.GlobalAssociation.*
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -158,14 +159,14 @@ class GovernmentAnalyticsViewModel : ViewModel() {
     }
 
     private fun calculateMonthlyStats(reports: List<ReportDto>): List<MonthlyStatistic> {
-        val dateFormat = SimpleDateFormat("yyyy-MM-dd HH:mm:ss", Locale.getDefault())
         val monthFormat = SimpleDateFormat("MMM", Locale("es", "ES"))
         val yearFormat = SimpleDateFormat("yyyy", Locale.getDefault())
 
         return reports
             .mapNotNull { report ->
                 try {
-                    val date = dateFormat.parse(report.createdAt.replace("+00", ""))
+                    val date = DateParser.parseIsoDate(report.createdAt)
+
                     date?.let {
                         val calendar = Calendar.getInstance()
                         calendar.time = it
@@ -176,7 +177,7 @@ class GovernmentAnalyticsViewModel : ViewModel() {
                         )
                     }
                 } catch (e: Exception) {
-                    Log.e(TAG, "Error parseando fecha: ${report.createdAt}", e)
+                    Log.e(TAG, "Error procesando fecha: ${report.createdAt}", e)
                     null
                 }
             }
@@ -192,6 +193,58 @@ class GovernmentAnalyticsViewModel : ViewModel() {
             .sortedWith(compareBy({ it.year }, { it.monthNumber }))
     }
 
+    private fun calculateTimeRangeStats(reports: List<ReportDto>): List<TimeRangeStatistic> {
+        val now = Calendar.getInstance()
+
+        val last7Days = reports.count { report ->
+            try {
+                val date = DateParser.parseIsoDate(report.createdAt)
+                if (date != null) {
+                    val calendar = Calendar.getInstance()
+                    calendar.time = date
+                    calendar.add(Calendar.DAY_OF_YEAR, 7)
+                    calendar.after(now)
+                } else false
+            } catch (e: Exception) {
+                false
+            }
+        }
+
+        val last30Days = reports.count { report ->
+            try {
+                val date = DateParser.parseIsoDate(report.createdAt)
+                if (date != null) {
+                    val calendar = Calendar.getInstance()
+                    calendar.time = date
+                    calendar.add(Calendar.DAY_OF_YEAR, 30)
+                    calendar.after(now)
+                } else false
+            } catch (e: Exception) {
+                false
+            }
+        }
+
+        val last90Days = reports.count { report ->
+            try {
+                val date = DateParser.parseIsoDate(report.createdAt)
+                if (date != null) {
+                    val calendar = Calendar.getInstance()
+                    calendar.time = date
+                    calendar.add(Calendar.DAY_OF_YEAR, 90)
+                    calendar.after(now)
+                } else false
+            } catch (e: Exception) {
+                false
+            }
+        }
+
+        return listOf(
+            TimeRangeStatistic("Últimos 7 días", last7Days),
+            TimeRangeStatistic("Últimos 30 días", last30Days),
+            TimeRangeStatistic("Últimos 90 días", last90Days),
+            TimeRangeStatistic("Total", reports.size)
+        )
+    }
     private fun calculateLocationStats(reports: List<ReportDto>): List<LocationStatistic> {
         return reports
             .mapNotNull { it.reportLocation }
@@ -247,59 +300,7 @@ class GovernmentAnalyticsViewModel : ViewModel() {
             .sortedByDescending { it.count }
     }
 
-    private fun calculateTimeRangeStats(reports: List<ReportDto>): List<TimeRangeStatistic> {
-        val now = Calendar.getInstance()
-        val dateFormat = SimpleDateFormat("yyyy-MM-dd HH:mm:ss", Locale.getDefault())
 
-        val last7Days = reports.count { report ->
-            try {
-                val date = dateFormat.parse(report.createdAt.replace("+00", ""))
-                if (date != null) {
-                    val calendar = Calendar.getInstance()
-                    calendar.time = date
-                    calendar.add(Calendar.DAY_OF_YEAR, 7)
-                    calendar.after(now)
-                } else false
-            } catch (e: Exception) {
-                false
-            }
-        }
-
-        val last30Days = reports.count { report ->
-            try {
-                val date = dateFormat.parse(report.createdAt.replace("+00", ""))
-                if (date != null) {
-                    val calendar = Calendar.getInstance()
-                    calendar.time = date
-                    calendar.add(Calendar.DAY_OF_YEAR, 30)
-                    calendar.after(now)
-                } else false
-            } catch (e: Exception) {
-                false
-            }
-        }
-
-        val last90Days = reports.count { report ->
-            try {
-                val date = dateFormat.parse(report.createdAt.replace("+00", ""))
-                if (date != null) {
-                    val calendar = Calendar.getInstance()
-                    calendar.time = date
-                    calendar.add(Calendar.DAY_OF_YEAR, 90)
-                    calendar.after(now)
-                } else false
-            } catch (e: Exception) {
-                false
-            }
-        }
-
-        return listOf(
-            TimeRangeStatistic("Últimos 7 días", last7Days),
-            TimeRangeStatistic("Últimos 30 días", last30Days),
-            TimeRangeStatistic("Últimos 90 días", last90Days),
-            TimeRangeStatistic("Total", reports.size)
-        )
-    }
 
     override fun onCleared() {
         super.onCleared()

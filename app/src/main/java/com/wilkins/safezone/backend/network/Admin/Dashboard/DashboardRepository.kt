@@ -8,6 +8,8 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
+import java.text.SimpleDateFormat
+import java.util.*
 
 // ============================================
 // MODELOS DE DATOS
@@ -105,12 +107,18 @@ data class AffairBasic(
     @SerialName("id")
     val id: Int = 0,
 
+    @SerialName("name")
+    val name: String? = null,
+
     @SerialName("affair_name")
-    val affairName: String = ""
-)
+    val affairNameAlt: String? = null
+) {
+    val affairName: String
+        get() = name ?: affairNameAlt ?: "Sin categoría"
+}
 
 // ============================================
-// REPOSITORY - VERSIÓN CORREGIDA
+// REPOSITORY - VERSIÓN CORREGIDA CON FECHAS
 // ============================================
 
 class DashboardRepository {
@@ -190,22 +198,63 @@ class DashboardRepository {
     }
 
     /**
-     * Obtener actividad mensual (últimos 5 meses)
+     * Obtener actividad mensual (últimos 6 meses) - VERSIÓN CORREGIDA CON FECHAS
      */
     suspend fun getMonthlyActivity(): List<MonthlyActivity> = withContext(Dispatchers.IO) {
         try {
             println("📈 DashboardRepository: Obteniendo actividad mensual...")
 
-            // Simulamos datos por ahora - puedes implementar lógica más compleja después
-            val activities = listOf(
-                MonthlyActivity("Ene", 10),
-                MonthlyActivity("Feb", 15),
-                MonthlyActivity("Mar", 12),
-                MonthlyActivity("Abr", 20),
-                MonthlyActivity("May", 18)
-            )
+            // Obtener todos los reportes
+            val allReports = try {
+                supabase.from("reports")
+                    .select()
+                    .decodeList<ReportDto>()
+            } catch (e: Exception) {
+                System.err.println("   ❌ ERROR al consultar reportes para actividad mensual")
+                System.err.println("      Error: ${e.message}")
+                return@withContext emptyList()
+            }
 
-            println("✅ DashboardRepository: Actividad mensual simulada obtenida: ${activities.size} meses")
+            println("   ✓ Total reportes obtenidos: ${allReports.size}")
+
+            // Parsear fechas y agrupar por mes
+            val monthFormat = SimpleDateFormat("MMM", Locale("es", "ES"))
+            val monthlyData = allReports
+                .mapNotNull { report ->
+                    try {
+                        val date = DateParser.parseIsoDate(report.createdAt)
+                        date?.let { monthFormat.format(it) }
+                    } catch (e: Exception) {
+                        println("   ⚠️ Error parseando fecha: ${report.createdAt}")
+                        null
+                    }
+                }
+                .groupingBy { it }
+                .eachCount()
+
+            println("   ✓ Datos agrupados por mes: ${monthlyData.size} meses")
+
+            // Convertir a lista de MonthlyActivity
+            val activities = monthlyData
+                .map { (month, count) ->
+                    MonthlyActivity(
+                        monthName = month,
+                        reportCount = count
+                    )
+                }
+                .sortedBy {
+                    // Ordenar por mes (puedes mejorar esto con lógica más compleja)
+                    val monthOrder = listOf("Ene", "Feb", "Mar", "Abr", "May", "Jun",
+                        "Jul", "Ago", "Sep", "Oct", "Nov", "Dic")
+                    monthOrder.indexOf(it.monthName)
+                }
+                .takeLast(6) // Últimos 6 meses
+
+            println("✅ DashboardRepository: Actividad mensual obtenida: ${activities.size} meses")
+            activities.forEach {
+                println("   - ${it.monthName}: ${it.reportCount} reportes")
+            }
+
             activities
         } catch (e: Exception) {
             System.err.println("❌ DashboardRepository: Error al obtener actividad mensual")
@@ -216,7 +265,7 @@ class DashboardRepository {
     }
 
     /**
-     * Obtener últimos reportes
+     * Obtener últimos reportes - VERSIÓN CORREGIDA CON ORDENAMIENTO
      */
     suspend fun getRecentReports(limit: Int = 3): List<RecentReport> = withContext(Dispatchers.IO) {
         try {
@@ -225,11 +274,19 @@ class DashboardRepository {
             // Obtener reportes recientes
             println("   🔍 Consultando tabla 'reports'...")
             val reportsRaw = try {
-                supabase.from("reports")
+                val allReports = supabase.from("reports")
                     .select()
                     .decodeList<ReportDto>()
-                    .sortedByDescending { it.createdAt }
-                    .take(limit)
+
+                // Ordenar por fecha usando el DateParser
+                allReports.sortedByDescending { report ->
+                    try {
+                        DateParser.parseIsoDate(report.createdAt)?.time ?: 0L
+                    } catch (e: Exception) {
+                        0L
+                    }
+                }.take(limit)
+
             } catch (e: Exception) {
                 System.err.println("   ❌ ERROR al consultar tabla 'reports':")
                 System.err.println("      Mensaje: ${e.message}")
@@ -343,8 +400,7 @@ class DashboardRepository {
     }
 
     /**
-     * Obtener últimas actividades del log
-     * CORREGIDO: Mejor manejo de errores y logs detallados
+     * Obtener últimas actividades del log - VERSIÓN CORREGIDA CON ORDENAMIENTO
      */
     suspend fun getRecentActivities(limit: Int = 5): List<ActivityLog> = withContext(Dispatchers.IO) {
         try {
@@ -352,18 +408,23 @@ class DashboardRepository {
             println("   🔍 Consultando tabla 'activity_log'...")
 
             val activities = try {
-                // Query simple sin filtros complicados
                 val result = supabase
                     .from("activity_log")
                     .select()
 
                 println("   ✓ Query ejecutada, decodificando...")
-
                 val decoded = result.decodeList<ActivityLog>()
                 println("   ✓ ${decoded.size} actividades decodificadas")
 
-                // Ordenar y limitar manualmente en Kotlin
-                val sorted = decoded.sortedByDescending { it.createdAt }
+                // Ordenar usando DateParser y limitar
+                val sorted = decoded.sortedByDescending { activity ->
+                    try {
+                        DateParser.parseIsoDate(activity.createdAt)?.time ?: 0L
+                    } catch (e: Exception) {
+                        println("   ⚠️ Error parseando fecha de actividad: ${activity.createdAt}")
+                        0L
+                    }
+                }
                 println("   ✓ Actividades ordenadas")
 
                 val limited = sorted.take(limit)
