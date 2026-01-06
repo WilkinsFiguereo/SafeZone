@@ -6,9 +6,9 @@ import androidx.navigation.NavGraphBuilder
 import androidx.navigation.NavHostController
 import androidx.navigation.compose.composable
 import com.wilkins.safezone.backend.network.SupabaseService
-import com.wilkins.safezone.frontend.ui.Moderator.ReviewReports.ReportStatusScreen
+import com.wilkins.safezone.frontend.ui.Moderator.screens.ReviewReports.ReportDetail.ReportStatusScreen
 import com.wilkins.safezone.frontend.ui.Moderator.Dashboard.ModeratorDashboard
-import com.wilkins.safezone.frontend.ui.Moderator.ReviewReports.RewiewReportsListScreen
+import com.wilkins.safezone.frontend.ui.Moderator.screens.ReviewReports.ReportsList.RewiewReportsListScreen
 
 /**
  * ⚙️ RUTAS DE MODERADOR (Role ID: 3)

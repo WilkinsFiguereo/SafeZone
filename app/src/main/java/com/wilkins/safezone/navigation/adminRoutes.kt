@@ -7,14 +7,14 @@ import androidx.navigation.NavHostController
 import androidx.navigation.NavType
 import androidx.navigation.compose.composable
 import androidx.navigation.navArgument
-import com.wilkins.safezone.frontend.ui.Admin.Affair.AffairScreen
-import com.wilkins.safezone.frontend.ui.Admin.Affair.IncidentCategoryScreen
-import com.wilkins.safezone.frontend.ui.Admin.CrudUser.CreateUserScreen
-import com.wilkins.safezone.frontend.ui.Admin.CrudUser.CrudUsuarios
-import com.wilkins.safezone.frontend.ui.Admin.CrudUser.CrudUsuariosDisabled
-import com.wilkins.safezone.frontend.ui.Admin.CrudUser.UserProfileCrud
-import com.wilkins.safezone.frontend.ui.Admin.Dasbhoard.AdminDashboard
-import com.wilkins.safezone.frontend.ui.screens.auth.AccountDisabledScreen
+import com.wilkins.safezone.frontend.ui.Admin.Screens.Affair.AffairScreen
+import com.wilkins.safezone.frontend.ui.Admin.Screens.Affair.IncidentCategoryScreen
+import com.wilkins.safezone.frontend.ui.Admin.Screens.CrudUser.CreateUserScreen
+import com.wilkins.safezone.frontend.ui.Admin.Screens.CrudUser.CrudUsuarios
+import com.wilkins.safezone.frontend.ui.Admin.Screens.CrudUser.CrudUsuariosDisabled
+import com.wilkins.safezone.frontend.ui.Admin.Screens.CrudUser.UserProfileCrud
+import com.wilkins.safezone.frontend.ui.Admin.Screens.Dasbhoard.AdminDashboard
+import com.wilkins.safezone.frontend.ui.auth.components.AccountDisabledScreen
 
 fun NavGraphBuilder.adminRoutes(
     navController: NavHostController,

@@ -4,12 +4,12 @@ import android.util.Log
 import androidx.navigation.NavGraphBuilder
 import androidx.navigation.NavHostController
 import androidx.navigation.compose.composable
-import com.wilkins.safezone.frontend.ui.GlobalAssociation.ReportSent.PendingReportsScreen
-import com.wilkins.safezone.frontend.ui.GlobalAssociation.ReportSent.ReportDetailScreen
-import com.wilkins.safezone.frontend.ui.GlobalAssociation.ReportSent.ReportsCancelledScreen
-import com.wilkins.safezone.frontend.ui.GlobalAssociation.ReportSent.ReportsCompletedScreen
-import com.wilkins.safezone.frontend.ui.GlobalAssociation.ReportSent.ReportsProgressScreen
-import com.wilkins.safezone.frontend.ui.GlobalAssociation.ReportSent.ReportsSentScreen
+import com.wilkins.safezone.frontend.ui.GlobalAssociation.Screens.ReportSent.ReportList.PendingReportsScreen
+import com.wilkins.safezone.frontend.ui.GlobalAssociation.Screens.ReportSent.ReportDetail.ReportDetailScreen
+import com.wilkins.safezone.frontend.ui.GlobalAssociation.Screens.ReportSent.ReportList.ReportsCancelledScreen
+import com.wilkins.safezone.frontend.ui.GlobalAssociation.Screens.ReportSent.ReportList.ReportsCompletedScreen
+import com.wilkins.safezone.frontend.ui.GlobalAssociation.Screens.ReportSent.ReportList.ReportsProgressScreen
+import com.wilkins.safezone.frontend.ui.GlobalAssociation.Screens.ReportSent.ReportList.ReportsSentScreen
 
 /**
  * 🏢 RUTAS DE ASOCIACIÓN (Role ID: 4)

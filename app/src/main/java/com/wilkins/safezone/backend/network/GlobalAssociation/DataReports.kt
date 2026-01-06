@@ -40,18 +40,23 @@ data class ReportDto(
     val idReportingStatus: Int
 )
 
-// Modelo de Affair/Asunto
+// Modelo de Affair/Asunto - ACTUALIZADO para soportar múltiples nombres de campo
 @Serializable
 data class AffairDto(
     @SerialName("id")
     val id: Int,
 
-    @SerialName("affair_name")
-    val affairName: String,
+    // Intenta primero con "name", si no existe usa "affair_name"
+    @SerialName("name")
+    val affairName: String? = null,
 
     @SerialName("description")
     val description: String? = null
-)
+) {
+    // Propiedad computada para obtener el nombre del affair
+    val name: String
+        get() = affairName ?: "Sin nombre"
+}
 
 // Modelo de Estado de Reporte
 @Serializable

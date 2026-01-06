@@ -5,9 +5,9 @@ import androidx.navigation.NavGraphBuilder
 import androidx.navigation.NavHostController
 import androidx.navigation.compose.composable
 import com.wilkins.safezone.GenericUserUi.SplashScreen
-import com.wilkins.safezone.frontend.ui.screens.auth.LoginScreen
-import com.wilkins.safezone.frontend.ui.screens.auth.RegisterScreen
-import com.wilkins.safezone.frontend.ui.screens.auth.VerificationScreen
+import com.wilkins.safezone.frontend.ui.auth.screens.Login.LoginScreen
+import com.wilkins.safezone.frontend.ui.auth.screens.Register.RegisterScreen
+import com.wilkins.safezone.frontend.ui.auth.screens.Register.VerificationScreen
 import com.wilkins.safezone.ui.theme.PrimaryColor
 import com.wilkins.safezone.backend.network.SupabaseService
 import android.util.Log
