@@ -23,11 +23,11 @@ object GoogleSignInBridge {
     fun initializeGoogleSignIn(context: Context): GoogleSignInClient {
         if (googleSignInClient == null) {
             val gso = GoogleSignInOptions.Builder(GoogleSignInOptions.DEFAULT_SIGN_IN)
-                .requestIdToken(context.getString(com.google.android.gms.base.R.string.common_google_play_services_enable_button))
+                .requestIdToken(context.getString(R.string.default_web_client_id))
                 .requestEmail()
                 .build()
 
-            googleSignInClient = GoogleSignIn.getClient(context, gso)
+            googleSignInClient = GoogleSignIn.getClient(/* context = */ context, /* options = */ gso)
         }
         return googleSignInClient!!
     }

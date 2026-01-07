@@ -84,7 +84,7 @@ fun RegisterScreen(
                         val userId = session.user?.id
 
                         // ✅ Fetch user from your database using filter DSL
-                        val user = supabase.from("users")
+                        val user = supabase.from("profiles")
                             .select() {
                                 filter {
                                     eq("id", userId ?: "")
