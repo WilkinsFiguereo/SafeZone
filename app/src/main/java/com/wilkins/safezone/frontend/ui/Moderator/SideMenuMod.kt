@@ -10,7 +10,6 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
-import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.*
@@ -18,7 +17,6 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.text.font.FontWeight
@@ -46,12 +44,11 @@ fun ModeratorSideMenu(
 
     LaunchedEffect(isMenuOpen) { isOpen = isMenuOpen }
 
-    // 🔥 SECCIONES DEL MENÚ
     val menuSections = listOf(
         MenuSection(
             title = "Panel Principal",
             items = listOf(
-                ModeratorMenuItem(Icons.Default.Dashboard, "Dashboard", "moderatorDashboard"),
+                ModeratorMenuItem(Icons.Default.Dashboard, "Dashboard", "DashboardMod"),
                 ModeratorMenuItem(Icons.Default.BarChart, "Estadísticas", "moderatorStats")
             )
         ),
@@ -61,6 +58,13 @@ fun ModeratorSideMenu(
                 ModeratorMenuItem(Icons.Default.Newspaper, "Ver Noticias", "NewsUser"),
                 ModeratorMenuItem(Icons.Default.Add, "Subir Noticia", "SaveNews"),
                 ModeratorMenuItem(Icons.Default.Edit, "Editar Noticias", "news_list")
+            )
+        ),
+        MenuSection(
+            title = "Gestión de Encuestas",
+            items = listOf(
+                ModeratorMenuItem(Icons.Default.Poll, "Ver Encuestas", "moderatorPollList"),
+                ModeratorMenuItem(Icons.Default.AddCircle, "Crear Encuesta", "moderatorCreatePoll")
             )
         ),
         MenuSection(
@@ -91,7 +95,6 @@ fun ModeratorSideMenu(
 
     Box(modifier = modifier.fillMaxSize()) {
 
-        // 🔹 TOPBAR
         Column(modifier = Modifier.fillMaxSize()) {
             Row(
                 modifier = Modifier
@@ -131,7 +134,6 @@ fun ModeratorSideMenu(
             }
         }
 
-        // 🔥 MENÚ LATERAL ANIMADO
         AnimatedVisibility(
             visible = isOpen,
             enter = slideInHorizontally(initialOffsetX = { -it }, animationSpec = tween(300)),

@@ -9,12 +9,16 @@ import android.util.Log
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.*
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
+import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.*
@@ -96,7 +100,12 @@ fun UserHomeScreen(navController: NavController, context: Context, supabaseClien
             WelcomeBanner()
             Spacer(modifier = Modifier.height(16.dp))
 
-            // 🗺️ Nueva sección: Reportes cercanos con mapa
+            // 📋 NUEVA SECCIÓN: Acceso rápido a Encuestas
+            SurveysQuickAccessSection(navController = navController)
+
+            Spacer(modifier = Modifier.height(16.dp))
+
+            // 🗺️ Sección: Reportes cercanos con mapa
             NearbyReportsMapSection()
 
             Spacer(modifier = Modifier.height(16.dp))
@@ -124,6 +133,77 @@ fun UserHomeScreen(navController: NavController, context: Context, supabaseClien
             context = context,
             supabaseClient = supabaseClient
         )
+    }
+}
+
+// 📋 NUEVA FUNCIÓN: Sección de acceso rápido a encuestas
+@Composable
+fun SurveysQuickAccessSection(navController: NavController) {
+    Card(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(horizontal = 16.dp)
+            .clickable { navController.navigate("userSurveys") },
+        shape = RoundedCornerShape(16.dp),
+        elevation = CardDefaults.cardElevation(defaultElevation = 4.dp),
+        colors = CardDefaults.cardColors(
+            containerColor = Color(0xFF6200EE) // Color morado/primario
+        )
+    ) {
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(20.dp),
+            horizontalArrangement = Arrangement.SpaceBetween,
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Row(
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(16.dp)
+            ) {
+                // Icono en círculo
+                Box(
+                    modifier = Modifier
+                        .size(56.dp)
+                        .background(
+                            color = Color.White.copy(alpha = 0.2f),
+                            shape = RoundedCornerShape(12.dp)
+                        ),
+                    contentAlignment = Alignment.Center
+                ) {
+                    Icon(
+                        Icons.Default.Poll,
+                        contentDescription = "Encuestas",
+                        modifier = Modifier.size(32.dp),
+                        tint = Color.White
+                    )
+                }
+
+                // Texto
+                Column {
+                    Text(
+                        text = "Encuestas Disponibles",
+                        style = MaterialTheme.typography.titleMedium,
+                        fontWeight = FontWeight.Bold,
+                        color = Color.White
+                    )
+                    Spacer(modifier = Modifier.height(4.dp))
+                    Text(
+                        text = "Comparte tu opinión",
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = Color.White.copy(alpha = 0.9f)
+                    )
+                }
+            }
+
+            // Flecha
+            Icon(
+                Icons.Default.ChevronRight,
+                contentDescription = "Ir a encuestas",
+                tint = Color.White,
+                modifier = Modifier.size(28.dp)
+            )
+        }
     }
 }
 

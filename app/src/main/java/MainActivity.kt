@@ -30,7 +30,6 @@ import androidx.navigation.navArgument
 import com.wilkins.safezone.GenericUserUi.SplashScreen
 import com.wilkins.safezone.backend.network.AppUser
 import com.wilkins.safezone.backend.network.SupabaseService
-import com.wilkins.safezone.bridge.User.Form.ReportRepository
 import com.wilkins.safezone.frontend.Moderator.NewsSave.NewsSaveScreen
 import com.wilkins.safezone.frontend.ui.Moderator.News.NewsListScreen
 import com.wilkins.safezone.frontend.ui.Admin.CrudUser.CreateUserScreen
@@ -50,6 +49,13 @@ import com.wilkins.safezone.frontend.ui.user.Homepage.UserHomeScreen
 import com.wilkins.safezone.frontend.ui.user.News.NewsScreen
 import com.wilkins.safezone.frontend.ui.user.Notification.Notification
 import com.wilkins.safezone.frontend.ui.user.Notification.NotificationsScreen
+// 📋 IMPORTACIONES DE ENCUESTAS (MODERADOR)
+import com.wilkins.safezone.frontend.ui.Moderator.SurveyListScreen
+import com.wilkins.safezone.frontend.ui.Moderator.SurveyCreateScreen
+import com.wilkins.safezone.frontend.ui.Moderator.SurveyResultsScreen
+// 📋 IMPORTACIONES DE ENCUESTAS (USUARIO)
+import com.wilkins.safezone.frontend.ui.User.Survey.UserSurveyListScreen
+import com.wilkins.safezone.frontend.ui.User.Survey.UserSurveyAnswerScreen
 import com.wilkins.safezone.ui.theme.SafeZoneTheme
 import com.wilkins.safezone.ui.theme.PrimaryColor
 import io.github.jan.supabase.gotrue.auth
@@ -72,7 +78,6 @@ class MainActivity : ComponentActivity() {
 
                     val user = userState.value
 
-                    // Función helper para verificar si hay sesión activa
                     fun hasActiveSession(): Boolean {
                         val session = SessionManager.loadSession(context)
                         val hasSession = session != null
@@ -84,10 +89,6 @@ class MainActivity : ComponentActivity() {
                         navController = navController,
                         startDestination = "splash"
                     ) {
-                        // ════════════════════════════════════════════
-                        // RUTAS PÚBLICAS (Sin autenticación requerida)
-                        // ════════════════════════════════════════════
-
                         composable("splash") {
                             SplashScreen(navController)
                         }
@@ -96,7 +97,7 @@ class MainActivity : ComponentActivity() {
                             LoginScreen(
                                 navController = navController,
                                 onLoginSuccess = { user ->
-                                    Log.i("MainActivity", "🔍 Usuario logueado: id=${user.id}, role=${user.role_id}")
+                                    Log.i("MainActivity", "🔓 Usuario logueado: id=${user.id}, role=${user.role_id}")
 
                                     when (user.role_id) {
                                         1 -> {
@@ -165,11 +166,6 @@ class MainActivity : ComponentActivity() {
                             )
                         }
 
-                        // ═══════════════════════════════════════════
-                        // RUTAS PROTEGIDAS (Requieren autenticación)
-                        // ═══════════════════════════════════════════
-
-                        // 👤 PANTALLA DE USUARIO
                         composable("userHome/{userId}") {
                             if (!hasActiveSession()) {
                                 Log.w("MainActivity", "⚠️ Intento de acceso sin sesión a userHome")
@@ -182,7 +178,6 @@ class MainActivity : ComponentActivity() {
                             }
                         }
 
-                        // 🎯 ADMIN - DASHBOARD
                         composable("DashboardAdmin") {
                             if (!hasActiveSession()) {
                                 Log.w("MainActivity", "⚠️ Intento de acceso sin sesión a DashboardAdmin")
@@ -194,7 +189,6 @@ class MainActivity : ComponentActivity() {
                             }
                         }
 
-                        // ⚙️ ADMIN - CRUD DE USUARIOS
                         composable("crudUsuarios") {
                             if (!hasActiveSession()) {
                                 Log.w("MainActivity", "⚠️ Intento de acceso sin sesión a crudUsuarios")
@@ -206,7 +200,6 @@ class MainActivity : ComponentActivity() {
                             }
                         }
 
-                        // 🧭 Navigation Drawer
                         composable("navigationDrawer") {
                             if (!hasActiveSession()) {
                                 Log.w("MainActivity", "⚠️ Intento de acceso sin sesión a navigationDrawer")
@@ -219,7 +212,6 @@ class MainActivity : ComponentActivity() {
                             }
                         }
 
-                        // 👤 PERFIL
                         composable("profile") {
                             if (!hasActiveSession()) {
                                 Log.w("MainActivity", "⚠️ Intento de acceso sin sesión a profile")
@@ -232,7 +224,6 @@ class MainActivity : ComponentActivity() {
                             }
                         }
 
-                        // ⚙️ CONFIGURACIÓN
                         composable("settings") {
                             if (!hasActiveSession()) {
                                 Log.w("MainActivity", "⚠️ Intento de acceso sin sesión a settings")
@@ -251,7 +242,6 @@ class MainActivity : ComponentActivity() {
                             }
                         }
 
-                        // 📋 PERFIL DETALLE DE USUARIO (Admin)
                         composable(
                             route = "userProfileCrud/{uuid}",
                             arguments = listOf(navArgument("uuid") { type = NavType.StringType })
@@ -328,7 +318,6 @@ class MainActivity : ComponentActivity() {
                             }
                         }
 
-                        // 📰 CRUD DE NOTICIAS - EDITAR Y ELIMINAR
                         composable("news_list") {
                             if (!hasActiveSession()) {
                                 Log.w("MainActivity", "⚠️ Intento de acceso sin sesión a news_list")
@@ -357,13 +346,92 @@ class MainActivity : ComponentActivity() {
                                 )
                             }
                         }
+
+                        // ╔════════════════════════════════════════╗
+                        // 📋 RUTAS DE ENCUESTAS (MODERADOR)
+                        // ╚════════════════════════════════════════╝
+
+                        composable("moderatorPollList") {
+                            if (!hasActiveSession()) {
+                                Log.w("MainActivity", "⚠️ Intento de acceso sin sesión a moderatorPollList")
+                                navController.navigate("login") {
+                                    popUpTo(0) { inclusive = true }
+                                }
+                            } else {
+                                SurveyListScreen(navController = navController)
+                            }
+                        }
+
+                        composable("moderatorCreatePoll") {
+                            if (!hasActiveSession()) {
+                                Log.w("MainActivity", "⚠️ Intento de acceso sin sesión a moderatorCreatePoll")
+                                navController.navigate("login") {
+                                    popUpTo(0) { inclusive = true }
+                                }
+                            } else {
+                                SurveyCreateScreen(navController = navController)
+                            }
+                        }
+
+                        composable(
+                            route = "moderatorPollResults/{surveyId}",
+                            arguments = listOf(navArgument("surveyId") { type = NavType.StringType })
+                        ) { backStackEntry ->
+                            if (!hasActiveSession()) {
+                                Log.w("MainActivity", "⚠️ Intento de acceso sin sesión a moderatorPollResults")
+                                navController.navigate("login") {
+                                    popUpTo(0) { inclusive = true }
+                                }
+                            } else {
+                                val surveyId = backStackEntry.arguments?.getString("surveyId") ?: ""
+                                SurveyResultsScreen(
+                                    navController = navController,
+                                    surveyId = surveyId
+                                )
+                            }
+                        }
+
+                        // ╔════════════════════════════════════════╗
+                        // 📝 RUTAS DE ENCUESTAS (USUARIO)
+                        // ╚════════════════════════════════════════╝
+
+                        composable("userSurveys") {
+                            if (!hasActiveSession()) {
+                                Log.w("MainActivity", "⚠️ Intento de acceso sin sesión a userSurveys")
+                                navController.navigate("login") {
+                                    popUpTo(0) { inclusive = true }
+                                }
+                            } else {
+                                UserSurveyListScreen(navController = navController)
+                            }
+                        }
+
+                        composable(
+                            route = "userSurveyAnswer/{surveyId}",
+                            arguments = listOf(navArgument("surveyId") { type = NavType.StringType })
+                        ) { backStackEntry ->
+                            if (!hasActiveSession()) {
+                                Log.w("MainActivity", "⚠️ Intento de acceso sin sesión a userSurveyAnswer")
+                                navController.navigate("login") {
+                                    popUpTo(0) { inclusive = true }
+                                }
+                            } else {
+                                val surveyId = backStackEntry.arguments?.getString("surveyId") ?: ""
+                                val supabase = SupabaseService.getInstance()
+                                val userId = supabase.auth.currentUserOrNull()?.id ?: ""
+                                UserSurveyAnswerScreen(
+                                    navController = navController,
+                                    surveyId = surveyId,
+                                    userId = userId
+                                )
+                            }
+                        }
                     }
                 }
             }
         }
     }
 
-    // 🔹 Pantalla completa
     private fun enableFullScreen() {
         WindowCompat.setDecorFitsSystemWindows(window, false)
         window.statusBarColor = android.graphics.Color.TRANSPARENT

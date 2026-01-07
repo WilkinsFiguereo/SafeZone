@@ -183,10 +183,7 @@ fun NewsSaveScreen(
 
             Button(
                 onClick = { videoPickerLauncher.launch("video/*") },
-                modifier = Modifier.fillMaxWidth(),
-                colors = ButtonDefaults.buttonColors(
-                    containerColor = MaterialTheme.colorScheme.secondary
-                )
+                modifier = Modifier.fillMaxWidth()
             ) {
                 Icon(Icons.Default.VideoLibrary, contentDescription = null)
                 Spacer(modifier = Modifier.width(8.dp))
