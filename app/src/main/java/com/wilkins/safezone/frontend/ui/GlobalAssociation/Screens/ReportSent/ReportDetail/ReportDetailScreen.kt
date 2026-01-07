@@ -1,4 +1,4 @@
-package com.wilkins.safezone.frontend.ui.GlobalAssociation.screens.ReportSent.ReportDetail
+package com.wilkins.safezone.frontend.ui.GlobalAssociation.Screens.ReportSent.ReportDetail
 
 import android.R
 import android.net.Uri
@@ -37,7 +37,7 @@ import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 
 @Composable
-fun ReportDetailScreen(
+fun ReportDetailScreenAssociation(
     navController: NavController,
     reportId: String
 ) {

@@ -5,13 +5,13 @@ import androidx.navigation.NavGraphBuilder
 import androidx.navigation.NavHostController
 import androidx.navigation.compose.composable
 import com.wilkins.safezone.frontend.ui.GlobalAssociation.Screens.Dashboard.GovernmentDashboardScreen
+import com.wilkins.safezone.frontend.ui.GlobalAssociation.Screens.ReportSent.ReportDetail.ReportDetailScreenAssociation
 import com.wilkins.safezone.frontend.ui.GlobalAssociation.Screens.ReportSent.ReportList.PendingReportsScreen
 import com.wilkins.safezone.frontend.ui.GlobalAssociation.Screens.ReportSent.ReportList.ReportsCancelledScreen
 import com.wilkins.safezone.frontend.ui.GlobalAssociation.Screens.ReportSent.ReportList.ReportsCompletedScreen
 import com.wilkins.safezone.frontend.ui.GlobalAssociation.Screens.ReportSent.ReportList.ReportsProgressScreen
 import com.wilkins.safezone.frontend.ui.GlobalAssociation.Screens.ReportSent.ReportList.ReportsSentScreen
 import com.wilkins.safezone.frontend.ui.GlobalAssociation.Screens.Statics.GovernmentAnalyticsScreen
-import com.wilkins.safezone.frontend.ui.GlobalAssociation.screens.ReportSent.ReportDetail.ReportDetailScreen
 
 /**
  * 🏢 RUTAS DE ASOCIACIÓN (Role ID: 4)
@@ -35,16 +35,16 @@ fun NavGraphBuilder.associationRoutes(
 ) {
 
     // ════════════════════════════════════════════
-    // Dasboard
+    // Dashboard
     // ════════════════════════════════════════════
-    composable("DashboardAssociation") { backStackEntry ->
+    composable("DashboardAssociation") {
         if (!hasActiveSession()) {
-            Log.w("AssociationRoutes", "⚠️ Intento de acceso sin sesión a report_detail")
+            Log.w("AssociationRoutes", "⚠️ Intento de acceso sin sesión a Dashboard")
             navController.navigate("login") {
                 popUpTo(0) { inclusive = true }
             }
         } else {
-            val reportId = backStackEntry.arguments?.getString("reportId") ?: return@composable
+            Log.d("AssociationRoutes", "✅ Navegando a DashboardAssociation")
             GovernmentDashboardScreen(navController = navController)
         }
     }
@@ -52,14 +52,14 @@ fun NavGraphBuilder.associationRoutes(
     // ════════════════════════════════════════════
     // Statics
     // ════════════════════════════════════════════
-    composable("StaticsAssociation") { backStackEntry ->
+    composable("StaticsAssociation") {
         if (!hasActiveSession()) {
             Log.w("AssociationRoutes", "⚠️ Intento de acceso sin sesión a report_detail")
             navController.navigate("login") {
                 popUpTo(0) { inclusive = true }
             }
         } else {
-            val reportId = backStackEntry.arguments?.getString("reportId") ?: return@composable
+
             GovernmentAnalyticsScreen(navController = navController)
         }
     }
@@ -76,7 +76,7 @@ fun NavGraphBuilder.associationRoutes(
             }
         } else {
             val reportId = backStackEntry.arguments?.getString("reportId") ?: return@composable
-            ReportDetailScreen(navController = navController, reportId)
+            ReportDetailScreenAssociation(navController = navController, reportId)
         }
     }
 

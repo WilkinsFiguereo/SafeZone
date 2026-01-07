@@ -20,7 +20,7 @@ import com.wilkins.safezone.frontend.ui.GlobalAssociation.Screens.Dashboard.Comp
 import com.wilkins.safezone.ui.theme.PrimaryColor
 
 @Composable
-fun ReportCard(
+fun ReportCardAssociation(
     report: ReportDto,
     affairName: String?,
     statusName: String?,
@@ -220,7 +220,7 @@ fun InfoRow(
 
 // Componente adicional para listas de reportes
 @Composable
-fun ReportsList(
+fun ReportsListAssociation(
     reports: List<ReportDto>,
     affairs: Map<Int, AffairDto>,
     statuses: Map<Int, ReportingStatusDto>,
@@ -231,7 +231,7 @@ fun ReportsList(
         verticalArrangement = Arrangement.spacedBy(12.dp)
     ) {
         reports.forEach { report ->
-            ReportCard(
+            ReportCardAssociation(
                 report = report,
                 affairName = affairs[report.idAffair]?.affairName,
                 statusName = statuses[report.idReportingStatus]?.statusName,
