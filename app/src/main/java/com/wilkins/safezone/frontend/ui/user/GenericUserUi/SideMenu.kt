@@ -1,7 +1,7 @@
 package com.wilkins.safezone.GenericUserUi
 
-import SessionManager.getUserProfile
-import SessionManager.logout
+
+import com.wilkins.safezone.backend.network.auth.SessionManager.getUserProfile
 import android.content.Context
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.core.tween
@@ -32,6 +32,7 @@ import androidx.navigation.NavController
 import coil.compose.AsyncImage
 import com.wilkins.safezone.backend.network.AppUser
 import com.wilkins.safezone.backend.network.SupabaseService
+import com.wilkins.safezone.backend.network.auth.SessionManager.logout
 import com.wilkins.safezone.ui.theme.NameApp
 import com.wilkins.safezone.ui.theme.PrimaryColor
 import io.github.jan.supabase.SupabaseClient

@@ -5,12 +5,12 @@ import androidx.navigation.NavGraphBuilder
 import androidx.navigation.NavHostController
 import androidx.navigation.compose.composable
 import com.wilkins.safezone.GenericUserUi.SplashScreen
-import com.wilkins.safezone.frontend.ui.auth.screens.Login.LoginScreen
-import com.wilkins.safezone.frontend.ui.auth.screens.Register.RegisterScreen
 import com.wilkins.safezone.frontend.ui.auth.screens.Register.VerificationScreen
 import com.wilkins.safezone.ui.theme.PrimaryColor
 import com.wilkins.safezone.backend.network.SupabaseService
 import android.util.Log
+import com.wilkins.safezone.frontend.ui.auth.screens.AuthScreens.LoginScreen
+import com.wilkins.safezone.frontend.ui.auth.screens.AuthScreens.RegisterScreen
 import io.github.jan.supabase.gotrue.auth
 
 /**
@@ -39,42 +39,38 @@ fun NavGraphBuilder.generalRoutes(
     // ════════════════════════════════════════════
     // LOGIN
     // ════════════════════════════════════════════
+    // ════════════════════════════════════════════
+// LOGIN
+// ════════════════════════════════════════════
     composable("login") {
         LoginScreen(
             navController = navController,
-            onLoginSuccess = { user ->
-                Log.i("GeneralRoutes", "🔍 Usuario logueado: id=${user.id}, role=${user.role_id}")
 
-                when (user.role_id) {
-                    1 -> {
-                        Log.i("GeneralRoutes", "✅ Rol 1 → UserHome")
-                        navController.navigate("userHome/${user.id}") {
-                            popUpTo("login") { inclusive = true }
-                        }
+            // 🔐 LOGIN NORMAL (email / password)
+            onLoginSuccess = { user ->
+                Log.i("GeneralRoutes", "🔐 Login normal: id=${user.id}, role=${user.role_id}")
+
+                // ⛔ Si NO está verificado → Verification
+                if (user.status_id != 1) {
+                    Log.w("GeneralRoutes", "⚠️ Usuario no verificado → Verification")
+                    navController.navigate("verification") {
+                        popUpTo("login") { inclusive = true }
                     }
-                    2 -> {
-                        Log.i("GeneralRoutes", "✅ Rol 2 → DashboardAdmin")
-                        navController.navigate("DashboardAdmin") {
-                            popUpTo("login") { inclusive = true }
-                        }
-                    }
-                    3 -> {
-                        Log.i("GeneralRoutes", "✅ Rol 3 → DashboardMod")
-                        navController.navigate("DashboardMod") {
-                            popUpTo("login") { inclusive = true }
-                        }
-                    }
-                    4 -> {
-                        Log.i("GeneralRoutes", "✅ Rol 4 → ReportSentList")
-                        navController.navigate("ReportSentList") {
-                            popUpTo("login") { inclusive = true }
-                        }
-                    }
-                    else -> {
-                        Log.e("GeneralRoutes", "❌ Rol desconocido: ${user.role_id}")
-                    }
+                    return@LoginScreen
                 }
+
+                // ✅ Usuario verificado → según rol
+                navigateByRole(navController, user)
             },
+
+            // 🔥 LOGIN CON GOOGLE
+            onGoogleSignInSuccess = { user ->
+                Log.i("GeneralRoutes", "🔥 Google Login exitoso: id=${user.id}, role=${user.role_id}")
+
+                // 🚀 Google NUNCA pasa por verification
+                navigateByRole(navController, user)
+            },
+
             onNavigateToRegister = {
                 navController.navigate("register")
             }
@@ -91,15 +87,26 @@ fun NavGraphBuilder.generalRoutes(
                     popUpTo("register") { inclusive = true }
                 }
             },
+
+            // 🔥 REGISTRO NORMAL → VERIFICACIÓN
             onNavigateToVerification = { email, password ->
                 savedEmail.value = email
                 savedPassword.value = password
+
                 navController.navigate("verification") {
                     popUpTo("register") { inclusive = true }
                 }
+            },
+
+            // 🔥 REGISTRO CON GOOGLE → HOME DIRECTO
+            onGoogleSignInSuccess = { user ->
+                Log.i("GeneralRoutes", "✅ Registro con Google: ${user.email}")
+
+                navigateByRole(navController, user)
             }
         )
     }
+
 
     // ════════════════════════════════════════════
     // VERIFICATION

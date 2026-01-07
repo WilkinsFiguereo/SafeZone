@@ -1,6 +1,5 @@
 package com.wilkins.safezone.frontend.ui.user.Screens.Notification
 
-import SessionManager.getUserProfile
 import android.content.Context
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
@@ -29,6 +28,7 @@ import com.wilkins.safezone.backend.network.AppUser
 import com.wilkins.safezone.backend.network.SupabaseService
 import com.wilkins.safezone.backend.network.User.Notification.NotificationData
 import com.wilkins.safezone.backend.network.User.Notification.NotificationRepository
+import com.wilkins.safezone.backend.network.auth.SessionManager.getUserProfile
 import io.github.jan.supabase.SupabaseClient
 import io.github.jan.supabase.gotrue.auth
 import kotlinx.coroutines.launch

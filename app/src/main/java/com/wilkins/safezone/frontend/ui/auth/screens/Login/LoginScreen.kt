@@ -1,6 +1,8 @@
-package com.wilkins.safezone.frontend.ui.auth.screens.Login
+package com.wilkins.safezone.frontend.ui.auth.screens.AuthScreens
 
 import android.util.Log
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
@@ -34,35 +36,123 @@ import com.wilkins.safezone.bridge.auth.LoginBridge
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.TextUnit
+import com.wilkins.safezone.backend.network.SupabaseService
 import com.wilkins.safezone.bridge.auth.AccountDisabledException
+import com.wilkins.safezone.bridge.auth.GoogleSignInBridge
 import com.wilkins.safezone.frontend.ui.auth.components.TermsAndConditionsSection
 import com.wilkins.safezone.ui.theme.NameApp
+import io.github.jan.supabase.gotrue.auth
+import io.github.jan.supabase.postgrest.from
 
 @Composable
 fun LoginScreen(
     navController: NavController,
     onLoginSuccess: (user: AppUser) -> Unit = {},
     onNavigateToRegister: () -> Unit = {},
-    onGoogleSignIn: () -> Unit = {},
+    onGoogleSignInSuccess: (user: AppUser) -> Unit = {} , // 🔥 Callback para Google Sign-In exitoso
     onTermsClicked: (url: String) -> Unit = {},
     onPrivacyPolicyClicked: (url: String) -> Unit = {}
 ) {
     var email by remember { mutableStateOf("") }
     var password by remember { mutableStateOf("") }
-    var isLoading by remember { mutableStateOf(false) } // Estado para controlar la carga
+    var isLoading by remember { mutableStateOf(false) }
+    var showAccountDialog by remember { mutableStateOf(false) } // 🔥 Diálogo para elegir cuenta
+
     val scope = rememberCoroutineScope()
     val snackbarHostState = remember { SnackbarHostState() }
+    val context = LocalContext.current
 
     val configuration = LocalConfiguration.current
     val screenHeight = configuration.screenHeightDp.dp
     val screenWidth = configuration.screenWidthDp.dp
+    val supabase = SupabaseService.getInstance()
 
-    // Tamaños más compactos
     val logoSize = getResponsiveSize(screenHeight, 80.dp, 90.dp, 100.dp)
     val iconSize = getResponsiveSize(screenHeight, 24.dp, 28.dp, 32.dp)
     val titleFontSize = getResponsiveFontSize(screenHeight, 20.sp, 24.sp, 28.sp)
     val horizontalPadding = getResponsivePadding(screenWidth, 16.dp, 24.dp, 32.dp)
     val verticalSpacing = getResponsiveSize(screenHeight, 8.dp, 12.dp, 16.dp)
+
+    // 🔥 Launcher para Google Sign-In
+    val googleSignInLauncher = rememberLauncherForActivityResult(
+        contract = ActivityResultContracts.StartActivityForResult()
+    ) { result ->
+        scope.launch {
+            isLoading = true
+            val signInResult = GoogleSignInBridge.handleSignInResult(context, result.data)
+
+            signInResult.onSuccess {
+                try {
+                    val session = supabase.auth.currentSessionOrNull()
+                    if (session != null) {
+                        val userId = session.user?.id
+
+                        // ✅ Fetch user from your database using filter DSL
+                        val user = supabase.from("users")
+                            .select() {
+                                filter {
+                                    eq("id", userId ?: "")
+                                }
+                            }
+                            .decodeSingle<AppUser>()
+
+                        snackbarHostState.showSnackbar("✅ Inicio de sesión exitoso con Google")
+                        isLoading = false
+                        onGoogleSignInSuccess(user)
+                    } else {
+                        throw Exception("No se pudo obtener la sesión")
+                    }
+                } catch (e: Exception) {
+                    isLoading = false
+                    Log.e("LoginScreen", "❌ Error obteniendo usuario: ${e.message}", e)
+                    snackbarHostState.showSnackbar("Error al obtener datos del usuario")
+                }
+            }.onFailure { e ->
+                snackbarHostState.showSnackbar("❌ ${e.message}")
+                isLoading = false
+            }
+        }
+    }
+    // 🔥 Diálogo para elegir cuenta o usar otra
+    if (showAccountDialog) {
+        AlertDialog(
+            onDismissRequest = {
+                showAccountDialog = false
+                isLoading = false
+            },
+            title = { Text("Iniciar sesión con Google") },
+            text = {
+                Text("¿Deseas usar una cuenta diferente? Esto te permitirá elegir otra cuenta de Google.")
+            },
+            confirmButton = {
+                TextButton(
+                    onClick = {
+                        showAccountDialog = false
+                        scope.launch {
+                            // 🔥 Cerrar sesión de Google primero
+                            GoogleSignInBridge.signOut(context)
+                            kotlinx.coroutines.delay(300)
+                            // Lanzar el sign-in
+                            val signInIntent = GoogleSignInBridge.getSignInIntent(context)
+                            googleSignInLauncher.launch(signInIntent)
+                        }
+                    }
+                ) {
+                    Text("Usar otra cuenta")
+                }
+            },
+            dismissButton = {
+                TextButton(
+                    onClick = {
+                        showAccountDialog = false
+                        isLoading = false
+                    }
+                ) {
+                    Text("Cancelar")
+                }
+            }
+        )
+    }
 
     // Si está cargando, mostrar overlay de carga
     if (isLoading) {
@@ -141,7 +231,7 @@ fun LoginScreen(
                     keyboardType = KeyboardType.Email,
                     modifier = Modifier.fillMaxWidth(),
                     screenHeight = screenHeight,
-                    enabled = !isLoading // Deshabilitar campo cuando está cargando
+                    enabled = !isLoading
                 )
 
                 Spacer(modifier = Modifier.height(verticalSpacing))
@@ -155,7 +245,7 @@ fun LoginScreen(
                     isPassword = true,
                     modifier = Modifier.fillMaxWidth(),
                     screenHeight = screenHeight,
-                    enabled = !isLoading // Deshabilitar campo cuando está cargando
+                    enabled = !isLoading
                 )
 
                 Spacer(modifier = Modifier.height(verticalSpacing * 0.5f))
@@ -163,7 +253,7 @@ fun LoginScreen(
                 TextButton(
                     onClick = { /* TODO */ },
                     modifier = Modifier.align(Alignment.End),
-                    enabled = !isLoading // Deshabilitar cuando está cargando
+                    enabled = !isLoading
                 ) {
                     Text(
                         text = "¿Olvidaste tu contraseña?",
@@ -175,14 +265,7 @@ fun LoginScreen(
 
                 Spacer(modifier = Modifier.height(verticalSpacing * 1.5f))
 
-                val context = LocalContext.current
-                // Botón principal compacto
-                // En el Button del LoginScreen, cambia esto:
-
-                // Reemplaza el botón de login con este código actualizado:
-
-                // ✅ REEMPLAZA EL BOTÓN DE LOGIN CON ESTE CÓDIGO
-
+                // Botón de login con email/password
                 Button(
                     onClick = {
                         scope.launch {
@@ -192,24 +275,19 @@ fun LoginScreen(
                                     val result = LoginBridge.performLogin(context, email, password)
 
                                     result.onSuccess { user ->
-                                        // ✅ Login exitoso
                                         Log.i("LoginScreen", "✅ Login exitoso para: ${user.email}")
                                         onLoginSuccess(user)
-                                        // La navegación se maneja en el NavGraph
-
                                     }.onFailure { exception ->
-                                        isLoading = false // ⚠️ Importante: desactivar loading en caso de fallo
+                                        isLoading = false
 
                                         when (exception) {
                                             is AccountDisabledException -> {
-                                                // ✅ Cuenta deshabilitada o baneada
                                                 Log.w("LoginScreen", "⚠️ Cuenta no activa: statusId=${exception.statusId}")
                                                 navController.navigate("accountDisabled/${exception.statusId}") {
                                                     popUpTo("login") { inclusive = false }
                                                 }
                                             }
                                             else -> {
-                                                // ❌ Otro tipo de error
                                                 Log.e("LoginScreen", "❌ Error en login: ${exception.message}")
                                                 snackbarHostState.showSnackbar(
                                                     exception.message ?: "Error al iniciar sesión"
@@ -217,7 +295,6 @@ fun LoginScreen(
                                             }
                                         }
                                     }
-
                                 } catch (e: Exception) {
                                     isLoading = false
                                     Log.e("LoginScreen", "❌ Excepción inesperada: ${e.message}", e)
@@ -276,9 +353,6 @@ fun LoginScreen(
                     }
                 }
 
-// ⚠️ NO OLVIDES IMPORTAR:
-// import com.wilkins.safezone.bridge.auth.AccountDisabledException
-
                 Spacer(modifier = Modifier.height(verticalSpacing * 1.5f))
 
                 // Separador compacto
@@ -311,13 +385,20 @@ fun LoginScreen(
                     modifier = Modifier.fillMaxWidth(),
                     verticalArrangement = Arrangement.spacedBy(verticalSpacing * 0.8f)
                 ) {
+                    // 🔥 Botón de Google Sign-In con opción de cambiar cuenta
                     OutlinedButton(
-                        onClick = onGoogleSignIn,
+                        onClick = {
+                            if (!isLoading) {
+                                isLoading = true
+                                // 🔥 Mostrar diálogo para elegir si usar otra cuenta
+                                showAccountDialog = true
+                            }
+                        },
                         modifier = Modifier
                             .fillMaxWidth()
                             .height(getResponsiveSize(screenHeight, 36.dp, 40.dp, 44.dp)),
                         shape = RoundedCornerShape(10.dp),
-                        enabled = !isLoading // Deshabilitar cuando está cargando
+                        enabled = !isLoading
                     ) {
                         Box(
                             modifier = Modifier.size(getResponsiveSize(screenHeight, 16.dp, 18.dp, 20.dp)),
@@ -345,7 +426,7 @@ fun LoginScreen(
                             .fillMaxWidth()
                             .height(getResponsiveSize(screenHeight, 36.dp, 40.dp, 44.dp)),
                         shape = RoundedCornerShape(10.dp),
-                        enabled = !isLoading // Deshabilitar cuando está cargando
+                        enabled = !isLoading
                     ) {
                         Icon(
                             Icons.Default.PersonAdd,
@@ -380,7 +461,7 @@ fun LoadingOverlay() {
         modifier = Modifier
             .fillMaxSize()
             .background(Color.Black.copy(alpha = 0.5f))
-            .clickable(enabled = false) {}, // Evitar clics mientras carga
+            .clickable(enabled = false) {},
         contentAlignment = Alignment.Center
     ) {
         Column(
@@ -402,7 +483,6 @@ fun LoadingOverlay() {
     }
 }
 
-// Campo de texto más compacto
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun CompactTextField(
@@ -415,7 +495,7 @@ fun CompactTextField(
     keyboardType: KeyboardType = KeyboardType.Text,
     isPassword: Boolean = false,
     screenHeight: Dp,
-    enabled: Boolean = true // Nuevo parámetro para habilitar/deshabilitar
+    enabled: Boolean = true
 ) {
     var passwordVisible by remember { mutableStateOf(false) }
 
@@ -479,13 +559,13 @@ fun CompactTextField(
                     modifier = Modifier.weight(1f),
                     singleLine = true,
                     textStyle = LocalTextStyle.current.copy(fontSize = fontSize),
-                    enabled = enabled // Pasar el estado de habilitado
+                    enabled = enabled
                 )
                 if (isPassword) {
                     IconButton(
                         onClick = { passwordVisible = !passwordVisible },
                         modifier = Modifier.size(iconSize),
-                        enabled = enabled // Deshabilitar botón de visibilidad cuando está cargando
+                        enabled = enabled
                     ) {
                         Icon(
                             if (passwordVisible) Icons.Default.Visibility else Icons.Default.VisibilityOff,
@@ -500,8 +580,6 @@ fun CompactTextField(
     }
 }
 
-
-// Funciones auxiliares para responsive design (mantenidas igual)
 @Composable
 fun getResponsiveSize(screenHeight: Dp, small: Dp, medium: Dp, large: Dp): Dp {
     return when {
@@ -527,46 +605,4 @@ fun getResponsivePadding(screenWidth: Dp, small: Dp, medium: Dp, large: Dp): Dp 
         screenWidth < 600.dp -> medium
         else -> large
     }
-}
-
-@Preview(showBackground = true, showSystemUi = true, widthDp = 411, heightDp = 820)
-@Composable
-fun PreviewLoginScreenMedium() {
-    val navController = rememberNavController()
-    LoginScreen(
-        navController = navController,
-        onLoginSuccess = { },
-        onNavigateToRegister = { },
-        onGoogleSignIn = { },
-        onTermsClicked = { println("Términos: $it") },
-        onPrivacyPolicyClicked = { println("Política: $it") }
-    )
-}
-
-@Preview(showBackground = true, showSystemUi = true, widthDp = 768, heightDp = 1024)
-@Composable
-fun PreviewLoginScreenTablet() {
-    val navController = rememberNavController()
-    LoginScreen(
-        navController = navController,
-        onLoginSuccess = { },
-        onNavigateToRegister = { },
-        onGoogleSignIn = { },
-        onTermsClicked = { println("Términos: $it") },
-        onPrivacyPolicyClicked = { println("Política: $it") }
-    )
-}
-
-@Preview(showBackground = true, showSystemUi = true, widthDp = 360, heightDp = 640)
-@Composable
-fun PreviewLoginScreenSmall() {
-    val navController = rememberNavController()
-    LoginScreen(
-        navController = navController,
-        onLoginSuccess = { },
-        onNavigateToRegister = { },
-        onGoogleSignIn = { },
-        onTermsClicked = { println("Términos: $it") },
-        onPrivacyPolicyClicked = { println("Política: $it") }
-    )
 }

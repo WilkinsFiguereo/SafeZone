@@ -156,7 +156,7 @@ fun GovernmentMenu(
         GovernmentMenuSection(
             title = "DASHBOARD",
             items = listOf(
-                GovernmentMenuItem(Icons.Default.Dashboard, "Dashboard", "government_dashboard")
+                GovernmentMenuItem(Icons.Default.Dashboard, "Dashboard", "DashboardAssociation")
             )
         ),
         GovernmentMenuSection(
@@ -172,7 +172,7 @@ fun GovernmentMenu(
         GovernmentMenuSection(
             title = "ANÁLISIS",
             items = listOf(
-                GovernmentMenuItem(Icons.Default.Analytics, "Estadísticas", "government_analytics"),
+                GovernmentMenuItem(Icons.Default.Analytics, "Estadísticas", "StaticsAssociation"),
                 GovernmentMenuItem(Icons.Default.Map, "Mapa de Incidentes", "MapReports"),
             )
         ),

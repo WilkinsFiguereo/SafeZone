@@ -63,8 +63,14 @@ import com.google.maps.android.compose.MapUiSettings
 import com.google.maps.android.compose.Marker
 import com.google.maps.android.compose.MarkerState
 import com.google.maps.android.compose.rememberCameraPositionState
+import com.wilkins.safezone.backend.network.AppUser
 import com.wilkins.safezone.backend.network.GlobalAssociation.ReportsRepository
 import com.wilkins.safezone.backend.network.GlobalAssociation.ReportDto
+import com.wilkins.safezone.backend.network.SupabaseService
+import com.wilkins.safezone.backend.network.User.Interaction.EntityType
+import com.wilkins.safezone.frontend.ui.Map.Components.LikeButton
+import io.github.jan.supabase.postgrest.postgrest
+import io.github.jan.supabase.storage.storage
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
@@ -87,11 +93,12 @@ data class ReportMarker(
     val title: String,
     val description: String,
     val distance: Float = 0f,
-    val userImageUrl: String? = null,
+    val userImageUrl: String? = null, // Este será el photo_profile del usuario
     val reportImageUrl: String? = null,
     val createdAt: String? = null,
     val affairId: Int? = null,
-    val affairName: String? = null
+    val affairName: String? = null,
+    val userName: String? = null // Nombre real del usuario (no anónimo)
 )
 
 /**
@@ -190,7 +197,6 @@ fun GoogleMapScreen(
                 if (result.isSuccess) {
                     val reports = result.getOrNull() ?: emptyList()
 
-                    // ⚠️ FILTRAR SOLO REPORTES PENDIENTES (1) O EN PROCESO (2)
                     val filteredReports = reports.filter { report ->
                         report.idReportingStatus == 1 || report.idReportingStatus == 2
                     }
@@ -200,6 +206,33 @@ fun GoogleMapScreen(
                     Log.i("GoogleMapScreen", "✅ Reportes filtrados (pendientes/en proceso): ${filteredReports.size}")
                     Log.i("GoogleMapScreen", "❌ Reportes excluidos (cancelados/completados): ${reports.size - filteredReports.size}")
                     Log.i("GoogleMapScreen", "📋 Affairs obtenidos: ${affairsMap.size}")
+
+                    // 👇 NUEVO: Obtener IDs únicos de usuarios que hicieron reportes
+                    val userIds = filteredReports.mapNotNull { it.userId }.distinct()
+
+                    // 👇 NUEVO: Obtener todos los perfiles de usuarios en una sola consulta
+                    val userProfilesMap = if (userIds.isNotEmpty()) {
+                        withContext(Dispatchers.IO) {
+                            try {
+                                val profiles = SupabaseService.getInstance().postgrest
+                                    .from("profiles")
+                                    .select {
+                                        filter {
+                                            isIn("id", userIds)
+                                        }
+                                    }
+                                    .decodeList<AppUser>()
+
+                                Log.i("GoogleMapScreen", "👤 Perfiles obtenidos: ${profiles.size}")
+                                profiles.associateBy { it.id }
+                            } catch (e: Exception) {
+                                Log.e("GoogleMapScreen", "❌ Error obteniendo perfiles de usuarios", e)
+                                emptyMap()
+                            }
+                        }
+                    } else {
+                        emptyMap()
+                    }
 
                     val markers = mutableListOf<ReportMarker>()
 
@@ -239,18 +272,26 @@ fun GoogleMapScreen(
                                     if (shouldAdd) {
                                         val affairName = report.idAffair?.let { affairsMap[it]?.affairName }
 
+                                        // 👇 NUEVO: Obtener perfil del usuario
+                                        val userProfile = report.userId?.let { userProfilesMap[it] }
+
+                                        // Determinar nombre y foto
+                                        val displayName = userProfile?.name ?: report.userName
+                                        val photoProfile = userProfile?.photoProfile
+
                                         markers.add(
                                             ReportMarker(
                                                 id = report.id,
                                                 position = reportLatLng,
-                                                title = report.userName ?: "Usuario anónimo",
+                                                title = displayName ?: "Usuario anónimo",
                                                 description = reportDescription,
                                                 distance = distance,
-                                                userImageUrl = null,
+                                                userImageUrl = photoProfile, // 👈 Foto del perfil
                                                 reportImageUrl = report.imageUrl,
                                                 createdAt = report.createdAt,
                                                 affairId = report.idAffair,
-                                                affairName = affairName
+                                                affairName = affairName,
+                                                userName = displayName // 👈 Nombre real
                                             )
                                         )
                                     }
@@ -278,7 +319,6 @@ fun GoogleMapScreen(
             }
         }
     }
-
     val defaultLocation = LatLng(18.4861, -69.9312)
     val mapCenter = userLocation ?: defaultLocation
 
@@ -383,6 +423,7 @@ fun GoogleMapScreen(
 /**
  * Función para compartir el reporte en redes sociales con imagen/video
  */
+
 private fun shareReport(context: Context, marker: ReportMarker) {
     val shareText = buildString {
         append("━━━━━━━━━━━━━━━━━━━━━━━\n")
@@ -475,319 +516,6 @@ private fun shareReport(context: Context, marker: ReportMarker) {
     } else {
         // Compartir solo texto si no hay imagen
         shareTextOnly(context, shareText, marker.id)
-    }
-}
-
-/**
- * Función auxiliar para compartir solo texto
- */
-private fun shareTextOnly(context: Context, shareText: String, reportId: String) {
-    val sendIntent = Intent().apply {
-        action = Intent.ACTION_SEND
-        putExtra(Intent.EXTRA_TEXT, shareText)
-        type = "text/plain"
-    }
-
-    val shareIntent = Intent.createChooser(sendIntent, "Compartir reporte de SafeZone")
-    shareIntent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
-    context.startActivity(shareIntent)
-
-    Log.d("GoogleMapScreen", "📤 Compartiendo reporte (solo texto): $reportId")
-}
-
-@Composable
-fun ReportDetailSheet(
-    marker: ReportMarker,
-    onClose: () -> Unit
-) {
-    val context = LocalContext.current
-
-    Column(
-        modifier = Modifier
-            .fillMaxWidth()
-            .padding(horizontal = 16.dp)
-            .padding(bottom = 32.dp)
-    ) {
-        Row(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(bottom = 16.dp),
-            verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.SpaceBetween
-        ) {
-            Column(modifier = Modifier.weight(1f)) {
-                Row(verticalAlignment = Alignment.CenterVertically) {
-                    Box(
-                        modifier = Modifier
-                            .size(40.dp)
-                            .clip(CircleShape)
-                            .background(Color(0xFF1976D2).copy(alpha = 0.1f)),
-                        contentAlignment = Alignment.Center
-                    ) {
-                        Icon(
-                            imageVector = Icons.Default.Person,
-                            contentDescription = "Usuario",
-                            tint = Color(0xFF1976D2),
-                            modifier = Modifier.size(20.dp)
-                        )
-                    }
-                    Spacer(modifier = Modifier.width(12.dp))
-                    Column {
-                        Text(
-                            text = marker.title,
-                            fontSize = 18.sp,
-                            fontWeight = FontWeight.Bold,
-                            color = Color(0xFF212121)
-                        )
-                        Row(
-                            verticalAlignment = Alignment.CenterVertically,
-                            modifier = Modifier.padding(top = 2.dp)
-                        ) {
-                            Icon(
-                                imageVector = Icons.Default.LocationOn,
-                                contentDescription = null,
-                                tint = Color(0xFF757575),
-                                modifier = Modifier.size(14.dp)
-                            )
-                            Spacer(modifier = Modifier.width(4.dp))
-                            Text(
-                                text = if (marker.distance > 0) {
-                                    "${String.format("%.1f", marker.distance)} km"
-                                } else {
-                                    "Ubicación cercana"
-                                },
-                                fontSize = 12.sp,
-                                color = Color(0xFF757575)
-                            )
-                        }
-                    }
-                }
-            }
-
-            IconButton(onClick = { shareReport(context, marker) }) {
-                Icon(
-                    imageVector = Icons.Default.Share,
-                    contentDescription = "Compartir",
-                    tint = Color(0xFF1976D2)
-                )
-            }
-
-            IconButton(onClick = onClose) {
-                Icon(
-                    imageVector = Icons.Default.ArrowBack,
-                    contentDescription = "Cerrar",
-                    tint = Color(0xFF757575)
-                )
-            }
-        }
-
-        marker.createdAt?.let { date ->
-            Row(
-                verticalAlignment = Alignment.CenterVertically,
-                modifier = Modifier.padding(bottom = 12.dp)
-            ) {
-                Icon(
-                    imageVector = Icons.Default.AccessTime,
-                    contentDescription = null,
-                    tint = Color(0xFF757575),
-                    modifier = Modifier.size(16.dp)
-                )
-                Spacer(modifier = Modifier.width(8.dp))
-                Text(
-                    text = formatDateTime(date),
-                    fontSize = 14.sp,
-                    color = Color(0xFF757575),
-                    fontWeight = FontWeight.Medium
-                )
-            }
-        }
-
-        marker.affairName?.let { affairName ->
-            Card(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(bottom = 16.dp),
-                shape = RoundedCornerShape(12.dp),
-                colors = CardDefaults.cardColors(
-                    containerColor = Color(0xFF1976D2).copy(alpha = 0.1f)
-                ),
-                border = BorderStroke(1.dp, Color(0xFF1976D2).copy(alpha = 0.3f))
-            ) {
-                Row(
-                    verticalAlignment = Alignment.CenterVertically,
-                    modifier = Modifier.padding(16.dp)
-                ) {
-                    Icon(
-                        imageVector = Icons.Default.Category,
-                        contentDescription = null,
-                        tint = Color(0xFF1976D2),
-                        modifier = Modifier.size(20.dp)
-                    )
-                    Spacer(modifier = Modifier.width(12.dp))
-                    Column {
-                        Text(
-                            text = "Tipo de Incidente",
-                            fontSize = 12.sp,
-                            color = Color(0xFF757575),
-                            fontWeight = FontWeight.Medium
-                        )
-                        Text(
-                            text = affairName,
-                            fontSize = 16.sp,
-                            color = Color(0xFF1976D2),
-                            fontWeight = FontWeight.Bold
-                        )
-                    }
-                }
-            }
-        }
-
-        Text(
-            text = "Descripción del Reporte",
-            fontSize = 16.sp,
-            fontWeight = FontWeight.Bold,
-            color = Color(0xFF212121),
-            modifier = Modifier.padding(bottom = 8.dp)
-        )
-
-        Card(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(bottom = 16.dp),
-            shape = RoundedCornerShape(12.dp),
-            colors = CardDefaults.cardColors(
-                containerColor = Color(0xFFF8F9FA)
-            ),
-            border = BorderStroke(0.5.dp, Color(0xFFE0E0E0))
-        ) {
-            Text(
-                text = marker.description,
-                fontSize = 14.sp,
-                color = Color(0xFF424242),
-                lineHeight = 20.sp,
-                modifier = Modifier.padding(16.dp)
-            )
-        }
-
-        marker.reportImageUrl?.let { mediaUrl ->
-            Text(
-                text = "Evidencia del Reporte",
-                fontSize = 16.sp,
-                fontWeight = FontWeight.Bold,
-                color = Color(0xFF212121),
-                modifier = Modifier.padding(bottom = 8.dp)
-            )
-
-            val isVideo = isVideoUrl(mediaUrl)
-
-            Card(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .height(240.dp),
-                shape = RoundedCornerShape(12.dp),
-                elevation = CardDefaults.cardElevation(defaultElevation = 4.dp)
-            ) {
-                Box(
-                    modifier = Modifier.fillMaxSize(),
-                    contentAlignment = Alignment.Center
-                ) {
-                    if (isVideo) {
-                        VideoPlayerComposable(videoUrl = mediaUrl)
-                    } else {
-                        coil.compose.AsyncImage(
-                            model = ImageRequest.Builder(LocalContext.current)
-                                .data(mediaUrl)
-                                .crossfade(true)
-                                .placeholder(android.R.drawable.ic_menu_gallery)
-                                .error(android.R.drawable.ic_menu_report_image)
-                                .build(),
-                            contentDescription = "Imagen del reporte",
-                            modifier = Modifier.fillMaxSize(),
-                            contentScale = ContentScale.Crop
-                        )
-                    }
-                }
-            }
-
-            Row(
-                verticalAlignment = Alignment.CenterVertically,
-                modifier = Modifier.padding(top = 8.dp)
-            ) {
-                Icon(
-                    imageVector = if (isVideo) Icons.Default.VideoLibrary else Icons.Default.Photo,
-                    contentDescription = null,
-                    tint = Color(0xFF757575),
-                    modifier = Modifier.size(14.dp)
-                )
-                Spacer(modifier = Modifier.width(6.dp))
-                Text(
-                    text = if (isVideo) "Video relacionado al reporte" else "Imagen relacionada al reporte",
-                    fontSize = 12.sp,
-                    color = Color(0xFF757575)
-                )
-            }
-        }
-
-        Row(
-            verticalAlignment = Alignment.CenterVertically,
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(top = 16.dp)
-        ) {
-            Box(
-                modifier = Modifier
-                    .size(8.dp)
-                    .clip(CircleShape)
-                    .background(Color(0xFFE53935))
-            )
-            Spacer(modifier = Modifier.width(6.dp))
-            Text(
-                text = "ALTA PRIORIDAD",
-                fontSize = 11.sp,
-                color = Color(0xFFE53935),
-                fontWeight = FontWeight.Bold
-            )
-        }
-    }
-}
-
-fun isVideoUrl(url: String): Boolean {
-    val videoExtensions = listOf(".mp4", ".mov", ".avi", ".mkv", ".webm", ".3gp", ".flv")
-    return videoExtensions.any { url.lowercase().contains(it) }
-}
-
-private fun formatDateTime(dateString: String): String {
-    return try {
-        val formats = listOf(
-            "yyyy-MM-dd HH:mm:ss",
-            "yyyy-MM-dd",
-            "dd/MM/yyyy HH:mm:ss"
-        )
-
-        for (format in formats) {
-            try {
-                val inputFormat = SimpleDateFormat(format, Locale.getDefault())
-                val date = inputFormat.parse(dateString)
-                if (date != null) {
-                    val now = Calendar.getInstance()
-                    val reportDate = Calendar.getInstance().apply { time = date }
-
-                    return if (now.get(Calendar.YEAR) == reportDate.get(Calendar.YEAR) &&
-                        now.get(Calendar.MONTH) == reportDate.get(Calendar.MONTH) &&
-                        now.get(Calendar.DAY_OF_MONTH) == reportDate.get(Calendar.DAY_OF_MONTH)) {
-                        "Hoy a las " + SimpleDateFormat("HH:mm", Locale.getDefault()).format(date)
-                    } else {
-                        SimpleDateFormat("dd MMM yyyy, HH:mm", Locale.getDefault()).format(date)
-                    }
-                }
-            } catch (e: Exception) {
-                continue
-            }
-        }
-
-        dateString
-    } catch (e: Exception) {
-        dateString
     }
 }
 
@@ -920,5 +648,398 @@ fun VideoPlayerComposable(videoUrl: String) {
                 )
             }
         }
+    }
+}
+
+
+/**
+ * Función auxiliar para compartir solo texto
+ */
+private fun shareTextOnly(context: Context, shareText: String, reportId: String) {
+    val sendIntent = Intent().apply {
+        action = Intent.ACTION_SEND
+        putExtra(Intent.EXTRA_TEXT, shareText)
+        type = "text/plain"
+    }
+
+    val shareIntent = Intent.createChooser(sendIntent, "Compartir reporte de SafeZone")
+    shareIntent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+    context.startActivity(shareIntent)
+
+    Log.d("GoogleMapScreen", "📤 Compartiendo reporte (solo texto): $reportId")
+}
+
+@Composable
+fun ReportDetailSheet(
+    marker: ReportMarker,
+    onClose: () -> Unit
+) {
+    val context = LocalContext.current
+
+    // Obtener URL de la foto de perfil si existe
+    val profilePhotoUrl = remember(marker.userImageUrl) {
+        if (!marker.userImageUrl.isNullOrEmpty()) {
+            try {
+                val bucket = SupabaseService.getInstance().storage.from("UserProfile")
+                bucket.publicUrl(marker.userImageUrl!!)
+            } catch (e: Exception) {
+                Log.e("ReportDetailSheet", "Error obteniendo URL de perfil", e)
+                null
+            }
+        } else {
+            null
+        }
+    }
+
+    // Determinar si es anónimo
+    val isAnonymous = marker.userName.isNullOrEmpty() || marker.userName == "Usuario anónimo"
+    val displayName = if (isAnonymous) "Usuario anónimo" else marker.userName!!
+
+    Column(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(horizontal = 16.dp)
+            .padding(bottom = 24.dp) // Reducido de 32dp
+    ) {
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(bottom = 12.dp), // Reducido de 16dp
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.SpaceBetween
+        ) {
+            Column(modifier = Modifier.weight(1f)) {
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    // Mostrar imagen de perfil o ícono de usuario
+                    Box(
+                        modifier = Modifier
+                            .size(36.dp) // Reducido de 40dp
+                            .clip(CircleShape)
+                            .background(
+                                if (isAnonymous)
+                                    Color(0xFF757575).copy(alpha = 0.2f)
+                                else
+                                    Color(0xFF1976D2).copy(alpha = 0.1f)
+                            ),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        if (!isAnonymous && profilePhotoUrl != null) {
+                            // Mostrar foto de perfil del usuario
+                            coil.compose.AsyncImage(
+                                model = ImageRequest.Builder(LocalContext.current)
+                                    .data(profilePhotoUrl)
+                                    .crossfade(true)
+                                    .placeholder(android.R.drawable.ic_menu_gallery)
+                                    .error(android.R.drawable.ic_menu_report_image)
+                                    .build(),
+                                contentDescription = "Foto de perfil de $displayName",
+                                modifier = Modifier.fillMaxSize(),
+                                contentScale = ContentScale.Crop
+                            )
+                        } else {
+                            // Mostrar ícono por defecto (anónimo o sin foto)
+                            Icon(
+                                imageVector = Icons.Default.Person,
+                                contentDescription = "Usuario",
+                                tint = if (isAnonymous) Color(0xFF757575) else Color(0xFF1976D2),
+                                modifier = Modifier.size(18.dp) // Reducido de 20dp
+                            )
+                        }
+                    }
+                    Spacer(modifier = Modifier.width(10.dp)) // Reducido de 12dp
+                    Column {
+                        Text(
+                            text = displayName,
+                            fontSize = 16.sp, // Reducido de 18sp
+                            fontWeight = FontWeight.Bold,
+                            color = if (isAnonymous) Color(0xFF757575) else Color(0xFF212121)
+                        )
+                        Row(
+                            verticalAlignment = Alignment.CenterVertically,
+                            modifier = Modifier.padding(top = 2.dp)
+                        ) {
+                            Icon(
+                                imageVector = Icons.Default.LocationOn,
+                                contentDescription = null,
+                                tint = Color(0xFF757575),
+                                modifier = Modifier.size(12.dp) // Reducido de 14dp
+                            )
+                            Spacer(modifier = Modifier.width(4.dp))
+                            Text(
+                                text = if (marker.distance > 0) {
+                                    "${String.format("%.1f", marker.distance)} km"
+                                } else {
+                                    "Ubicación cercana"
+                                },
+                                fontSize = 11.sp, // Reducido de 12sp
+                                color = Color(0xFF757575)
+                            )
+                        }
+                    }
+                }
+            }
+
+            IconButton(
+                onClick = { shareReport(context, marker) },
+                modifier = Modifier.size(40.dp) // Tamaño definido
+            ) {
+                Icon(
+                    imageVector = Icons.Default.Share,
+                    contentDescription = "Compartir",
+                    tint = Color(0xFF1976D2),
+                    modifier = Modifier.size(20.dp)
+                )
+            }
+
+            IconButton(
+                onClick = onClose,
+                modifier = Modifier.size(40.dp) // Tamaño definido
+            ) {
+                Icon(
+                    imageVector = Icons.Default.ArrowBack,
+                    contentDescription = "Cerrar",
+                    tint = Color(0xFF757575),
+                    modifier = Modifier.size(20.dp)
+                )
+            }
+        }
+
+        marker.createdAt?.let { date ->
+            Row(
+                verticalAlignment = Alignment.CenterVertically,
+                modifier = Modifier.padding(bottom = 10.dp) // Reducido de 12dp
+            ) {
+                Icon(
+                    imageVector = Icons.Default.AccessTime,
+                    contentDescription = null,
+                    tint = Color(0xFF757575),
+                    modifier = Modifier.size(14.dp) // Reducido de 16dp
+                )
+                Spacer(modifier = Modifier.width(6.dp)) // Reducido de 8dp
+                Text(
+                    text = formatDateTime(date),
+                    fontSize = 13.sp, // Reducido de 14sp
+                    color = Color(0xFF757575),
+                    fontWeight = FontWeight.Medium
+                )
+            }
+        }
+
+        marker.affairName?.let { affairName ->
+            Card(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(bottom = 12.dp), // Reducido de 16dp
+                shape = RoundedCornerShape(10.dp), // Reducido de 12dp
+                colors = CardDefaults.cardColors(
+                    containerColor = Color(0xFF1976D2).copy(alpha = 0.1f)
+                ),
+                border = BorderStroke(1.dp, Color(0xFF1976D2).copy(alpha = 0.3f))
+            ) {
+                Row(
+                    verticalAlignment = Alignment.CenterVertically,
+                    modifier = Modifier.padding(12.dp) // Reducido de 16dp
+                ) {
+                    Icon(
+                        imageVector = Icons.Default.Category,
+                        contentDescription = null,
+                        tint = Color(0xFF1976D2),
+                        modifier = Modifier.size(18.dp) // Reducido de 20dp
+                    )
+                    Spacer(modifier = Modifier.width(10.dp)) // Reducido de 12dp
+                    Column {
+                        Text(
+                            text = "Tipo de Incidente",
+                            fontSize = 11.sp, // Reducido de 12sp
+                            color = Color(0xFF757575),
+                            fontWeight = FontWeight.Medium
+                        )
+                        Text(
+                            text = affairName,
+                            fontSize = 14.sp, // Reducido de 16sp
+                            color = Color(0xFF1976D2),
+                            fontWeight = FontWeight.Bold
+                        )
+                    }
+                }
+            }
+        }
+
+        Text(
+            text = "Descripción del Reporte",
+            fontSize = 14.sp, // Reducido de 16sp
+            fontWeight = FontWeight.Bold,
+            color = Color(0xFF212121),
+            modifier = Modifier.padding(bottom = 6.dp) // Reducido de 8dp
+        )
+
+        Card(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(bottom = 12.dp), // Reducido de 16dp
+            shape = RoundedCornerShape(10.dp), // Reducido de 12dp
+            colors = CardDefaults.cardColors(
+                containerColor = Color(0xFFF8F9FA)
+            ),
+            border = BorderStroke(0.5.dp, Color(0xFFE0E0E0))
+        ) {
+            Text(
+                text = marker.description,
+                fontSize = 13.sp, // Reducido de 14sp
+                color = Color(0xFF424242),
+                lineHeight = 18.sp, // Reducido de 20sp
+                modifier = Modifier.padding(12.dp), // Reducido de 16dp
+                maxLines = 4, // Limitar líneas
+                overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis
+            )
+        }
+
+        marker.reportImageUrl?.let { mediaUrl ->
+            Text(
+                text = "Evidencia del Reporte",
+                fontSize = 14.sp, // Reducido de 16sp
+                fontWeight = FontWeight.Bold,
+                color = Color(0xFF212121),
+                modifier = Modifier.padding(bottom = 6.dp) // Reducido de 8dp
+            )
+
+            val isVideo = isVideoUrl(mediaUrl)
+
+            Card(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .height(200.dp), // Reducido de 240dp
+                shape = RoundedCornerShape(10.dp), // Reducido de 12dp
+                elevation = CardDefaults.cardElevation(defaultElevation = 4.dp)
+            ) {
+                Box(
+                    modifier = Modifier.fillMaxSize(),
+                    contentAlignment = Alignment.Center
+                ) {
+                    if (isVideo) {
+                        VideoPlayerComposable(videoUrl = mediaUrl)
+                    } else {
+                        coil.compose.AsyncImage(
+                            model = ImageRequest.Builder(LocalContext.current)
+                                .data(mediaUrl)
+                                .crossfade(true)
+                                .placeholder(android.R.drawable.ic_menu_gallery)
+                                .error(android.R.drawable.ic_menu_report_image)
+                                .build(),
+                            contentDescription = "Imagen del reporte",
+                            modifier = Modifier.fillMaxSize(),
+                            contentScale = ContentScale.Crop
+                        )
+                    }
+                }
+            }
+
+            Row(
+                verticalAlignment = Alignment.CenterVertically,
+                modifier = Modifier.padding(top = 6.dp, bottom = 12.dp) // Reducido
+            ) {
+                Icon(
+                    imageVector = if (isVideo) Icons.Default.VideoLibrary else Icons.Default.Photo,
+                    contentDescription = null,
+                    tint = Color(0xFF757575),
+                    modifier = Modifier.size(12.dp) // Reducido de 14dp
+                )
+                Spacer(modifier = Modifier.width(4.dp)) // Reducido de 6dp
+                Text(
+                    text = if (isVideo) "Video relacionado al reporte" else "Imagen relacionada al reporte",
+                    fontSize = 11.sp, // Reducido de 12sp
+                    color = Color(0xFF757575)
+                )
+            }
+        }
+
+        Row(
+            verticalAlignment = Alignment.CenterVertically,
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(bottom = 16.dp) // Reducido de 24dp
+        ) {
+            Box(
+                modifier = Modifier
+                    .size(7.dp) // Reducido de 8dp
+                    .clip(CircleShape)
+                    .background(Color(0xFFE53935))
+            )
+            Spacer(modifier = Modifier.width(6.dp))
+            Text(
+                text = "ALTA PRIORIDAD",
+                fontSize = 10.sp, // Reducido de 11sp
+                color = Color(0xFFE53935),
+                fontWeight = FontWeight.Bold
+            )
+        }
+
+        // 🔔 BOTÓN DE SEGUIR REPORTE - Mejorado
+        Card(
+            modifier = Modifier
+                .fillMaxWidth()
+                .height(52.dp), // Altura óptima
+            shape = RoundedCornerShape(12.dp),
+            colors = CardDefaults.cardColors(
+                containerColor = Color.Transparent
+            ),
+            elevation = CardDefaults.cardElevation(defaultElevation = 0.dp)
+        ) {
+            // 🔔 BOTÓN DE SEGUIR REPORTE - Alternativa
+            Box(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .wrapContentHeight(), // Deja que el contenido defina la altura
+                contentAlignment = Alignment.Center
+            ) {
+                LikeButton(
+                    targetId = marker.id,
+                    entityType = EntityType.REPORT,
+                    modifier = Modifier.fillMaxWidth(),
+                    showCount = true,
+                    compactMode = false
+                )
+            }
+        }
+    }
+}
+
+fun isVideoUrl(url: String): Boolean {
+    val videoExtensions = listOf(".mp4", ".mov", ".avi", ".mkv", ".webm", ".3gp", ".flv")
+    return videoExtensions.any { url.lowercase().contains(it) }
+}
+
+private fun formatDateTime(dateString: String): String {
+    return try {
+        val formats = listOf(
+            "yyyy-MM-dd HH:mm:ss",
+            "yyyy-MM-dd",
+            "dd/MM/yyyy HH:mm:ss"
+        )
+
+        for (format in formats) {
+            try {
+                val inputFormat = SimpleDateFormat(format, Locale.getDefault())
+                val date = inputFormat.parse(dateString)
+                if (date != null) {
+                    val now = Calendar.getInstance()
+                    val reportDate = Calendar.getInstance().apply { time = date }
+
+                    return if (now.get(Calendar.YEAR) == reportDate.get(Calendar.YEAR) &&
+                        now.get(Calendar.MONTH) == reportDate.get(Calendar.MONTH) &&
+                        now.get(Calendar.DAY_OF_MONTH) == reportDate.get(Calendar.DAY_OF_MONTH)) {
+                        "Hoy a las " + SimpleDateFormat("HH:mm", Locale.getDefault()).format(date)
+                    } else {
+                        SimpleDateFormat("dd MMM yyyy, HH:mm", Locale.getDefault()).format(date)
+                    }
+                }
+            } catch (e: Exception) {
+                continue
+            }
+        }
+
+        dateString
+    } catch (e: Exception) {
+        dateString
     }
 }

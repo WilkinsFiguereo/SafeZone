@@ -1,6 +1,5 @@
 package com.wilkins.safezone.frontend.ui.user.Screens.NavigationDrawer
 
-import SessionManager.getUserProfile
 import android.content.Context
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -20,7 +19,8 @@ import com.wilkins.safezone.GenericUserUi.BottomNavigationMenu
 import com.wilkins.safezone.GenericUserUi.SideMenu
 import com.wilkins.safezone.backend.network.AppUser
 import com.wilkins.safezone.backend.network.SupabaseService
-import com.wilkins.safezone.frontend.ui.user.profile.ProfileScreen
+import com.wilkins.safezone.backend.network.auth.SessionManager.getUserProfile
+import com.wilkins.safezone.frontend.ui.user.Screens.profile.ProfileScreen
 import io.github.jan.supabase.SupabaseClient
 import io.github.jan.supabase.gotrue.auth
 
@@ -29,7 +29,8 @@ fun Profile(navController: NavController, context: Context, supabaseClient: Supa
     val supabase = SupabaseService.getInstance()
     val userId = supabase.auth.currentUserOrNull()?.id ?: ""
     val userState = produceState<AppUser?>(initialValue = null) {
-        value = getUserProfile(context)
+        value =
+            getUserProfile(context)
     }
 
     val user = userState.value

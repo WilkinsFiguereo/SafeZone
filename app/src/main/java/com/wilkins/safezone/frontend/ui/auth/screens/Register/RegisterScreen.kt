@@ -1,5 +1,8 @@
-package com.wilkins.safezone.frontend.ui.auth.screens.Register
+package com.wilkins.safezone.frontend.ui.auth.screens.AuthScreens
 
+import android.util.Log
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
@@ -26,18 +29,20 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import kotlinx.coroutines.launch
 import androidx.compose.ui.tooling.preview.Preview
+import com.wilkins.safezone.backend.network.AppUser
+import com.wilkins.safezone.backend.network.SupabaseService
+import com.wilkins.safezone.bridge.auth.GoogleSignInBridge
 import com.wilkins.safezone.bridge.auth.RegisterBridge
-import com.wilkins.safezone.frontend.ui.auth.screens.Login.getResponsiveFontSize
-import com.wilkins.safezone.frontend.ui.auth.screens.Login.getResponsivePadding
-import com.wilkins.safezone.frontend.ui.auth.screens.Login.getResponsiveSize
 import com.wilkins.safezone.frontend.ui.auth.components.TermsAndConditionsSection
 import com.wilkins.safezone.ui.theme.NameApp
 import com.wilkins.safezone.ui.theme.PrimaryColor
+import io.github.jan.supabase.gotrue.auth
+import io.github.jan.supabase.postgrest.from
 
 @Composable
 fun RegisterScreen(
     onNavigateToLogin: () -> Unit = {},
-    onGoogleSignIn: () -> Unit = {},
+    onGoogleSignInSuccess: (AppUser) -> Unit,
     onTermsClicked: (url: String) -> Unit = {},
     onPrivacyPolicyClicked: (url: String) -> Unit = {},
     onNavigateToVerification: (email: String, password: String) -> Unit
@@ -50,10 +55,12 @@ fun RegisterScreen(
 
     val scope = rememberCoroutineScope()
     val snackbarHostState = remember { SnackbarHostState() }
+    val context = LocalContext.current
 
     val configuration = LocalConfiguration.current
     val screenHeight = configuration.screenHeightDp.dp
     val screenWidth = configuration.screenWidthDp.dp
+    val supabase = SupabaseService.getInstance()
 
     // Tamaños más compactos
     val logoSize = getResponsiveSize(screenHeight, 70.dp, 80.dp, 90.dp)
@@ -61,6 +68,47 @@ fun RegisterScreen(
     val titleFontSize = getResponsiveFontSize(screenHeight, 20.sp, 24.sp, 28.sp)
     val horizontalPadding = getResponsivePadding(screenWidth, 16.dp, 20.dp, 24.dp)
     val verticalSpacing = getResponsiveSize(screenHeight, 6.dp, 8.dp, 12.dp)
+
+    // 🔥 Launcher para Google Sign-In
+    val googleSignInLauncher = rememberLauncherForActivityResult(
+        contract = ActivityResultContracts.StartActivityForResult()
+    ) { result ->
+        scope.launch {
+            isLoading = true
+            val signInResult = GoogleSignInBridge.handleSignInResult(context, result.data)
+
+            signInResult.onSuccess {
+                try {
+                    val session = supabase.auth.currentSessionOrNull()
+                    if (session != null) {
+                        val userId = session.user?.id
+
+                        // ✅ Fetch user from your database using filter DSL
+                        val user = supabase.from("users")
+                            .select() {
+                                filter {
+                                    eq("id", userId ?: "")
+                                }
+                            }
+                            .decodeSingle<AppUser>()
+
+                        snackbarHostState.showSnackbar("✅ Inicio de sesión exitoso con Google")
+                        isLoading = false
+                        onGoogleSignInSuccess(user)
+                    } else {
+                        throw Exception("No se pudo obtener la sesión")
+                    }
+                } catch (e: Exception) {
+                    isLoading = false
+                    Log.e("LoginScreen", "❌ Error obteniendo usuario: ${e.message}", e)
+                    snackbarHostState.showSnackbar("Error al obtener datos del usuario")
+                }
+            }.onFailure { e ->
+                snackbarHostState.showSnackbar("❌ ${e.message}")
+                isLoading = false
+            }
+        }
+    }
 
     Scaffold(
         snackbarHost = { SnackbarHost(hostState = snackbarHostState) }
@@ -176,8 +224,6 @@ fun RegisterScreen(
 
                 Spacer(modifier = Modifier.height(verticalSpacing * 1.5f))
 
-                val context = LocalContext.current
-
                 // Botón de registro compacto
                 Button(
                     onClick = {
@@ -216,12 +262,7 @@ fun RegisterScreen(
                             color = Color.White,
                             strokeWidth = 2.dp,
                             modifier = Modifier.size(
-                                getResponsiveSize(
-                                    screenHeight,
-                                    16.dp,
-                                    18.dp,
-                                    20.dp
-                                )
+                                getResponsiveSize(screenHeight, 16.dp, 18.dp, 20.dp)
                             )
                         )
                     } else {
@@ -229,12 +270,7 @@ fun RegisterScreen(
                             Icons.Default.HowToReg,
                             null,
                             modifier = Modifier.size(
-                                getResponsiveSize(
-                                    screenHeight,
-                                    16.dp,
-                                    18.dp,
-                                    20.dp
-                                )
+                                getResponsiveSize(screenHeight, 16.dp, 18.dp, 20.dp)
                             )
                         )
                         Spacer(modifier = Modifier.width(verticalSpacing * 0.5f))
@@ -278,8 +314,15 @@ fun RegisterScreen(
                     modifier = Modifier.fillMaxWidth(),
                     verticalArrangement = Arrangement.spacedBy(verticalSpacing * 0.8f)
                 ) {
+                    // 🔥 Botón de Google Sign-In actualizado
                     OutlinedButton(
-                        onClick = onGoogleSignIn,
+                        onClick = {
+                            if (!isLoading) {
+                                isLoading = true
+                                val signInIntent = GoogleSignInBridge.getSignInIntent(context)
+                                googleSignInLauncher.launch(signInIntent)
+                            }
+                        },
                         modifier = Modifier
                             .fillMaxWidth()
                             .height(getResponsiveSize(screenHeight, 36.dp, 40.dp, 44.dp)),
@@ -288,12 +331,7 @@ fun RegisterScreen(
                     ) {
                         Box(
                             modifier = Modifier.size(
-                                getResponsiveSize(
-                                    screenHeight,
-                                    16.dp,
-                                    18.dp,
-                                    20.dp
-                                )
+                                getResponsiveSize(screenHeight, 16.dp, 18.dp, 20.dp)
                             ),
                             contentAlignment = Alignment.Center
                         ) {
@@ -328,12 +366,7 @@ fun RegisterScreen(
                             Icons.Default.Login,
                             null,
                             modifier = Modifier.size(
-                                getResponsiveSize(
-                                    screenHeight,
-                                    14.dp,
-                                    16.dp,
-                                    18.dp
-                                )
+                                getResponsiveSize(screenHeight, 14.dp, 16.dp, 18.dp)
                             )
                         )
                         Spacer(modifier = Modifier.width(6.dp))
@@ -360,7 +393,7 @@ fun RegisterScreen(
     }
 }
 
-// Campo de texto compacto
+// Campo de texto compacto (sin cambios)
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun CompactTextFieldRegister(
@@ -453,44 +486,4 @@ fun CompactTextFieldRegister(
             }
         }
     }
-}
-
-// ============================================================================
-// PREVIEWS
-// ============================================================================
-
-@Preview(showBackground = true, showSystemUi = true, widthDp = 360, heightDp = 640)
-@Composable
-fun PreviewRegisterScreenSmall() {
-    RegisterScreen(
-        onNavigateToLogin = {},
-        onGoogleSignIn = {},
-        onTermsClicked = { println("Términos: $it") },
-        onPrivacyPolicyClicked = { println("Política: $it") },
-        onNavigateToVerification = { _, _ -> }
-    )
-}
-
-@Preview(showBackground = true, showSystemUi = true, widthDp = 411, heightDp = 820)
-@Composable
-fun PreviewRegisterScreenMedium() {
-    RegisterScreen(
-        onNavigateToLogin = {},
-        onGoogleSignIn = {},
-        onTermsClicked = { println("Términos: $it") },
-        onPrivacyPolicyClicked = { println("Política: $it") },
-        onNavigateToVerification = { _, _ -> }
-    )
-}
-
-@Preview(showBackground = true, showSystemUi = true, widthDp = 768, heightDp = 1024)
-@Composable
-fun PreviewRegisterScreenTablet() {
-    RegisterScreen(
-        onNavigateToLogin = {},
-        onGoogleSignIn = {},
-        onTermsClicked = { println("Términos: $it") },
-        onPrivacyPolicyClicked = { println("Política: $it") },
-        onNavigateToVerification = { _, _ -> }
-    )
 }

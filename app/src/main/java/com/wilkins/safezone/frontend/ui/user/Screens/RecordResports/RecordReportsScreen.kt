@@ -1,6 +1,5 @@
 package com.wilkins.safezone.frontend.ui.user.Screens.RecordResports
 
-import SessionManager.getUserProfile
 import android.content.Context
 import android.util.Log
 import androidx.compose.foundation.background
@@ -21,6 +20,7 @@ import androidx.compose.ui.unit.sp
 import androidx.navigation.NavController
 import com.wilkins.safezone.GenericUserUi.SideMenu
 import com.wilkins.safezone.backend.network.AppUser
+import com.wilkins.safezone.backend.network.auth.SessionManager.getUserProfile
 import io.github.jan.supabase.SupabaseClient
 import io.github.jan.supabase.postgrest.postgrest
 import kotlinx.coroutines.launch

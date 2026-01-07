@@ -1,6 +1,5 @@
 package com.wilkins.safezone
 
-import SessionManager.getUserProfile
 import android.os.Build
 import android.os.Bundle
 import android.util.Log
@@ -25,6 +24,8 @@ import androidx.core.view.WindowInsetsControllerCompat
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.rememberNavController
 import com.wilkins.safezone.backend.network.AppUser
+import com.wilkins.safezone.backend.network.auth.SessionManager
+import com.wilkins.safezone.backend.network.auth.SessionManager.getUserProfile
 import com.wilkins.safezone.navigation.adminRoutes
 import com.wilkins.safezone.navigation.associationRoutes
 import com.wilkins.safezone.navigation.generalRoutes

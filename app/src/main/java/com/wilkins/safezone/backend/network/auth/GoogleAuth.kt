@@ -78,64 +78,6 @@ suspend fun signInWithGoogle(
 }
 
 /**
- * 🔥 Autenticación con Google que retorna el usuario completo
- * Usa esta función si necesitas el objeto AppUser después del login
- */
-suspend fun signInWithGoogleAndGetUser(
-    context: Context,
-    idToken: String
-): Result<AppUser> {
-    val supabase = SupabaseService.getInstance()
-
-    return try {
-        Log.i("GoogleAuth", "🔄 Iniciando autenticación con Google...")
-
-        // Autenticar con Supabase usando el ID Token de Google
-        supabase.auth.signInWith(IDToken) {
-            this.idToken = idToken
-            this.provider = Google
-        }
-
-        // Obtener y guardar la sesión
-        val session = supabase.auth.currentSessionOrNull()
-
-        if (session != null) {
-            // 🔥 Guardar sesión marcándola como autenticación de Google
-            SessionManager.saveSession(context, session, isGoogleAuth = true)
-
-            // Obtener información del usuario
-            val user = supabase.auth.currentUserOrNull()
-            Log.i("GoogleAuth", "✅ Usuario autenticado: ${user?.email}")
-            Log.i("GoogleAuth", "📋 User ID: ${user?.id}")
-            Log.i("GoogleAuth", "📋 Metadata: ${user?.userMetadata}")
-
-            // Verificar/crear perfil en la base de datos
-            user?.let {
-                ensureProfileExists(context, it.id, it.userMetadata)
-            }
-
-            // 🔥 Obtener el perfil completo del usuario
-            val profile = getCurrentUserProfile(context)
-
-            if (profile != null) {
-                Log.i("GoogleAuth", "✅ Perfil obtenido exitosamente: ${profile.name}")
-                Result.success(profile)
-            } else {
-                Log.e("GoogleAuth", "❌ No se pudo obtener el perfil del usuario")
-                Result.failure(Exception("No se pudo obtener el perfil del usuario"))
-            }
-        } else {
-            Log.e("GoogleAuth", "❌ No se pudo obtener la sesión")
-            Result.failure(Exception("No se pudo obtener la sesión"))
-        }
-    } catch (e: Exception) {
-        Log.e("GoogleAuth", "❌ Error en autenticación con Google: ${e.message}", e)
-        e.printStackTrace()
-        Result.failure(e)
-    }
-}
-
-/**
  * Asegura que el perfil del usuario exista en la base de datos
  * Si es la primera vez que inicia sesión con Google, crea el perfil
  *
@@ -229,9 +171,6 @@ suspend fun getCurrentUserProfile(context: Context): AppUser? {
 
         if (profile != null) {
             Log.i("GoogleAuth", "✅ Perfil obtenido: ${profile.name}")
-            Log.i("GoogleAuth", "📋 Role ID: ${profile.role_id}")
-            Log.i("GoogleAuth", "📋 Status ID: ${profile.status_id}")
-
             // Guardar los datos del usuario
             SessionManager.saveUserData(context, profile)
         } else {
@@ -241,7 +180,60 @@ suspend fun getCurrentUserProfile(context: Context): AppUser? {
         profile
     } catch (e: Exception) {
         Log.e("GoogleAuth", "❌ Error al obtener perfil: ${e.message}", e)
-        e.printStackTrace()
         null
+    }
+}
+
+/**
+ * 🔥 Autenticación con Google que retorna el usuario completo
+ * Usa esta función si necesitas el objeto AppUser después del login
+ */
+suspend fun signInWithGoogleAndGetUser(
+    context: Context,
+    idToken: String
+): Result<AppUser> {
+    val supabase = SupabaseService.getInstance()
+
+    return try {
+        Log.i("GoogleAuth", "🔄 Iniciando autenticación con Google...")
+
+        // Autenticar con Supabase usando el ID Token de Google
+        supabase.auth.signInWith(IDToken) {
+            this.idToken = idToken
+            this.provider = Google
+        }
+
+        // Obtener y guardar la sesión
+        val session = supabase.auth.currentSessionOrNull()
+
+        if (session != null) {
+            // 🔥 Guardar sesión marcándola como autenticación de Google
+            SessionManager.saveSession(context, session, isGoogleAuth = true)
+
+            // Obtener información del usuario
+            val user = supabase.auth.currentUserOrNull()
+            Log.i("GoogleAuth", "✅ Usuario autenticado: ${user?.email}")
+            Log.i("GoogleAuth", "📋 User ID: ${user?.id}")
+
+            // Verificar/crear perfil en la base de datos
+            user?.let {
+                ensureProfileExists(context, it.id, it.userMetadata)
+            }
+
+            // 🔥 Obtener el perfil completo del usuario
+            val profile = getCurrentUserProfile(context)
+
+            if (profile != null) {
+                Result.success(profile)
+            } else {
+                Result.failure(Exception("No se pudo obtener el perfil del usuario"))
+            }
+        } else {
+            Log.e("GoogleAuth", "❌ No se pudo obtener la sesión")
+            Result.failure(Exception("No se pudo obtener la sesión"))
+        }
+    } catch (e: Exception) {
+        Log.e("GoogleAuth", "❌ Error en autenticación con Google: ${e.message}", e)
+        Result.failure(e)
     }
 }

@@ -1,7 +1,5 @@
 package com.wilkins.safezone.bridge.User.Form
 
-import SessionManager
-import SessionManager.getUserProfile
 import android.content.Context
 import android.util.Log
 import com.wilkins.safezone.backend.network.SupabaseService
@@ -9,6 +7,8 @@ import com.wilkins.safezone.backend.network.User.Form.Report
 import com.wilkins.safezone.backend.network.User.Form.insertReportBackend
 import com.wilkins.safezone.backend.network.User.Form.uploadImageToSupabase
 import com.wilkins.safezone.backend.network.User.Form.uploadMediaToSupabase
+import com.wilkins.safezone.backend.network.auth.SessionManager
+import com.wilkins.safezone.backend.network.auth.SessionManager.getUserProfile
 import io.github.jan.supabase.postgrest.from
 import io.github.jan.supabase.postgrest.postgrest
 import io.github.jan.supabase.storage.storage

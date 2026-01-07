@@ -1,6 +1,5 @@
 package com.wilkins.safezone.frontend.ui.Moderator
 
-import SessionManager.logout
 import android.content.Context
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.core.tween
@@ -25,6 +24,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.navigation.NavController
+import com.wilkins.safezone.backend.network.auth.SessionManager.logout
 import com.wilkins.safezone.ui.theme.PrimaryColor
 import io.github.jan.supabase.SupabaseClient
 import kotlinx.coroutines.launch

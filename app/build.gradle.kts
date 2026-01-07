@@ -54,6 +54,15 @@ dependencies {
     implementation(libs.androidx.compose.ui.graphics)
     implementation("com.squareup.okhttp3:okhttp:4.12.0")
 
+    // Google Sign-In
+    implementation("com.google.android.gms:play-services-auth:21.0.0")
+
+    // Kotlinx Coroutines para Tasks
+    implementation("org.jetbrains.kotlinx:kotlinx-coroutines-play-services:1.7.3")
+
+    // Ya deberías tener estas de Supabase
+    implementation("io.github.jan-tennert.supabase:gotrue-kt:2.0.0")
+    implementation("io.github.jan-tennert.supabase:postgrest-kt:2.0.0")
 
     // ===== KTOR CLIENT =====
     val ktorVersion = "2.3.7"

@@ -1,6 +1,5 @@
 package com.wilkins.safezone.frontend.ui.user.Screens.Homepage
 
-import SessionManager.getUserProfile
 import android.content.Context
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
@@ -25,12 +24,13 @@ import com.wilkins.safezone.GenericUserUi.SideMenu
 import com.wilkins.safezone.R
 import com.wilkins.safezone.backend.network.AppUser
 import com.wilkins.safezone.backend.network.SupabaseService
+import com.wilkins.safezone.backend.network.auth.SessionManager.getUserProfile
 import com.wilkins.safezone.frontend.ui.Map.GoogleMapScreen
 import com.wilkins.safezone.frontend.ui.Map.MapConfig
-import com.wilkins.safezone.frontend.ui.user.Homepage.Components.NewsItem
-import com.wilkins.safezone.frontend.ui.user.Homepage.Components.NewsSlider
-import com.wilkins.safezone.frontend.ui.user.Homepage.Components.RecentReportsSection
-import com.wilkins.safezone.frontend.ui.user.Homepage.Components.WelcomeBanner
+import com.wilkins.safezone.frontend.ui.user.Screens.Homepage.Components.NewsItem
+import com.wilkins.safezone.frontend.ui.user.Screens.Homepage.Components.NewsSlider
+import com.wilkins.safezone.frontend.ui.user.Screens.Homepage.Components.RecentReportsSection
+import com.wilkins.safezone.frontend.ui.user.Screens.Homepage.Components.WelcomeBanner
 import io.github.jan.supabase.SupabaseClient
 import io.github.jan.supabase.gotrue.auth
 

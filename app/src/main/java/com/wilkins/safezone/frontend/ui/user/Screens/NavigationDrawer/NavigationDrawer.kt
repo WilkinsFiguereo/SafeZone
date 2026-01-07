@@ -1,7 +1,5 @@
 package com.wilkins.safezone.frontend.ui.user.Screens.NavigationDrawer
 
-import SessionManager.getUserProfile
-import SessionManager.logout
 import android.content.Context
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
@@ -26,6 +24,8 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.navigation.NavController
 import com.wilkins.safezone.backend.network.AppUser
+import com.wilkins.safezone.backend.network.auth.SessionManager.getUserProfile
+import com.wilkins.safezone.backend.network.auth.SessionManager.logout
 import io.github.jan.supabase.SupabaseClient
 import kotlinx.coroutines.launch
 

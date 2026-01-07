@@ -1,6 +1,5 @@
 package com.wilkins.safezone.frontend.ui.user.Screens.News
 
-import SessionManager.getUserProfile
 import android.content.Context
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
@@ -16,8 +15,12 @@ import androidx.navigation.NavController
 import com.wilkins.safezone.GenericUserUi.BottomNavigationMenu
 import com.wilkins.safezone.GenericUserUi.SideMenu
 import com.wilkins.safezone.backend.network.AppUser
-import com.wilkins.safezone.frontend.ui.user.News.components.NewsCard
-import com.wilkins.safezone.frontend.ui.user.News.components.NewsListItem
+import com.wilkins.safezone.backend.network.auth.SessionManager.getUserProfile
+import com.wilkins.safezone.frontend.ui.user.News.NewsData
+import com.wilkins.safezone.frontend.ui.user.News.NewsFilter
+import com.wilkins.safezone.frontend.ui.user.News.NewsSearchBar
+import com.wilkins.safezone.frontend.ui.user.Screens.News.components.NewsCard
+import com.wilkins.safezone.frontend.ui.user.Screens.News.components.NewsListItem
 import io.github.jan.supabase.SupabaseClient
 
 @OptIn(ExperimentalMaterial3Api::class)

@@ -10,16 +10,16 @@ import androidx.navigation.navArgument
 import com.wilkins.safezone.backend.network.AppUser
 import com.wilkins.safezone.backend.network.SupabaseService
 import com.wilkins.safezone.frontend.ui.Map.GoogleMapScreen
-import com.wilkins.safezone.frontend.ui.user.Form.FormScreen
-import com.wilkins.safezone.frontend.ui.user.Form.ReportResultScreen
-import com.wilkins.safezone.frontend.ui.user.Homepage.UserHomeScreen
-import com.wilkins.safezone.frontend.ui.user.NavigationDrawer.NavigationDrawer
-import com.wilkins.safezone.frontend.ui.user.NavigationDrawer.Profile
-import com.wilkins.safezone.frontend.ui.user.NavigationDrawer.SettingsScreen
-import com.wilkins.safezone.frontend.ui.user.News.NewsScreen
-import com.wilkins.safezone.frontend.ui.user.Notification.NotificationsScreen
-import com.wilkins.safezone.frontend.ui.user.RecordResports.ReportHistoryScreen
-import com.wilkins.safezone.frontend.ui.user.profile.ProfileScreenWithMenu
+import com.wilkins.safezone.frontend.ui.user.Screens.Form.FormScreen
+import com.wilkins.safezone.frontend.ui.user.Screens.Form.ReportResultScreen
+import com.wilkins.safezone.frontend.ui.user.Screens.Homepage.UserHomeScreen
+import com.wilkins.safezone.frontend.ui.user.Screens.NavigationDrawer.NavigationDrawer
+import com.wilkins.safezone.frontend.ui.user.Screens.NavigationDrawer.Profile
+import com.wilkins.safezone.frontend.ui.user.Screens.NavigationDrawer.SettingsScreen
+import com.wilkins.safezone.frontend.ui.user.Screens.News.NewsScreen
+import com.wilkins.safezone.frontend.ui.user.Screens.Notification.NotificationsScreen
+import com.wilkins.safezone.frontend.ui.user.Screens.RecordResports.ReportHistoryScreen
+import com.wilkins.safezone.frontend.ui.user.Screens.profile.ProfileScreenWithMenu
 import io.github.jan.supabase.gotrue.auth
 
 /**

@@ -1,6 +1,5 @@
 package com.wilkins.safezone.frontend.ui.Admin.Screens.Affair
 
-import SessionManager.getUserProfile
 import android.content.Context
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
@@ -20,6 +19,7 @@ import com.wilkins.safezone.backend.network.Admin.Affair.Affair
 import com.wilkins.safezone.backend.network.Admin.Affair.AffairCategory
 import com.wilkins.safezone.backend.network.Admin.Affair.AffairViewModel
 import com.wilkins.safezone.backend.network.AppUser
+import com.wilkins.safezone.backend.network.auth.SessionManager.getUserProfile
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
