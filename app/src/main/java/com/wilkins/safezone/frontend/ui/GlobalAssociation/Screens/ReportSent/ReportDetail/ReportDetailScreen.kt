@@ -546,6 +546,10 @@ fun ReportDetailScreenAssociation(
                             Spacer(modifier = Modifier.height(24.dp))
 
                             // Botones de Cambio de Estado
+                            // Reemplaza la sección de botones (aproximadamente línea 565-630)
+// desde "// Botones de Cambio de Estado" hasta el cierre de Row
+
+// Botones de Cambio de Estado
                             Text(
                                 text = "CAMBIAR ESTADO",
                                 color = Color.Gray,
@@ -554,11 +558,12 @@ fun ReportDetailScreenAssociation(
                                 modifier = Modifier.padding(bottom = 12.dp)
                             )
 
+// Primera fila de botones
                             Row(
                                 modifier = Modifier.fillMaxWidth(),
                                 horizontalArrangement = Arrangement.spacedBy(12.dp)
                             ) {
-                                // Botón Marcar como En Proceso (Estado 2)
+                                // Botón En Revisión (Estado 2)
                                 Button(
                                     onClick = {
                                         selectedNewStatus = 2
@@ -585,8 +590,8 @@ fun ReportDetailScreenAssociation(
                                         )
                                         Spacer(modifier = Modifier.height(4.dp))
                                         Text(
-                                            text = "En Proceso",
-                                            fontSize = 13.sp,
+                                            text = "En proceso",
+                                            fontSize = 12.sp,
                                             fontWeight = FontWeight.Bold
                                         )
                                         if (currentStatusId == 2) {
@@ -599,7 +604,7 @@ fun ReportDetailScreenAssociation(
                                     }
                                 }
 
-                                // Botón Marcar como Finalizado (Estado 3)
+                                // Botón Finalizado (Estado 3)
                                 Button(
                                     onClick = {
                                         selectedNewStatus = 3
@@ -631,6 +636,55 @@ fun ReportDetailScreenAssociation(
                                             fontWeight = FontWeight.Bold
                                         )
                                         if (currentStatusId == 3) {
+                                            Text(
+                                                text = "(Actual)",
+                                                fontSize = 10.sp,
+                                                fontWeight = FontWeight.Normal
+                                            )
+                                        }
+                                    }
+                                }
+                            }
+
+                            Spacer(modifier = Modifier.height(12.dp))
+
+// Segunda fila - Botón Cancelar centrado
+                            Row(
+                                modifier = Modifier.fillMaxWidth(),
+                                horizontalArrangement = Arrangement.Center
+                            ) {
+                                // Botón Cancelado (Estado 4)
+                                Button(
+                                    onClick = {
+                                        selectedNewStatus = 4
+                                        showStatusDialog = true
+                                    },
+                                    modifier = Modifier
+                                        .fillMaxWidth(0.6f)
+                                        .height(70.dp),
+                                    colors = ButtonDefaults.buttonColors(
+                                        containerColor = Color(0xFFF44336),
+                                        disabledContainerColor = Color(0xFFEF9A9A)
+                                    ),
+                                    shape = RoundedCornerShape(12.dp),
+                                    enabled = !isUpdating && currentStatusId != 4
+                                ) {
+                                    Column(
+                                        horizontalAlignment = Alignment.CenterHorizontally,
+                                        verticalArrangement = Arrangement.Center
+                                    ) {
+                                        Icon(
+                                            imageVector = Icons.Default.Cancel,
+                                            contentDescription = null,
+                                            modifier = Modifier.size(28.dp)
+                                        )
+                                        Spacer(modifier = Modifier.height(4.dp))
+                                        Text(
+                                            text = "Cancelado",
+                                            fontSize = 13.sp,
+                                            fontWeight = FontWeight.Bold
+                                        )
+                                        if (currentStatusId == 4) {
                                             Text(
                                                 text = "(Actual)",
                                                 fontSize = 10.sp,

@@ -66,7 +66,7 @@ fun AdminMenu(
         MenuSection(
             title = "Reportes",
             items = listOf(
-                MenuItem(Icons.Default.Assessment, "Generar Reportes PDF", "generate_reports"),
+                MenuItem(Icons.Default.Assessment, "Generar Reportes PDF", "PDF"),
                 MenuItem(Icons.Default.Pending, "Reportes Pendientes", "pending_reports"),
                 MenuItem(Icons.Default.Update, "Reportes en Proceso", "in_progress_reports"),
                 MenuItem(Icons.Default.CheckCircle, "Reportes Completados", "completed_reports"),
@@ -77,7 +77,7 @@ fun AdminMenu(
             title = "Categorías",
             items = listOf(
                 MenuItem(Icons.Default.Category, "Categorías de Incidencias", "incident_categories"),
-                MenuItem(Icons.Default.BusinessCenter, "Categorías de Affairs", "affair_categories")
+                MenuItem(Icons.Default.BusinessCenter, "Incidencias", "affair_categories")
             )
         ),
         MenuSection(

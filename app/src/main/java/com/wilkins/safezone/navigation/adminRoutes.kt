@@ -14,6 +14,7 @@ import com.wilkins.safezone.frontend.ui.Admin.Screens.CrudUser.CrudUsuarios
 import com.wilkins.safezone.frontend.ui.Admin.Screens.CrudUser.CrudUsuariosDisabled
 import com.wilkins.safezone.frontend.ui.Admin.Screens.CrudUser.UserProfileCrud
 import com.wilkins.safezone.frontend.ui.Admin.Screens.Dasbhoard.AdminDashboard
+import com.wilkins.safezone.frontend.ui.Admin.Screens.PDF.PDFScreen
 import com.wilkins.safezone.frontend.ui.auth.components.AccountDisabledScreen
 
 fun NavGraphBuilder.adminRoutes(
@@ -141,6 +142,20 @@ fun NavGraphBuilder.adminRoutes(
             }
         } else {
             IncidentCategoryScreen(navController)
+        }
+    }
+
+    // ════════════════════════════════════════════
+    // PDF
+    // ════════════════════════════════════════════
+    composable("PDF") {
+        if (!hasActiveSession()) {
+            Log.w("AdminRoutes", "⚠️ Intento de acceso sin sesión a DashboardAdmin")
+            navController.navigate("login") {
+                popUpTo(0) { inclusive = true }
+            }
+        } else {
+            PDFScreen(navController)
         }
     }
 }

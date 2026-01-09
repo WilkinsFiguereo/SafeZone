@@ -74,7 +74,7 @@ fun SplashScreen(navController: NavController) {
                         }
                         4 -> {
                             Log.i("MainActivity", "✅ Rol 2 → DashboardMod")
-                            navController.navigate("ReportSentList") {
+                            navController.navigate("DashboardAssociation") {
                                 popUpTo("login") { inclusive = true }
                             }
                         }
