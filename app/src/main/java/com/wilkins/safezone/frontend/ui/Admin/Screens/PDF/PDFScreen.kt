@@ -165,6 +165,44 @@ fun PDFScreen(navController: NavController) {
         }
     }
 
+    // Función para generar reporte de categorías
+    fun generateCategoryReport(reportType: String) {
+        checkAndRequestPermission {
+            scope.launch {
+                isGenerating = true
+                try {
+                    val result = pdfGenerator.generateCategoryReport(reportType)
+                    result.onSuccess { file ->
+                        snackbarMessage = "PDF generado: ${file.name}"
+                        showSnackbar = true
+
+                        // Abrir el PDF automáticamente
+                        try {
+                            val uri = FileProvider.getUriForFile(
+                                context,
+                                "${context.packageName}.provider",
+                                file
+                            )
+                            val intent = Intent(Intent.ACTION_VIEW).apply {
+                                setDataAndType(uri, "application/pdf")
+                                flags = Intent.FLAG_GRANT_READ_URI_PERMISSION
+                            }
+                            context.startActivity(intent)
+                        } catch (e: Exception) {
+                            snackbarMessage = "PDF generado en: ${file.absolutePath}"
+                            showSnackbar = true
+                        }
+                    }.onFailure { error ->
+                        snackbarMessage = "Error: ${error.message}"
+                        showSnackbar = true
+                    }
+                } finally {
+                    isGenerating = false
+                }
+            }
+        }
+    }
+
     // Definir las secciones del menú lateral
     val menuSections = listOf(
         MenuSection(
@@ -347,10 +385,24 @@ fun PDFScreen(navController: NavController) {
                                 ReportItem("Reportes Pendientes", Icons.Default.PendingActions),
                                 ReportItem("Reportes en Proceso", Icons.Default.Autorenew),
                                 ReportItem("Reportes Completados", Icons.Default.CheckCircle),
-                                ReportItem("Reportes Cancelados", Icons.Default.Cancel)
+                                ReportItem("Reportes Cancelados", Icons.Default.Cancel),
+                                ReportItem("Reportes Anónimos", Icons.Default.VisibilityOff)
                             ),
                             onReportClick = { reportName ->
                                 generateIncidentReport(reportName)
+                            }
+                        )
+
+                        // Sección de Categorías (AHORA FUNCIONAL)
+                        ReportSection(
+                            title = "Reportes de Categorías",
+                            icon = Icons.Default.Category,
+                            reports = listOf(
+                                ReportItem("Categorías de Incidencia", Icons.Default.Label),
+                                ReportItem("Incidencias por Categoría", Icons.Default.Inventory)
+                            ),
+                            onReportClick = { reportName ->
+                                generateCategoryReport(reportName)
                             }
                         )
 
@@ -376,19 +428,6 @@ fun PDFScreen(navController: NavController) {
                                 ReportItem("Todas las Encuestas", Icons.Default.BarChart),
                                 ReportItem("Encuestas Activas", Icons.Default.TrendingUp),
                                 ReportItem("Resultados de Encuestas", Icons.Default.Assessment)
-                            ),
-                            onReportClick = { reportName ->
-                                snackbarMessage = "Funcionalidad en desarrollo: $reportName"
-                                showSnackbar = true
-                            }
-                        )
-
-                        ReportSection(
-                            title = "Reportes de Categorías",
-                            icon = Icons.Default.Category,
-                            reports = listOf(
-                                ReportItem("Categorías de Incidencia", Icons.Default.Label),
-                                ReportItem("Incidencias por Categoría", Icons.Default.Inventory)
                             ),
                             onReportClick = { reportName ->
                                 snackbarMessage = "Funcionalidad en desarrollo: $reportName"

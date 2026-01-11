@@ -20,7 +20,10 @@ data class Affair(
     val id: Int = 0,
 
     @SerialName("type")
-    val type: String = ""
+    val type: String = "",
+
+    @SerialName("category_id")
+    val category_Id: Int
 )
 
 // Modelo para Profile (Usuario que reporta)

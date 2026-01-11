@@ -15,6 +15,7 @@ class PDFGeneratorService(private val context: Context) {
 
     private val crudUser = CrudUser()
     private val reportRepository = ReportRepository()
+    private val categoryRepository = CategoryRepository()
     private val pageWidth = 595 // A4 width in points
     private val pageHeight = 842 // A4 height in points
     private val margin = 40
@@ -76,6 +77,10 @@ class PDFGeneratorService(private val context: Context) {
                     android.util.Log.d("PDFGenerator", "📊 Obteniendo reportes cancelados (status=4)...")
                     reportRepository.getReportsByStatus(4)
                 }
+                "Reportes Anónimos" -> {
+                    android.util.Log.d("PDFGenerator", "📊 Obteniendo reportes anónimos...")
+                    reportRepository.getAnonymousReports()
+                }
                 else -> {
                     android.util.Log.w("PDFGenerator", "⚠️ Tipo de reporte desconocido: $reportType")
                     emptyList()
@@ -96,6 +101,44 @@ class PDFGeneratorService(private val context: Context) {
             Result.success(pdfFile)
         } catch (e: Exception) {
             android.util.Log.e("PDFGenerator", "❌ Error generando reporte: ${e.message}", e)
+            e.printStackTrace()
+            Result.failure(Exception("Error al generar el reporte: ${e.message}"))
+        }
+    }
+
+    /**
+     * Genera un reporte PDF de categorías de incidencias
+     */
+    suspend fun generateCategoryReport(reportType: String): Result<File> {
+        return try {
+            android.util.Log.d("PDFGenerator", "🔄 Generando reporte de categorías: $reportType")
+
+            when (reportType) {
+                "Categorías de Incidencia" -> {
+                    // Obtener affairs con sus categorías y conteo
+                    val affairsWithCategories = categoryRepository.getAffairsWithCategories(reportRepository)
+                    if (affairsWithCategories.isEmpty()) {
+                        return Result.failure(Exception("No se encontraron tipos de incidencias"))
+                    }
+
+                    val pdfFile = createAffairsPDF(reportType, affairsWithCategories)
+                    Result.success(pdfFile)
+                }
+                "Incidencias por Categoría" -> {
+                    val grouped = categoryRepository.getReportsGroupedByCategory(reportRepository)
+                    if (grouped.isEmpty()) {
+                        return Result.failure(Exception("No se encontraron reportes agrupados por categoría"))
+                    }
+
+                    val pdfFile = createGroupedByCategoryPDF(reportType, grouped)
+                    Result.success(pdfFile)
+                }
+                else -> {
+                    Result.failure(Exception("Tipo de reporte de categoría desconocido: $reportType"))
+                }
+            }
+        } catch (e: Exception) {
+            android.util.Log.e("PDFGenerator", "❌ Error generando reporte de categoría: ${e.message}", e)
             e.printStackTrace()
             Result.failure(Exception("Error al generar el reporte: ${e.message}"))
         }
@@ -185,6 +228,206 @@ class PDFGeneratorService(private val context: Context) {
 
         document.close()
         return file
+    }
+
+    /**
+     * Crea el documento PDF con los affairs (tipos de incidencias)
+     */
+    private fun createAffairsPDF(
+        reportTitle: String,
+        affairsWithCategories: List<AffairWithCategory>
+    ): File {
+        val document = PdfDocument()
+        var pageNumber = 1
+        var yPosition = margin + 60
+
+        var pageInfo = PdfDocument.PageInfo.Builder(pageWidth, pageHeight, pageNumber).create()
+        var page = document.startPage(pageInfo)
+        var canvas = page.canvas
+
+        drawHeader(canvas, reportTitle, pageNumber, affairsWithCategories.size)
+        yPosition += 40
+
+        affairsWithCategories.forEachIndexed { index, affairWithCategory ->
+            if (yPosition > pageHeight - 120) {
+                document.finishPage(page)
+                pageNumber++
+                pageInfo = PdfDocument.PageInfo.Builder(pageWidth, pageHeight, pageNumber).create()
+                page = document.startPage(pageInfo)
+                canvas = page.canvas
+                drawHeader(canvas, reportTitle, pageNumber, affairsWithCategories.size)
+                yPosition = margin + 100
+            }
+
+            drawAffairInfo(canvas, affairWithCategory, index + 1, yPosition)
+            yPosition += 120
+        }
+
+        document.finishPage(page)
+
+        val fileName = "Reporte_${reportTitle.replace(" ", "_")}_${getTimestamp()}.pdf"
+        val file = createFile(fileName)
+
+        FileOutputStream(file).use { outputStream ->
+            document.writeTo(outputStream)
+        }
+
+        document.close()
+        return file
+    }
+
+    /**
+     * Crea el documento PDF con incidencias agrupadas por categoría
+     */
+    private fun createGroupedByCategoryPDF(
+        reportTitle: String,
+        grouped: List<ReportsByCategory>
+    ): File {
+        val document = PdfDocument()
+        var pageNumber = 1
+        var yPosition = margin + 60
+
+        var pageInfo = PdfDocument.PageInfo.Builder(pageWidth, pageHeight, pageNumber).create()
+        var page = document.startPage(pageInfo)
+        var canvas = page.canvas
+
+        val totalReports = grouped.sumOf { it.totalReports }
+        drawHeader(canvas, reportTitle, pageNumber, totalReports)
+        yPosition += 40
+
+        grouped.forEach { categoryGroup ->
+            // Verificar si necesitamos nueva página para el encabezado de categoría
+            if (yPosition > pageHeight - 250) {
+                document.finishPage(page)
+                pageNumber++
+                pageInfo = PdfDocument.PageInfo.Builder(pageWidth, pageHeight, pageNumber).create()
+                page = document.startPage(pageInfo)
+                canvas = page.canvas
+                drawHeader(canvas, reportTitle, pageNumber, totalReports)
+                yPosition = margin + 100
+            }
+
+            // Dibujar encabezado de categoría principal
+            drawCategoryHeader(canvas, categoryGroup, yPosition)
+            yPosition += 90
+
+            // Dibujar cada tipo de incidencia (affair) en esta categoría
+            categoryGroup.affairs.forEach { affairWithCategory ->
+                if (yPosition > pageHeight - 120) {
+                    document.finishPage(page)
+                    pageNumber++
+                    pageInfo = PdfDocument.PageInfo.Builder(pageWidth, pageHeight, pageNumber).create()
+                    page = document.startPage(pageInfo)
+                    canvas = page.canvas
+                    drawHeader(canvas, reportTitle, pageNumber, totalReports)
+                    yPosition = margin + 100
+                }
+
+                drawAffairSummary(canvas, affairWithCategory, yPosition)
+                yPosition += 90
+            }
+
+            yPosition += 20 // Espacio entre categorías
+        }
+
+        document.finishPage(page)
+
+        val fileName = "Reporte_${reportTitle.replace(" ", "_")}_${getTimestamp()}.pdf"
+        val file = createFile(fileName)
+
+        FileOutputStream(file).use { outputStream ->
+            document.writeTo(outputStream)
+        }
+
+        document.close()
+        return file
+    }
+
+    /**
+     * Dibuja un resumen de affair (usado en reportes agrupados)
+     */
+    private fun drawAffairSummary(
+        canvas: android.graphics.Canvas,
+        affairWithCategory: AffairWithCategory,
+        yPos: Int
+    ) {
+        val paint = Paint()
+        var currentY = yPos
+
+        // Fondo suave
+        paint.color = android.graphics.Color.rgb(250, 250, 250)
+        paint.style = Paint.Style.FILL
+        canvas.drawRect(
+            (margin + 10).toFloat(),
+            currentY.toFloat(),
+            (pageWidth - margin - 10).toFloat(),
+            (currentY + 80).toFloat(),
+            paint
+        )
+
+        // Borde
+        paint.color = android.graphics.Color.rgb(220, 220, 220)
+        paint.style = Paint.Style.STROKE
+        paint.strokeWidth = 1f
+        canvas.drawRect(
+            (margin + 10).toFloat(),
+            currentY.toFloat(),
+            (pageWidth - margin - 10).toFloat(),
+            (currentY + 80).toFloat(),
+            paint
+        )
+
+        currentY += 20
+        paint.style = Paint.Style.FILL
+
+        // Tipo de incidencia
+        paint.color = android.graphics.Color.BLACK
+        paint.textSize = 13f
+        paint.isFakeBoldText = true
+        canvas.drawText(
+            "• ${affairWithCategory.affair.type}",
+            (margin + 20).toFloat(),
+            currentY.toFloat(),
+            paint
+        )
+
+        currentY += 20
+        paint.isFakeBoldText = false
+        paint.textSize = 11f
+        paint.color = android.graphics.Color.DKGRAY
+
+        canvas.drawText(
+            "ID: ${affairWithCategory.affair.id}",
+            (margin + 30).toFloat(),
+            currentY.toFloat(),
+            paint
+        )
+
+        // Contador de reportes
+        currentY = yPos + 20
+        paint.color = android.graphics.Color.rgb(33, 150, 243)
+        paint.isFakeBoldText = true
+        paint.textSize = 14f
+        val countText = "${affairWithCategory.reportCount}"
+        val countWidth = paint.measureText(countText)
+        canvas.drawText(
+            countText,
+            (pageWidth - margin - countWidth - 20),
+            currentY.toFloat(),
+            paint
+        )
+
+        currentY += 16
+        paint.textSize = 10f
+        paint.isFakeBoldText = false
+        val labelText = "reportes"
+        val labelWidth = paint.measureText(labelText)
+        canvas.drawText(
+            labelText,
+            (pageWidth - margin - labelWidth - 20),
+            currentY.toFloat(),
+            paint
+        )
     }
 
     /**
@@ -324,7 +567,8 @@ class PDFGeneratorService(private val context: Context) {
         val statusText = when (profile.statusId) {
             1 -> "Activo"
             2 -> "Inactivo"
-            3 -> "Baneado"
+            3 -> "Pendiente"
+            4 -> "Bloqueado"
             else -> "Desconocido"
         }
 
@@ -370,7 +614,7 @@ class PDFGeneratorService(private val context: Context) {
     }
 
     /**
-     * Dibuja la información de un reporte de incidencia (ACTUALIZADO)
+     * Dibuja la información de un reporte de incidencia
      */
     private fun drawReportInfo(
         canvas: android.graphics.Canvas,
@@ -512,7 +756,6 @@ class PDFGeneratorService(private val context: Context) {
             2 -> "En Proceso"
             3 -> "Completado"
             4 -> "Cancelado"
-            5 -> "En revision"
             else -> "Estado ${report.idReportingStatus}"
         }
 
@@ -562,6 +805,150 @@ class PDFGeneratorService(private val context: Context) {
                 paint
             )
         }
+    }
+
+    /**
+     * Dibuja la información de un affair (tipo de incidencia)
+     */
+    private fun drawAffairInfo(
+        canvas: android.graphics.Canvas,
+        affairWithCategory: AffairWithCategory,
+        index: Int,
+        yPos: Int
+    ) {
+        val paint = Paint()
+        var currentY = yPos
+
+        // Fondo alternado
+        if (index % 2 == 0) {
+            paint.color = android.graphics.Color.rgb(245, 245, 245)
+            paint.style = Paint.Style.FILL
+            canvas.drawRect(
+                margin.toFloat(),
+                currentY.toFloat(),
+                (pageWidth - margin).toFloat(),
+                (currentY + 110).toFloat(),
+                paint
+            )
+        }
+
+        // Borde
+        paint.color = android.graphics.Color.rgb(200, 200, 200)
+        paint.style = Paint.Style.STROKE
+        paint.strokeWidth = 1f
+        canvas.drawRect(
+            margin.toFloat(),
+            currentY.toFloat(),
+            (pageWidth - margin).toFloat(),
+            (currentY + 110).toFloat(),
+            paint
+        )
+
+        currentY += 20
+        paint.style = Paint.Style.FILL
+
+        // Tipo de incidencia
+        paint.color = android.graphics.Color.BLACK
+        paint.textSize = 14f
+        paint.isFakeBoldText = true
+        canvas.drawText(
+            "$index. ${affairWithCategory.affair.type}",
+            (margin + 10).toFloat(),
+            currentY.toFloat(),
+            paint
+        )
+
+        currentY += 22
+        paint.isFakeBoldText = false
+        paint.textSize = 12f
+        paint.color = android.graphics.Color.DKGRAY
+
+        // ID del affair
+        canvas.drawText(
+            "ID: ${affairWithCategory.affair.id}",
+            (margin + 10).toFloat(),
+            currentY.toFloat(),
+            paint
+        )
+
+        currentY += 18
+
+        // Categoría principal
+        val categoryName = affairWithCategory.category?.name ?: "Sin categoría"
+        canvas.drawText(
+            "Categoría: $categoryName",
+            (margin + 10).toFloat(),
+            currentY.toFloat(),
+            paint
+        )
+
+        currentY += 18
+
+        // ID de categoría
+        canvas.drawText(
+            "Categoría ID: ${affairWithCategory.affair.category_Id}",
+            (margin + 10).toFloat(),
+            currentY.toFloat(),
+            paint
+        )
+
+        // Contador de reportes (arriba a la derecha)
+        currentY = yPos + 20
+        paint.color = android.graphics.Color.rgb(33, 150, 243)
+        paint.isFakeBoldText = true
+        paint.textSize = 16f
+        val countText = "${affairWithCategory.reportCount} reportes"
+        val countWidth = paint.measureText(countText)
+        canvas.drawText(
+            countText,
+            (pageWidth - margin - countWidth - 10),
+            currentY.toFloat(),
+            paint
+        )
+    }
+
+    /**
+     * Dibuja el encabezado de una categoría en reportes agrupados
+     */
+    private fun drawCategoryHeader(
+        canvas: android.graphics.Canvas,
+        category: ReportsByCategory,
+        yPos: Int
+    ) {
+        val paint = Paint()
+        var currentY = yPos
+
+        // Fondo de encabezado principal
+        paint.color = android.graphics.Color.rgb(33, 150, 243)
+        paint.style = Paint.Style.FILL
+        canvas.drawRect(
+            margin.toFloat(),
+            currentY.toFloat(),
+            (pageWidth - margin).toFloat(),
+            (currentY + 70).toFloat(),
+            paint
+        )
+
+        currentY += 25
+        paint.color = android.graphics.Color.WHITE
+        paint.textSize = 18f
+        paint.isFakeBoldText = true
+        canvas.drawText(
+            category.category.name,
+            (margin + 15).toFloat(),
+            currentY.toFloat(),
+            paint
+        )
+
+        currentY += 22
+        paint.textSize = 13f
+        paint.isFakeBoldText = false
+        canvas.drawText(
+            "${category.totalReports} reportes en ${category.affairs.size} tipos de incidencia",
+            (margin + 15).toFloat(),
+            currentY.toFloat(),
+            paint
+        )
     }
 
     /**
