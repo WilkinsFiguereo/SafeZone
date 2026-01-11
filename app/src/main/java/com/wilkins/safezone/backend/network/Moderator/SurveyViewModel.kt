@@ -9,6 +9,7 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.launch
 import kotlinx.serialization.Serializable
+import android.util.Log
 
 @Serializable
 data class Survey(
@@ -24,7 +25,7 @@ data class SurveyQuestion(
     val survey_id: String,
     val question_text: String,
     val question_type: String,
-    val options: List<String>? = null,
+    val options: List<String> = emptyList(),
     val required: Boolean,
     val order: Int,
     val created_at: String
@@ -78,6 +79,9 @@ class SurveyViewModel : ViewModel() {
     private val _successMessage = MutableStateFlow<String?>(null)
     val successMessage: StateFlow<String?> = _successMessage
 
+    private val _surveyResults = MutableStateFlow<Map<String, List<SurveyResponse>>>(emptyMap())
+    val surveyResults: StateFlow<Map<String, List<SurveyResponse>>> = _surveyResults
+
     fun fetchSurveys() {
         viewModelScope.launch {
             _isLoading.value = true
@@ -93,6 +97,7 @@ class SurveyViewModel : ViewModel() {
                 _surveys.value = surveysList
             } catch (e: Exception) {
                 _error.value = "Error al cargar encuestas: ${e.message}"
+                Log.e("SurveyViewModel", "Error al cargar encuestas", e)
             } finally {
                 _isLoading.value = false
             }
@@ -113,9 +118,11 @@ class SurveyViewModel : ViewModel() {
 
                 _selectedSurvey.value = survey
                 fetchQuestionsBySurvey(surveyId)
+                fetchSurveyResults(surveyId)
 
             } catch (e: Exception) {
                 _error.value = "Error al cargar encuesta: ${e.message}"
+                Log.e("SurveyViewModel", "Error al cargar encuesta", e)
             } finally {
                 _isLoading.value = false
             }
@@ -134,8 +141,10 @@ class SurveyViewModel : ViewModel() {
                     .decodeList<SurveyQuestion>()
 
                 _surveyQuestions.value = questions
+                Log.d("SurveyViewModel", "Preguntas cargadas: ${questions.size}")
             } catch (e: Exception) {
                 _error.value = "Error al cargar preguntas: ${e.message}"
+                Log.e("SurveyViewModel", "Error al cargar preguntas", e)
             }
         }
     }
@@ -152,6 +161,7 @@ class SurveyViewModel : ViewModel() {
             _successMessage.value = null
 
             try {
+                // Validar preguntas
                 questions.forEachIndexed { index, question ->
                     if (question.question_text.isBlank()) {
                         _error.value = "La pregunta ${index + 1} no puede estar vacía"
@@ -169,6 +179,7 @@ class SurveyViewModel : ViewModel() {
                     }
                 }
 
+                // Crear la encuesta
                 val surveyData = mapOf(
                     "title" to title,
                     "description" to description
@@ -179,29 +190,73 @@ class SurveyViewModel : ViewModel() {
                     .insert(surveyData)
                     .decodeSingle<Survey>()
 
-                for (question in questions) {
-                    val shouldIncludeOptions = question.question_type == "multiple_choice"
-                    val validOptions = if (shouldIncludeOptions && question.options != null) {
-                        question.options.filter { it.isNotBlank() }
-                    } else {
-                        null
+                Log.d("SurveyViewModel", "Encuesta creada con ID: ${surveyResponse.id}")
+
+                // Insertar preguntas usando una estrategia diferente
+                questions.forEach { question ->
+                    try {
+                        // Crear el objeto según el tipo
+                        when (question.question_type) {
+                            "multiple_choice" -> {
+                                val validOptions = question.options?.filter { it.isNotBlank() } ?: emptyList()
+
+                                // NO decodificar la respuesta, solo insertar
+                                supabase.from("survey_questions").insert(
+                                    mapOf(
+                                        "survey_id" to surveyResponse.id,
+                                        "question_text" to question.question_text,
+                                        "question_type" to question.question_type,
+                                        "options" to validOptions,
+                                        "required" to question.required,
+                                        "order" to question.order
+                                    )
+                                ) {
+                                    select()
+                                }
+                                Log.d("SurveyViewModel", "✓ Multiple choice insertada con ${validOptions.size} opciones")
+                            }
+
+                            "boolean" -> {
+                                supabase.from("survey_questions").insert(
+                                    mapOf(
+                                        "survey_id" to surveyResponse.id,
+                                        "question_text" to question.question_text,
+                                        "question_type" to question.question_type,
+                                        "options" to listOf("Sí", "No"),
+                                        "required" to question.required,
+                                        "order" to question.order
+                                    )
+                                ) {
+                                    select()
+                                }
+                                Log.d("SurveyViewModel", "✓ Boolean insertada")
+                            }
+
+                            else -> {
+                                // Para text y number, enviar array vacío explícitamente
+                                supabase.from("survey_questions").insert(
+                                    mapOf(
+                                        "survey_id" to surveyResponse.id,
+                                        "question_text" to question.question_text,
+                                        "question_type" to question.question_type,
+                                        "options" to emptyList<String>(),
+                                        "required" to question.required,
+                                        "order" to question.order
+                                    )
+                                ) {
+                                    select()
+                                }
+                                Log.d("SurveyViewModel", "✓ ${question.question_type} insertada")
+                            }
+                        }
+
+                    } catch (e: Exception) {
+                        Log.e("SurveyViewModel", "✗ Error insertando: ${question.question_text}")
+                        Log.e("SurveyViewModel", "Tipo: ${question.question_type}")
+                        Log.e("SurveyViewModel", "Error completo: ${e.message}")
+                        Log.e("SurveyViewModel", "Stack trace:", e)
+                        throw e
                     }
-
-                    val questionData = mutableMapOf<String, Any?>(
-                        "survey_id" to surveyResponse.id,
-                        "question_text" to question.question_text,
-                        "question_type" to question.question_type,
-                        "required" to question.required,
-                        "order" to question.order
-                    )
-
-                    if (validOptions != null && validOptions.isNotEmpty()) {
-                        questionData["options"] = validOptions
-                    }
-
-                    supabase
-                        .from("survey_questions")
-                        .insert(questionData)
                 }
 
                 _successMessage.value = "Encuesta creada exitosamente"
@@ -210,7 +265,7 @@ class SurveyViewModel : ViewModel() {
 
             } catch (e: Exception) {
                 _error.value = "Error al crear encuesta: ${e.message}"
-                android.util.Log.e("SurveyViewModel", "Error completo:", e)
+                Log.e("SurveyViewModel", "Error al crear encuesta", e)
             } finally {
                 _isLoading.value = false
             }
@@ -229,10 +284,12 @@ class SurveyViewModel : ViewModel() {
                     }
 
                 _successMessage.value = "Encuesta eliminada exitosamente"
+                fetchSurveys()
                 onSuccess()
 
             } catch (e: Exception) {
                 _error.value = "Error al eliminar encuesta: ${e.message}"
+                Log.e("SurveyViewModel", "Error al eliminar encuesta", e)
             } finally {
                 _isLoading.value = false
             }
@@ -269,6 +326,7 @@ class SurveyViewModel : ViewModel() {
 
             } catch (e: Exception) {
                 _error.value = "Error al enviar respuestas: ${e.message}"
+                Log.e("SurveyViewModel", "Error al enviar respuestas", e)
             } finally {
                 _isLoading.value = false
             }
@@ -294,7 +352,52 @@ class SurveyViewModel : ViewModel() {
 
                 onResult(responses.isNotEmpty())
             } catch (e: Exception) {
+                Log.e("SurveyViewModel", "Error al verificar respuestas", e)
                 onResult(false)
+            }
+        }
+    }
+
+    fun fetchSurveyResults(surveyId: String) {
+        viewModelScope.launch {
+            try {
+                val responses = supabase
+                    .from("survey_responses")
+                    .select {
+                        filter { eq("survey_id", surveyId) }
+                    }
+                    .decodeList<SurveyResponse>()
+
+                _surveyResults.value = responses.groupBy { it.question_id }
+                Log.d("SurveyViewModel", "Resultados cargados: ${responses.size} respuestas")
+            } catch (e: Exception) {
+                Log.e("SurveyViewModel", "Error al cargar resultados", e)
+            }
+        }
+    }
+
+    fun getQuestionStats(questionId: String, questionType: String): QuestionStats {
+        val responses = _surveyResults.value[questionId] ?: emptyList()
+        val totalResponses = responses.size
+
+        return when (questionType) {
+            "multiple_choice" -> {
+                val answerCounts = responses.groupingBy { it.answer_text }.eachCount()
+                QuestionStats.MultipleChoice(totalResponses, answerCounts)
+            }
+            "boolean" -> {
+                val answerCounts = responses.groupingBy { it.answer_text }.eachCount()
+                QuestionStats.Boolean(totalResponses, answerCounts)
+            }
+            "number" -> {
+                val numbers = responses.mapNotNull { it.answer_text.toDoubleOrNull() }
+                val average = if (numbers.isNotEmpty()) numbers.average() else 0.0
+                val min = numbers.minOrNull() ?: 0.0
+                val max = numbers.maxOrNull() ?: 0.0
+                QuestionStats.Number(totalResponses, average, min, max)
+            }
+            else -> {
+                QuestionStats.Text(totalResponses, responses.map { it.answer_text })
             }
         }
     }
@@ -303,4 +406,28 @@ class SurveyViewModel : ViewModel() {
         _error.value = null
         _successMessage.value = null
     }
+}
+
+sealed class QuestionStats {
+    data class MultipleChoice(
+        val totalResponses: Int,
+        val answerCounts: Map<String, Int>
+    ) : QuestionStats()
+
+    data class Boolean(
+        val totalResponses: Int,
+        val answerCounts: Map<String, Int>
+    ) : QuestionStats()
+
+    data class Number(
+        val totalResponses: Int,
+        val average: Double,
+        val min: Double,
+        val max: Double
+    ) : QuestionStats()
+
+    data class Text(
+        val totalResponses: Int,
+        val answers: List<String>
+    ) : QuestionStats()
 }
