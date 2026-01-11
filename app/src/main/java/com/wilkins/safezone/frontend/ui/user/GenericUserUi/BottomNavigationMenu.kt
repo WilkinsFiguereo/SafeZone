@@ -16,30 +16,52 @@ import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.navigation.NavHostController
 import com.wilkins.safezone.ui.theme.PrimaryColor
+import io.github.jan.supabase.SupabaseClient
+import io.github.jan.supabase.gotrue.auth
 
 @Composable
 fun BottomNavigationMenu(
     modifier: Modifier = Modifier,
-    onNewsClick: () -> Unit,
-    onAlertClick: () -> Unit,
-    onMyAlertsClick: () -> Unit,
-    selectedItem: Int = 1
+    navController: NavHostController,
+    supabaseClient: SupabaseClient,
+    selectedItem: Int = 0
 ) {
+    val userId = supabaseClient.auth.currentUserOrNull()?.id ?: ""
+
+    // Función para navegar a Noticias
+    val onNewsClick = {
+        navController.navigate("NewsUser")
+    }
+
+    // Función para navegar al Formulario
+    val onAlertClick = {
+        navController.navigate("FormUser")
+    }
+
+    // Función para navegar a Record Reports
+    val onMyAlertsClick = {
+        navController.navigate("RecordReports/${userId}")
+    }
+
     Box(
-        modifier = modifier
+        modifier = Modifier
             .fillMaxWidth()
             .height(90.dp)
     ) {
+        // Barra inferior blanca con forma redondeada en el centro
         Surface(
             modifier = Modifier
                 .fillMaxWidth()
                 .height(70.dp)
                 .align(Alignment.BottomCenter),
             color = Color.White,
-            shadowElevation = 16.dp
+            shadowElevation = 16.dp,
+            tonalElevation = 2.dp
         ) {
             Row(
                 modifier = Modifier
@@ -48,7 +70,7 @@ fun BottomNavigationMenu(
                 horizontalArrangement = Arrangement.SpaceBetween,
                 verticalAlignment = Alignment.CenterVertically
             ) {
-
+                // Botón Noticias (Izquierda)
                 BottomNavItem(
                     icon = Icons.Outlined.Newspaper,
                     label = "Noticias",
@@ -56,28 +78,62 @@ fun BottomNavigationMenu(
                     onClick = onNewsClick
                 )
 
+                // Espacio para el botón flotante central
                 Spacer(modifier = Modifier.width(100.dp))
 
+                // Botón Mis Alertas (Derecha) - Ahora navega a Record Reports
                 BottomNavItem(
                     icon = Icons.Outlined.RemoveRedEye,
-                    label = "Record",
+                    label = "Reportes",
                     isSelected = selectedItem == 2,
                     onClick = onMyAlertsClick
                 )
             }
         }
 
-        FloatingActionButton(
-            onClick = onAlertClick,
+        // Botón flotante central (Enviar Alerta) con anillo decorativo
+        Box(
             modifier = Modifier
                 .align(Alignment.TopCenter)
                 .offset(y = 5.dp)
-                .size(68.dp),
-            containerColor = PrimaryColor,
-            contentColor = Color.White,
-            shape = CircleShape
         ) {
-            Icon(Icons.Default.Add, contentDescription = "Formulario")
+            // Anillo exterior decorativo
+            Box(
+                modifier = Modifier
+                    .size(82.dp)
+                    .background(
+                        color = PrimaryColor.copy(alpha = 0.15f),
+                        shape = CircleShape
+                    )
+                    .align(Alignment.Center)
+            )
+
+            // Botón principal - Ahora navega al Formulario
+            FloatingActionButton(
+                onClick = onAlertClick,
+                modifier = Modifier
+                    .align(Alignment.Center)
+                    .size(68.dp)
+                    .shadow(16.dp, CircleShape),
+                containerColor = PrimaryColor,
+                contentColor = Color.White,
+                shape = CircleShape,
+                elevation = FloatingActionButtonDefaults.elevation(
+                    defaultElevation = 8.dp,
+                    pressedElevation = 12.dp
+                )
+            ) {
+                Column(
+                    horizontalAlignment = Alignment.CenterHorizontally,
+                    verticalArrangement = Arrangement.Center
+                ) {
+                    Icon(
+                        imageVector = Icons.Default.Add,
+                        contentDescription = "Crear Reporte",
+                        modifier = Modifier.size(32.dp)
+                    )
+                }
+            }
         }
     }
 }
@@ -91,21 +147,42 @@ fun BottomNavItem(
 ) {
     Column(
         modifier = Modifier
-            .clickable { onClick() }
-            .padding(vertical = 8.dp),
-        horizontalAlignment = Alignment.CenterHorizontally
+            .clickable(onClick = onClick)
+            .padding(vertical = 8.dp, horizontal = 12.dp),
+        horizontalAlignment = Alignment.CenterHorizontally,
+        verticalArrangement = Arrangement.Center
     ) {
-        Icon(
-            imageVector = icon,
-            contentDescription = label,
-            tint = if (isSelected) PrimaryColor else Color.Gray,
-            modifier = Modifier.size(26.dp)
-        )
+        Box(
+            modifier = Modifier
+                .size(48.dp)
+                .background(
+                    color = if (isSelected) PrimaryColor.copy(alpha = 0.1f) else Color.Transparent,
+                    shape = CircleShape
+                ),
+            contentAlignment = Alignment.Center
+        ) {
+            Icon(
+                imageVector = icon,
+                contentDescription = label,
+                tint = if (isSelected) PrimaryColor else Color.Gray,
+                modifier = Modifier.size(26.dp)
+            )
+        }
+        Spacer(modifier = Modifier.height(4.dp))
         Text(
             text = label,
-            fontSize = 11.sp,
             color = if (isSelected) PrimaryColor else Color.Gray,
-            fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Normal
+            fontSize = 11.sp,
+            fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Medium
         )
     }
+}
+
+
+// Helper para el preview
+@Composable
+fun rememberNavControllerForPreview(): NavHostController {
+    // Esta es una función de ayuda para el preview
+    // En producción, se debe pasar el NavHostController real
+    return androidx.navigation.compose.rememberNavController()
 }
