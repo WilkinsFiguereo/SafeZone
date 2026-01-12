@@ -1,4 +1,4 @@
-package com.wilkins.safezone.frontend.ui.user.News.components
+package com.wilkins.safezone.com.wilkins.safezone.frontend.ui.user.News.components
 
 import android.content.Context
 import android.content.Intent
@@ -13,10 +13,7 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.Close
-import androidx.compose.material.icons.filled.Fullscreen
-import androidx.compose.material.icons.filled.Send
-import androidx.compose.material.icons.filled.Share
+import androidx.compose.material.icons.filled.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.runtime.getValue
@@ -42,6 +39,7 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import kotlinx.serialization.Serializable
+import java.util.*
 
 @Serializable
 data class SupabaseComment(
@@ -49,7 +47,8 @@ data class SupabaseComment(
     val message: String,
     val news_id: String,
     val user_id: String,
-    val author_name: String? = null
+    val author_name: String? = null,
+    val created_at: String? = null
 )
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -62,33 +61,19 @@ fun NewsDetailDialog(
     val context = LocalContext.current
     val scope = rememberCoroutineScope()
 
+    var isFullScreen by remember { mutableStateOf(false) }
     var commentText by remember { mutableStateOf("") }
     var commentsList by remember { mutableStateOf<List<Comment>>(emptyList()) }
     var isAddingComment by remember { mutableStateOf(false) }
-    var isFullScreen by remember { mutableStateOf(false) }
     var isLoading by remember { mutableStateOf(true) }
 
-    // Usar el ID real de la noticia (UUID)
-    val newsUuid = news.id.toString()
-
-    LaunchedEffect(newsUuid) {
+    // CARGAR COMENTARIOS
+    LaunchedEffect(news.id) {
         try {
             val response = client.from("comments")
-                .select {
-                    filter { eq("news_id", newsUuid) }
-                }
+                .select { filter { eq("news_id", news.id.toString()) } }
                 .decodeList<SupabaseComment>()
-
-            commentsList = response.map { db ->
-                Comment(
-                    id = db.id?.hashCode() ?: 0,
-                    author = db.author_name ?: "Anónimo",
-                    content = db.message,
-                    timestamp = "Reciente",
-                    likes = 0,
-                    replies = emptyList()
-                )
-            }
+            commentsList = response.map { it.toUiComment() }
         } catch (e: Exception) {
             e.printStackTrace()
         } finally {
@@ -108,7 +93,7 @@ fun NewsDetailDialog(
         ) {
             Column(modifier = Modifier.fillMaxSize()) {
                 TopAppBar(
-                    title = { Text("Detalle de Noticia") },
+                    title = { Text("Noticia Detallada") },
                     navigationIcon = {
                         IconButton(onClick = onDismiss) { Icon(Icons.Default.Close, null) }
                     },
@@ -126,6 +111,7 @@ fun NewsDetailDialog(
                         .padding(16.dp),
                     verticalArrangement = Arrangement.spacedBy(16.dp)
                 ) {
+                    // Contenido Multimedia
                     if (!news.videoUrl.isNullOrBlank()) {
                         VideoPlayerBox(news.videoUrl) { isFullScreen = true }
                     } else if (news.imageUrl.isNotBlank()) {
@@ -140,23 +126,25 @@ fun NewsDetailDialog(
                         )
                     }
 
-                    Text(text = news.title, style = MaterialTheme.typography.headlineSmall, fontWeight = FontWeight.Bold)
+                    Text(
+                        text = news.title,
+                        style = MaterialTheme.typography.headlineSmall,
+                        fontWeight = FontWeight.Bold
+                    )
                     Text(text = news.description, style = MaterialTheme.typography.bodyLarge)
 
-                    HorizontalDivider(modifier = Modifier.padding(vertical = 8.dp))
+                    HorizontalDivider()
 
                     Text(text = "Comentarios (${commentsList.size})", fontWeight = FontWeight.Bold)
 
                     if (isLoading) {
-                        Box(Modifier.fillMaxWidth(), contentAlignment = Alignment.Center) {
-                            CircularProgressIndicator()
-                        }
+                        CircularProgressIndicator(modifier = Modifier.align(Alignment.CenterHorizontally))
                     } else {
-                        CommentListUI(commentsList)
+                        CommentSection(commentsList)
                     }
                 }
 
-                // BARRA DE COMENTARIOS
+                // --- SECCIÓN DE ENVÍO DE COMENTARIO ---
                 Surface(tonalElevation = 3.dp, shadowElevation = 8.dp) {
                     Row(
                         modifier = Modifier.padding(16.dp),
@@ -178,35 +166,56 @@ fun NewsDetailDialog(
                                     isAddingComment = true
                                     scope.launch {
                                         try {
+                                            // Obtener usuario real de la sesión
                                             val user = client.auth.currentUserOrNull()
-                                            if (user != null) {
-                                                val dbComment = SupabaseComment(
-                                                    message = commentText.trim(),
-                                                    news_id = newsUuid,
-                                                    user_id = user.id,
-                                                    author_name = user.userMetadata?.get("full_name")?.toString()
-                                                        ?: user.userMetadata?.get("name")?.toString()
-                                                        ?: "Usuario"
-                                                )
-                                                client.from("comments").insert(dbComment)
 
-                                                val newUi = Comment(
+                                            if (user != null) {
+                                                val newDbComment = SupabaseComment(
+                                                    message = commentText.trim(),
+                                                    news_id = news.id.toString(),
+                                                    user_id = user.id,
+                                                    author_name = user.userMetadata?.get("full_name")
+                                                        ?.toString() ?: "Moderador"
+                                                )
+
+                                                // Insertar en Supabase
+                                                client.from("comments").insert(newDbComment)
+
+                                                // Actualizar UI local
+                                                val uiComment = Comment(
                                                     id = System.currentTimeMillis().toInt(),
-                                                    author = dbComment.author_name ?: "Tú",
+                                                    author = newDbComment.author_name ?: "Tú",
                                                     content = commentText,
                                                     timestamp = "Ahora",
                                                     likes = 0,
                                                     replies = emptyList()
                                                 )
-                                                commentsList = commentsList + newUi
+                                                commentsList = commentsList + uiComment
                                                 commentText = ""
+
                                                 withContext(Dispatchers.Main) {
-                                                    Toast.makeText(context, "Enviado", Toast.LENGTH_SHORT).show()
+                                                    Toast.makeText(
+                                                        context,
+                                                        "Comentario enviado",
+                                                        Toast.LENGTH_SHORT
+                                                    ).show()
+                                                }
+                                            } else {
+                                                withContext(Dispatchers.Main) {
+                                                    Toast.makeText(
+                                                        context,
+                                                        "Error: Sesión no encontrada",
+                                                        Toast.LENGTH_LONG
+                                                    ).show()
                                                 }
                                             }
                                         } catch (e: Exception) {
                                             withContext(Dispatchers.Main) {
-                                                Toast.makeText(context, "Error: El ID no existe en la base de datos", Toast.LENGTH_LONG).show()
+                                                Toast.makeText(
+                                                    context,
+                                                    "Error al enviar: ${e.localizedMessage}",
+                                                    Toast.LENGTH_LONG
+                                                ).show()
                                             }
                                             e.printStackTrace()
                                         } finally {
@@ -218,9 +227,16 @@ fun NewsDetailDialog(
                             enabled = commentText.isNotBlank() && !isAddingComment
                         ) {
                             if (isAddingComment) {
-                                CircularProgressIndicator(modifier = Modifier.size(24.dp), strokeWidth = 2.dp)
+                                CircularProgressIndicator(
+                                    modifier = Modifier.size(24.dp),
+                                    strokeWidth = 2.dp
+                                )
                             } else {
-                                Icon(Icons.Default.Send, null, tint = MaterialTheme.colorScheme.primary)
+                                Icon(
+                                    Icons.Default.Send,
+                                    null,
+                                    tint = MaterialTheme.colorScheme.primary
+                                )
                             }
                         }
                     }
@@ -229,15 +245,29 @@ fun NewsDetailDialog(
         }
     }
 
-    if (isFullScreen && !news.videoUrl.isNullOrBlank()) {
-        FullScreenVideoDialog(news.videoUrl) { isFullScreen = false }
+    if (isFullScreen) {
+        FullScreenVideo(news.videoUrl!!) { isFullScreen = false }
     }
 }
 
+// Mapeo de BD a UI
+fun SupabaseComment.toUiComment(): Comment = Comment(
+    id = this.id?.hashCode() ?: System.currentTimeMillis().toInt(),
+    author = this.author_name ?: "Anónimo",
+    content = this.message,
+    timestamp = this.created_at?.take(10) ?: "Hoy",
+    likes = 0,
+    replies = emptyList()
+)
+
 @Composable
-fun CommentListUI(comments: List<Comment>) {
+fun CommentSection(comments: List<Comment>) {
     if (comments.isEmpty()) {
-        Text("No hay comentarios aún.", color = Color.Gray, style = MaterialTheme.typography.bodySmall)
+        Text(
+            "No hay comentarios aún.",
+            color = Color.Gray,
+            style = MaterialTheme.typography.bodySmall
+        )
     } else {
         Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
             comments.forEach { comment ->
@@ -252,7 +282,11 @@ fun CommentListUI(comments: List<Comment>) {
                         }
                     }
                     Column {
-                        Text(comment.author, fontWeight = FontWeight.Bold, style = MaterialTheme.typography.labelLarge)
+                        Text(
+                            comment.author,
+                            fontWeight = FontWeight.Bold,
+                            style = MaterialTheme.typography.labelLarge
+                        )
                         Text(comment.content, style = MaterialTheme.typography.bodyMedium)
                     }
                 }
@@ -263,50 +297,47 @@ fun CommentListUI(comments: List<Comment>) {
 
 @Composable
 fun VideoPlayerBox(url: String, onFullScreen: () -> Unit) {
-    Box(modifier = Modifier
-        .fillMaxWidth()
-        .height(240.dp)
-        .clip(RoundedCornerShape(12.dp))
-        .background(Color.Black)
+    Box(
+        modifier = Modifier
+            .fillMaxWidth()
+            .height(240.dp)
+            .clip(RoundedCornerShape(12.dp))
+            .background(Color.Black)
     ) {
         AndroidView(factory = { ctx ->
             VideoView(ctx).apply {
                 setVideoURI(Uri.parse(url))
-                val mc = MediaController(ctx)
-                mc.setAnchorView(this)
-                setMediaController(mc)
+                setMediaController(MediaController(ctx).apply { setAnchorView(this@apply) })
                 setOnPreparedListener { start() }
             }
         }, modifier = Modifier.fillMaxSize())
-
-        IconButton(
-            onClick = onFullScreen,
-            modifier = Modifier.align(Alignment.TopEnd).padding(8.dp)
-        ) {
+        IconButton(onClick = onFullScreen, modifier = Modifier.align(Alignment.TopEnd)) {
             Icon(Icons.Default.Fullscreen, null, tint = Color.White)
         }
     }
 }
 
 @Composable
-fun FullScreenVideoDialog(url: String, onDismiss: () -> Unit) {
+fun FullScreenVideo(url: String, onDismiss: () -> Unit) {
     Dialog(
         onDismissRequest = onDismiss,
         properties = DialogProperties(usePlatformDefaultWidth = false)
     ) {
-        Box(modifier = Modifier.fillMaxSize().background(Color.Black)) {
+        Box(modifier = Modifier
+            .fillMaxSize()
+            .background(Color.Black)) {
             AndroidView(factory = { ctx ->
                 VideoView(ctx).apply {
                     setVideoURI(Uri.parse(url))
-                    val mc = MediaController(ctx)
-                    setMediaController(mc)
+                    setMediaController(MediaController(ctx))
                     setOnPreparedListener { start() }
                 }
             }, modifier = Modifier.fillMaxSize())
-
             IconButton(
                 onClick = onDismiss,
-                modifier = Modifier.align(Alignment.TopEnd).padding(16.dp)
+                modifier = Modifier
+                    .align(Alignment.TopEnd)
+                    .padding(16.dp)
             ) {
                 Icon(Icons.Default.Close, null, tint = Color.White)
             }
@@ -317,7 +348,7 @@ fun FullScreenVideoDialog(url: String, onDismiss: () -> Unit) {
 private fun shareNewsInternal(context: Context, news: News) {
     val intent = Intent(Intent.ACTION_SEND).apply {
         type = "text/plain"
-        putExtra(Intent.EXTRA_TEXT, "${news.title}\n\n${news.description}")
+        putExtra(Intent.EXTRA_TEXT, "${news.title}\n${news.description}")
     }
-    context.startActivity(Intent.createChooser(intent, "Compartir noticia"))
+    context.startActivity(Intent.createChooser(intent, "Compartir"))
 }

@@ -12,11 +12,13 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Favorite
-import androidx.compose.material.icons.filled.Image
+import androidx.compose.material.icons.filled.Send
 import androidx.compose.material.icons.filled.Share
 import androidx.compose.material.icons.outlined.FavoriteBorder
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -28,6 +30,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.viewinterop.AndroidView
 import coil.compose.AsyncImage
 import com.wilkins.safezone.frontend.ui.user.News.News
+import com.wilkins.safezone.frontend.ui.user.News.Comment
 
 @Composable
 fun NewsCard(
@@ -37,6 +40,11 @@ fun NewsCard(
     var liked by remember { mutableStateOf(false) }
     var localLikes by remember { mutableStateOf(news.likes) }
     var showDialog by remember { mutableStateOf(false) }
+
+    // Estados para comentarios en la tarjeta
+    var commentText by remember { mutableStateOf("") }
+    var commentsList by remember { mutableStateOf(news.comments) }
+
     val context = LocalContext.current
 
     Card(
@@ -59,7 +67,7 @@ fun NewsCard(
                 Surface(
                     shape = CircleShape,
                     color = MaterialTheme.colorScheme.primary,
-                    modifier = Modifier.size(48.dp)
+                    modifier = Modifier.size(40.dp)
                 ) {
                     Box(contentAlignment = Alignment.Center) {
                         Text(
@@ -71,67 +79,37 @@ fun NewsCard(
                 }
 
                 Column {
-                    Text(
-                        text = news.author,
-                        fontWeight = FontWeight.Bold
-                    )
-                    Text(
-                        text = news.date,
-                        style = MaterialTheme.typography.bodySmall,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant
-                    )
+                    Text(text = news.author, fontWeight = FontWeight.Bold, style = MaterialTheme.typography.bodyMedium)
+                    Text(text = news.date, style = MaterialTheme.typography.bodySmall, color = Color.Gray)
                 }
             }
 
-            // ===================== VIDEO =====================
+            // ===================== MULTIMEDIA =====================
             if (!news.videoUrl.isNullOrBlank()) {
-                Box(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .height(230.dp)
-                        .clip(RoundedCornerShape(12.dp))
-                        .background(Color.Black)
-                ) {
+                Box(modifier = Modifier.fillMaxWidth().height(200.dp).clip(RoundedCornerShape(12.dp)).background(Color.Black)) {
                     AndroidView(
                         factory = { ctx ->
                             VideoView(ctx).apply {
                                 setVideoURI(Uri.parse(news.videoUrl))
-                                val mediaController = MediaController(ctx)
-                                mediaController.setAnchorView(this)
-                                setMediaController(mediaController)
+                                setMediaController(MediaController(ctx).apply { setAnchorView(this@apply) })
                                 setOnPreparedListener { start() }
                             }
                         },
                         modifier = Modifier.fillMaxSize()
                     )
                 }
-            }
-            // ===================== IMAGEN =====================
-            else if (news.imageUrl.isNotBlank()) {
+            } else if (news.imageUrl.isNotBlank()) {
                 AsyncImage(
                     model = news.imageUrl,
-                    contentDescription = "Imagen de noticia",
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .height(200.dp)
-                        .clip(RoundedCornerShape(12.dp)),
+                    contentDescription = null,
+                    modifier = Modifier.fillMaxWidth().height(180.dp).clip(RoundedCornerShape(12.dp)),
                     contentScale = ContentScale.Crop
                 )
             }
 
-            // ===================== TITULO =====================
-            Text(
-                text = news.title,
-                style = MaterialTheme.typography.headlineSmall,
-                fontWeight = FontWeight.Bold
-            )
-
-            // ===================== DESCRIPCIÓN =====================
-            Text(
-                text = news.description,
-                style = MaterialTheme.typography.bodyLarge,
-                color = MaterialTheme.colorScheme.onSurfaceVariant
-            )
+            // ===================== TEXTO =====================
+            Text(text = news.title, style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
+            Text(text = news.description, style = MaterialTheme.typography.bodyMedium, maxLines = 3)
 
             // ===================== ACCIONES =====================
             Row(
@@ -139,79 +117,78 @@ fun NewsCard(
                 horizontalArrangement = Arrangement.SpaceBetween,
                 verticalAlignment = Alignment.CenterVertically
             ) {
-
                 Row(verticalAlignment = Alignment.CenterVertically) {
-                    IconButton(
-                        onClick = {
-                            liked = !liked
-                            localLikes =
-                                if (liked) localLikes + 1 else localLikes - 1
-                        }
-                    ) {
+                    IconButton(onClick = {
+                        liked = !liked
+                        localLikes = if (liked) localLikes + 1 else localLikes - 1
+                    }) {
                         Icon(
-                            imageVector = if (liked)
-                                Icons.Filled.Favorite
-                            else
-                                Icons.Outlined.FavoriteBorder,
-                            contentDescription = "Me gusta",
-                            tint = if (liked)
-                                MaterialTheme.colorScheme.error
-                            else
-                                MaterialTheme.colorScheme.onSurfaceVariant
+                            imageVector = if (liked) Icons.Filled.Favorite else Icons.Outlined.FavoriteBorder,
+                            contentDescription = null,
+                            tint = if (liked) Color.Red else Color.Gray
                         )
                     }
-
-                    Text(
-                        text = "$localLikes",
-                        fontWeight = FontWeight.Bold
-                    )
+                    Text(text = "$localLikes", fontWeight = FontWeight.Bold)
                 }
 
-                // 🔗 COMPARTIR FUNCIONAL
-                IconButton(
-                    onClick = {
-                        shareNews(context, news)
-                    }
-                ) {
-                    Icon(
-                        imageVector = Icons.Default.Share,
-                        contentDescription = "Compartir",
-                        tint = MaterialTheme.colorScheme.onSurfaceVariant
-                    )
+                IconButton(onClick = { shareNewsInternal(context, news) }) {
+                    Icon(Icons.Default.Share, contentDescription = "Compartir", tint = Color.Gray)
                 }
             }
 
-            Divider()
+            HorizontalDivider(thickness = 0.5.dp, color = Color.LightGray)
 
-            CommentSection(comments = news.comments)
+            // ===================== SECCIÓN DE COMENTARIOS RAPIDOS =====================
+            CommentSection(comments = commentsList)
+
+            // Caja para escribir comentario
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(8.dp)
+            ) {
+                OutlinedTextField(
+                    value = commentText,
+                    onValueChange = { commentText = it },
+                    placeholder = { Text("Añadir comentario...", style = MaterialTheme.typography.bodySmall) },
+                    modifier = Modifier.weight(1f),
+                    shape = RoundedCornerShape(20.dp),
+                    colors = OutlinedTextFieldDefaults.colors(unfocusedContainerColor = Color.Transparent)
+                )
+                IconButton(
+                    onClick = {
+                        if (commentText.isNotBlank()) {
+                            val newComment = Comment(
+                                id = (System.currentTimeMillis() % Int.MAX_VALUE).toInt(),
+                                author = "Yo",
+                                content = commentText,
+                                timestamp = "Ahora",
+                                likes = 0,
+                                replies = emptyList()
+                            )
+                            commentsList = commentsList + newComment
+                            commentText = ""
+                        }
+                    },
+                    enabled = commentText.isNotBlank()
+                ) {
+                    Icon(Icons.Default.Send, contentDescription = "Enviar", tint = MaterialTheme.colorScheme.primary)
+                }
+            }
         }
     }
 
-    // ===================== DETALLE =====================
+    // Dialog de detalle
     if (showDialog) {
-        NewsDetailDialog(
-            news = news,
-            onDismiss = { showDialog = false }
-        )
+        NewsDetailDialog(news = news, onDismiss = { showDialog = false })
     }
 }
 
-// ===================== SHARE =====================
-private fun shareNews(context: Context, news: News) {
-    val text = """
-        📰 ${news.title}
-
-        ${news.description}
-
-        📅 ${news.date}
-    """.trimIndent()
-
+// Cambiamos el nombre o la hacemos privada para evitar el error de "Ambiguity"
+private fun shareNewsInternal(context: Context, news: News) {
     val intent = Intent(Intent.ACTION_SEND).apply {
         type = "text/plain"
-        putExtra(Intent.EXTRA_TEXT, text)
+        putExtra(Intent.EXTRA_TEXT, "Mira esta noticia: ${news.title}\n${news.description}")
     }
-
-    context.startActivity(
-        Intent.createChooser(intent, "Compartir noticia")
-    )
+    context.startActivity(Intent.createChooser(intent, "Compartir vía"))
 }

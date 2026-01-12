@@ -22,6 +22,7 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import coil.compose.AsyncImage
 import com.wilkins.safezone.frontend.ui.user.News.News
+import com.wilkins.safezone.frontend.ui.user.News.Comment   // ✅ IMPORT CORRECTO
 
 @Composable
 fun NewsListItem(
@@ -31,26 +32,21 @@ fun NewsListItem(
     var liked by remember { mutableStateOf(false) }
     var localLikes by remember { mutableStateOf(news.likes) }
     var showDialog by remember { mutableStateOf(false) }
-    val context = LocalContext.current
 
     Card(
         modifier = modifier
             .fillMaxWidth()
             .clickable { showDialog = true },
         elevation = CardDefaults.cardElevation(defaultElevation = 4.dp),
-        colors = CardDefaults.cardColors(
-            containerColor = MaterialTheme.colorScheme.surface
-        ),
         shape = RoundedCornerShape(12.dp)
     ) {
         Column(
             modifier = Modifier.padding(16.dp),
             verticalArrangement = Arrangement.spacedBy(12.dp)
         ) {
-            // Header con autor
+
+            // ===================== HEADER =====================
             Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.spacedBy(10.dp),
                 verticalAlignment = Alignment.CenterVertically
             ) {
                 Surface(
@@ -61,33 +57,26 @@ fun NewsListItem(
                     Box(contentAlignment = Alignment.Center) {
                         Text(
                             text = news.author.first().uppercase(),
-                            style = MaterialTheme.typography.titleMedium,
                             color = MaterialTheme.colorScheme.onPrimary,
                             fontWeight = FontWeight.Bold
                         )
                     }
                 }
 
-                Column(modifier = Modifier.weight(1f)) {
+                Spacer(modifier = Modifier.width(10.dp))
+
+                Column {
+                    Text(news.author, fontWeight = FontWeight.Bold)
                     Text(
-                        text = news.author,
-                        style = MaterialTheme.typography.bodyMedium,
-                        fontWeight = FontWeight.Bold,
-                        color = MaterialTheme.colorScheme.onSurface
-                    )
-                    Text(
-                        text = news.date,
+                        news.date,
                         style = MaterialTheme.typography.bodySmall,
                         color = MaterialTheme.colorScheme.onSurfaceVariant
                     )
                 }
             }
 
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.spacedBy(12.dp)
-            ) {
-                // Miniatura con indicador de video
+            // ===================== CONTENIDO =====================
+            Row {
                 Box(
                     modifier = Modifier
                         .size(100.dp)
@@ -95,122 +84,79 @@ fun NewsListItem(
                         .background(MaterialTheme.colorScheme.surfaceVariant),
                     contentAlignment = Alignment.Center
                 ) {
-                    if (news.imageUrl.isNotBlank() && news.imageUrl.startsWith("http")) {
+                    if (news.imageUrl.isNotBlank()) {
                         AsyncImage(
                             model = news.imageUrl,
-                            contentDescription = "Imagen miniatura",
+                            contentDescription = null,
                             modifier = Modifier.fillMaxSize()
                         )
                     } else {
-                        Icon(
-                            imageVector = Icons.Default.Image,
-                            contentDescription = "Imagen miniatura",
-                            modifier = Modifier.size(40.dp),
-                            tint = MaterialTheme.colorScheme.onSurfaceVariant
-                        )
+                        Icon(Icons.Default.Image, null)
                     }
 
-                    // 🎥 Indicador de video
                     if (!news.videoUrl.isNullOrBlank()) {
                         Icon(
-                            imageVector = Icons.Default.PlayCircle,
-                            contentDescription = "Tiene video",
-                            modifier = Modifier
-                                .size(48.dp)
-                                .align(Alignment.Center),
-                            tint = MaterialTheme.colorScheme.primary
+                            Icons.Default.PlayCircle,
+                            contentDescription = null,
+                            tint = MaterialTheme.colorScheme.primary,
+                            modifier = Modifier.size(48.dp)
                         )
                     }
                 }
 
-                // Contenido
-                Column(
-                    modifier = Modifier
-                        .weight(1f)
-                        .height(100.dp),
-                    verticalArrangement = Arrangement.SpaceBetween
-                ) {
-                    Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
-                        Text(
-                            text = news.title,
-                            style = MaterialTheme.typography.titleMedium,
-                            fontWeight = FontWeight.Bold,
-                            color = MaterialTheme.colorScheme.onSurface,
-                            maxLines = 2,
-                            overflow = TextOverflow.Ellipsis
-                        )
-                        Text(
-                            text = news.description,
-                            style = MaterialTheme.typography.bodySmall,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant,
-                            maxLines = 2,
-                            overflow = TextOverflow.Ellipsis
-                        )
-                    }
+                Spacer(modifier = Modifier.width(12.dp))
+
+                Column {
+                    Text(
+                        news.title,
+                        fontWeight = FontWeight.Bold,
+                        maxLines = 2,
+                        overflow = TextOverflow.Ellipsis
+                    )
+                    Text(
+                        news.description,
+                        maxLines = 2,
+                        overflow = TextOverflow.Ellipsis,
+                        style = MaterialTheme.typography.bodySmall
+                    )
                 }
             }
 
-            // Barra de acciones
+            // ===================== ACCIONES =====================
             Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.spacedBy(20.dp),
-                verticalAlignment = Alignment.CenterVertically
+                horizontalArrangement = Arrangement.spacedBy(20.dp)
             ) {
-                Row(
-                    verticalAlignment = Alignment.CenterVertically,
-                    horizontalArrangement = Arrangement.spacedBy(4.dp)
-                ) {
+                Row(verticalAlignment = Alignment.CenterVertically) {
                     IconButton(
                         onClick = {
                             liked = !liked
                             localLikes = if (liked) localLikes + 1 else localLikes - 1
-                        },
-                        modifier = Modifier.size(32.dp)
+                        }
                     ) {
                         Icon(
-                            imageVector = if (liked) Icons.Filled.Favorite else Icons.Outlined.FavoriteBorder,
-                            contentDescription = "Me gusta",
-                            tint = if (liked) MaterialTheme.colorScheme.error else MaterialTheme.colorScheme.onSurfaceVariant,
-                            modifier = Modifier.size(20.dp)
+                            if (liked) Icons.Filled.Favorite else Icons.Outlined.FavoriteBorder,
+                            contentDescription = null,
+                            tint = if (liked) MaterialTheme.colorScheme.error
+                            else MaterialTheme.colorScheme.onSurfaceVariant
                         )
                     }
-                    Text(
-                        text = "$localLikes",
-                        style = MaterialTheme.typography.bodyMedium,
-                        color = MaterialTheme.colorScheme.onSurface,
-                        fontWeight = FontWeight.Medium
-                    )
+                    Text("$localLikes")
                 }
 
-                Row(
-                    verticalAlignment = Alignment.CenterVertically,
-                    horizontalArrangement = Arrangement.spacedBy(4.dp)
-                ) {
-                    Icon(
-                        imageVector = Icons.Default.ChatBubbleOutline,
-                        contentDescription = "Comentarios",
-                        tint = MaterialTheme.colorScheme.onSurfaceVariant,
-                        modifier = Modifier.size(20.dp)
-                    )
-                    Text(
-                        text = "${news.comments.size}",
-                        style = MaterialTheme.typography.bodyMedium,
-                        color = MaterialTheme.colorScheme.onSurface,
-                        fontWeight = FontWeight.Medium
-                    )
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Icon(Icons.Default.ChatBubbleOutline, null)
+                    Spacer(modifier = Modifier.width(4.dp))
+                    Text("${news.comments.size}")
                 }
             }
 
-            Divider(
-                color = MaterialTheme.colorScheme.outlineVariant,
-                modifier = Modifier.padding(vertical = 4.dp)
-            )
+            Divider()
 
+            // ✅ COMENTARIOS (YA SIN ERROR)
             CommentSection(comments = news.comments)
         }
     }
 
-    // 🎯 DIÁLOGO DE DETALLES
     if (showDialog) {
         NewsDetailDialog(
             news = news,
