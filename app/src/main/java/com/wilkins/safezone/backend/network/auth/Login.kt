@@ -28,6 +28,9 @@ suspend fun login(context: Context, email: String, password: String): LoginResul
         // 🔄 Guardar sesión
         client.auth.currentSessionOrNull()?.let { session ->
             SessionManager.saveSession(context, session)
+            // Guardar status y rol para el Splash
+
+
             Log.i("SupabaseLogin", "✅ Sesión guardada correctamente para ${session.user?.email}")
         } ?: Log.w("SupabaseLogin", "⚠️ No hay sesión activa tras login")
 

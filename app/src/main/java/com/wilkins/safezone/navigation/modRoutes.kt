@@ -11,6 +11,7 @@ import com.wilkins.safezone.frontend.ui.Moderator.Dashboard.ModeratorDashboard
 import com.wilkins.safezone.frontend.ui.Moderator.screens.News.NewsListScreen
 import com.wilkins.safezone.frontend.ui.Moderator.screens.News.NewsSaveScreen
 import com.wilkins.safezone.frontend.ui.Moderator.screens.ReviewReports.ReportsList.RewiewReportsListScreen
+import com.wilkins.safezone.frontend.ui.Moderator.screens.Survey.SurveyResultsScreen
 
 /**
  * ⚙️ RUTAS DE MODERADOR (Role ID: 3)
@@ -105,4 +106,19 @@ fun NavGraphBuilder.moderatorRoutes(
             NewsListScreen(onNavigateBack = { navController.popBackStack() })
         }
     }
+
+    // ════════════════════════════════════════════
+    // Survery
+    // ════════════════════════════════════════════
+//    composable("survery") {
+//        if (!hasActiveSession()) {
+//            Log.w("ModeratorRoutes", "⚠️ Intento de acceso sin sesión a DashboardMod")
+//            navController.navigate("login") {
+//                popUpTo(0) { inclusive = true }
+//            }
+//        } else {
+//
+//            SurveyResultsScreen(navController = navController)
+//        }
+//    }
 }

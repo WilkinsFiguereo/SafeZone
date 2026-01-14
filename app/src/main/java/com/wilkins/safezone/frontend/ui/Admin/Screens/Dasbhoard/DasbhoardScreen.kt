@@ -39,12 +39,12 @@ fun AdminDashboard(navController: NavController) {
     var errorMessage by remember { mutableStateOf<String?>(null) }
 
     // Estados para datos dinámicos
-    var dashboardStats by remember { mutableStateOf<com.wilkins.safezone.backend.network.Admin.CrudUser.Dashboard.DashboardStats?>(null) }
-    var monthlyActivity by remember { mutableStateOf<List<com.wilkins.safezone.backend.network.Admin.CrudUser.Dashboard.MonthlyActivity>>(emptyList()) }
-    var recentReports by remember { mutableStateOf<List<com.wilkins.safezone.backend.network.Admin.CrudUser.Dashboard.RecentReport>>(emptyList()) }
-    var recentActivities by remember { mutableStateOf<List<com.wilkins.safezone.backend.network.Admin.CrudUser.Dashboard.ActivityLog>>(emptyList()) }
+    var dashboardStats by remember { mutableStateOf<DashboardStats?>(null) }
+    var monthlyActivity by remember { mutableStateOf<List<MonthlyActivity>>(emptyList()) }
+    var recentReports by remember { mutableStateOf<List<RecentReport>>(emptyList()) }
+    var recentActivities by remember { mutableStateOf<List<ActivityLog>>(emptyList()) }
 
-    val repository = remember { _root_ide_package_.com.wilkins.safezone.backend.network.Admin.CrudUser.Dashboard.DashboardRepository() }
+    val repository = remember { DashboardRepository() }
     val scope = rememberCoroutineScope()
 
     // Función para cargar datos
@@ -253,10 +253,10 @@ fun DashboardHeader(
 @Composable
 fun DashboardContent(
     navController: NavController,
-    stats: com.wilkins.safezone.backend.network.Admin.CrudUser.Dashboard.DashboardStats?,
-    monthlyActivity: List<com.wilkins.safezone.backend.network.Admin.CrudUser.Dashboard.MonthlyActivity>,
-    recentReports: List<com.wilkins.safezone.backend.network.Admin.CrudUser.Dashboard.RecentReport>,
-    recentActivities: List<com.wilkins.safezone.backend.network.Admin.CrudUser.Dashboard.ActivityLog>,
+    stats: DashboardStats?,
+    monthlyActivity: List<MonthlyActivity>,
+    recentReports: List<RecentReport>,
+    recentActivities: List<ActivityLog>,
     onRefresh: () -> Unit
 ) {
     LazyColumn(
@@ -451,7 +451,7 @@ fun DashboardContent(
 }
 
 @Composable
-fun StatsCardsSection(stats: com.wilkins.safezone.backend.network.Admin.CrudUser.Dashboard.DashboardStats?) {
+fun StatsCardsSection(stats: DashboardStats?) {
     val statsData = listOf(
         StatData(
             "Reportes enviados",
@@ -555,7 +555,7 @@ fun StatCard(stat: StatData) {
 }
 
 @Composable
-fun BarChartCard(monthlyActivity: List<com.wilkins.safezone.backend.network.Admin.CrudUser.Dashboard.MonthlyActivity>) {
+fun BarChartCard(monthlyActivity: List<MonthlyActivity>) {
     val maxCount = monthlyActivity.maxOfOrNull { it.reportCount } ?: 1
     val barHeights = monthlyActivity.map { (it.reportCount.toFloat() / maxCount).coerceIn(0.2f, 1f) }
     val months = monthlyActivity.map { it.monthName }
@@ -642,7 +642,7 @@ fun AnimatedBar(height: Float, label: String, color: Color) {
 }
 
 @Composable
-fun RecentReportsSection(reports: List<com.wilkins.safezone.backend.network.Admin.CrudUser.Dashboard.RecentReport>) {
+fun RecentReportsSection(reports: List<RecentReport>) {
     Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
         reports.forEach { report ->
             ReportCard(report)
@@ -651,7 +651,7 @@ fun RecentReportsSection(reports: List<com.wilkins.safezone.backend.network.Admi
 }
 
 @Composable
-fun ReportCard(report: com.wilkins.safezone.backend.network.Admin.CrudUser.Dashboard.RecentReport) {
+fun ReportCard(report: RecentReport) {
     val status = when (report.statusId) {
         1 -> ReportStatus.PENDING
         2 -> ReportStatus.IN_PROGRESS
@@ -821,7 +821,7 @@ fun MessageCard(message: MessageItem) {
 }
 
 @Composable
-fun RecentUpdatesSection(activities: List<com.wilkins.safezone.backend.network.Admin.CrudUser.Dashboard.ActivityLog>) {
+fun RecentUpdatesSection(activities: List<ActivityLog>) {
     Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
         activities.forEach { activity ->
             UpdateCard(activity)
@@ -830,7 +830,7 @@ fun RecentUpdatesSection(activities: List<com.wilkins.safezone.backend.network.A
 }
 
 @Composable
-fun UpdateCard(activity: com.wilkins.safezone.backend.network.Admin.CrudUser.Dashboard.ActivityLog) {
+fun UpdateCard(activity: ActivityLog) {
     val (icon, color) = when (activity.actionType) {
         "ADDED" -> Icons.Default.Add to Color(0xFF4CAF50)
         "EDITED" -> Icons.Default.Edit to Color(0xFF2196F3)

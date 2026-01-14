@@ -34,6 +34,10 @@ fun SplashScreen(navController: NavController) {
     val context = LocalContext.current
 
     LaunchedEffect(Unit) {
+        Log.i("SplashScreen", "🚀 ═══════════════════════════════════")
+        Log.i("SplashScreen", "🚀 INICIANDO SPLASH SCREEN")
+        Log.i("SplashScreen", "🚀 ═══════════════════════════════════")
+
         // Animación
         scale.animateTo(1f, animationSpec = tween(1200))
         delay(800)
@@ -41,94 +45,119 @@ fun SplashScreen(navController: NavController) {
         val supabase = SupabaseService.getInstance()
         val session = SessionManager.loadSession(context)
 
+        Log.i("SplashScreen", "📦 Sesión cargada: ${session != null}")
+
         if (session != null) {
             try {
                 supabase.auth.importSession(session)
                 val user = supabase.auth.currentUserOrNull()
 
+                Log.i("SplashScreen", "👤 Usuario actual: ${user?.id}")
+
                 if (user != null) {
-                    // Obtener el role_id desde SharedPreferences
-                    val roleId = SessionManager.getUserRole(context)
+                    // 🔥 PRIMERO: Obtener el perfil del usuario desde la BD
+                    Log.i("SplashScreen", "🔍 Obteniendo perfil del usuario desde la base de datos...")
+                    val userProfile = SessionManager.getUserProfile(context)
 
-                    Log.i("SplashScreen", "🔍 Usuario: id=${user.id}, role=$roleId")
+                    if (userProfile != null) {
+                        Log.i("SplashScreen", "✅ Perfil obtenido correctamente:")
+                        Log.i("SplashScreen", "   - User ID: ${userProfile.id}")
+                        Log.i("SplashScreen", "   - Role ID: ${userProfile.role_id}")
+                        Log.i("SplashScreen", "   - Status ID: ${userProfile.status_id}")
 
-                    when (roleId) {
-                        1 -> {
-                            Log.i("SplashScreen", "✅ Rol 1 → UserHome")
-                            Log.i("SplashScreen", "✅ Rol 1 → UserHome")
-                            navController.navigate("userHome/${user.id}") {
+                        // 🔥 Guardar los datos actualizados del usuario
+                        SessionManager.saveUserData(context, userProfile)
+
+                        // 🔥 SEGUNDO: Verificar el status_id
+                        val statusId = userProfile.status_id ?: 0
+
+                        Log.i("SplashScreen", "═══════════════════════════════════")
+                        Log.i("SplashScreen", "🔍 VERIFICACIÓN DE STATUS")
+                        Log.i("SplashScreen", "   - Status ID del perfil: $statusId")
+                        Log.i("SplashScreen", "   - ¿Está deshabilitado/baneado? ${statusId in 2..3}")
+                        Log.i("SplashScreen", "═══════════════════════════════════")
+
+                        // 🔥 TERCERO: Verificar si la cuenta está deshabilitada o baneada
+                        if (statusId in 2..3) {
+                            Log.w("SplashScreen", "⛔⛔⛔ CUENTA DESHABILITADA/BANEADA ⛔⛔⛔")
+                            Log.w("SplashScreen", "   Status ID: $statusId")
+                            Log.w("SplashScreen", "   Estado: ${if (statusId == 2) "DESHABILITADO" else "BANEADO"}")
+                            Log.w("SplashScreen", "   Redirigiendo a pantalla de disable...")
+
+                            navController.navigate("disable") {
                                 popUpTo("splash") { inclusive = true }
                             }
+                            return@LaunchedEffect
                         }
-                        2 -> {
-                            Log.i("SplashScreen", "✅ Rol 2 → DashboardAdmin")
-                            navController.navigate("DashboardAdmin") {
-                                popUpTo("splash") { inclusive = true }
-                            }
-                        }
-                        3 -> {
-                            Log.i("MainActivity", "✅ Rol 2 → DashboardMod")
-                            navController.navigate("DashboardMod") {
-                                popUpTo("login") { inclusive = true }
-                            }
-                        }
-                        4 -> {
-                            Log.i("MainActivity", "✅ Rol 2 → DashboardMod")
-                            navController.navigate("DashboardAssociation") {
-                                popUpTo("login") { inclusive = true }
-                            }
-                        }
-                        else -> {
-                            Log.e("SplashScreen", "❌ Rol no encontrado en SharedPreferences, consultando base de datos...")
-                            // Si no hay rol guardado, consultar la base de datos
-                            val userProfile = SessionManager.getUserProfile(context)
-                            if (userProfile != null) {
-                                SessionManager.saveUserData(context, userProfile)
 
-                                when (userProfile.role_id) {
-                                    1 -> {
-                                        Log.i("SplashScreen", "✅ Rol 1 → UserHome (desde DB)")
-                                        navController.navigate("userHome/${user.id}") {
-                                            popUpTo("splash") { inclusive = true }
-                                        }
-                                    }
-                                    2 -> {
-                                        Log.i("SplashScreen", "✅ Rol 2 → DashboardAdmin (desde DB)")
-                                        navController.navigate("DashboardAdmin") {
-                                            popUpTo("splash") { inclusive = true }
-                                        }
-                                    }
-                                    else -> {
-                                        Log.e("SplashScreen", "❌ Rol desconocido, redirigiendo a login")
-                                        navController.navigate("login") {
-                                            popUpTo("splash") { inclusive = true }
-                                        }
-                                    }
+                        // 🔥 CUARTO: Si el status es válido, navegar según el rol
+                        val roleId = userProfile.role_id ?: -1
+
+                        Log.i("SplashScreen", "✅ Status válido, navegando según rol...")
+                        Log.i("SplashScreen", "   Role ID: $roleId")
+
+                        when (roleId) {
+                            1 -> {
+                                Log.i("SplashScreen", "✅ Rol 1 → UserHome")
+                                navController.navigate("userHome/${user.id}") {
+                                    popUpTo("splash") { inclusive = true }
                                 }
-                            } else {
-                                Log.e("SplashScreen", "❌ No se pudo obtener el perfil del usuario")
+                            }
+                            2 -> {
+                                Log.i("SplashScreen", "✅ Rol 2 → DashboardAdmin")
+                                navController.navigate("DashboardAdmin") {
+                                    popUpTo("splash") { inclusive = true }
+                                }
+                            }
+                            3 -> {
+                                Log.i("SplashScreen", "✅ Rol 3 → DashboardMod")
+                                navController.navigate("DashboardMod") {
+                                    popUpTo("splash") { inclusive = true }
+                                }
+                            }
+                            4 -> {
+                                Log.i("SplashScreen", "✅ Rol 4 → DashboardAssociation")
+                                navController.navigate("DashboardAssociation") {
+                                    popUpTo("splash") { inclusive = true }
+                                }
+                            }
+                            else -> {
+                                Log.e("SplashScreen", "❌ Rol desconocido: $roleId")
+                                Log.e("SplashScreen", "   Redirigiendo a login...")
                                 navController.navigate("login") {
                                     popUpTo("splash") { inclusive = true }
                                 }
                             }
                         }
+                    } else {
+                        Log.e("SplashScreen", "❌ No se pudo obtener el perfil del usuario")
+                        Log.e("SplashScreen", "   Redirigiendo a login...")
+                        navController.navigate("login") {
+                            popUpTo("splash") { inclusive = true }
+                        }
                     }
                 } else {
+                    Log.w("SplashScreen", "⚠️ Usuario es null, redirigiendo a login")
                     navController.navigate("login") {
                         popUpTo("splash") { inclusive = true }
                     }
                 }
             } catch (e: Exception) {
-                Log.e("SplashScreen", "Error al restaurar sesión: ${e.message}")
+                Log.e("SplashScreen", "❌ Error al restaurar sesión: ${e.message}", e)
                 navController.navigate("login") {
                     popUpTo("splash") { inclusive = true }
                 }
             }
         } else {
+            Log.i("SplashScreen", "📭 No hay sesión guardada, redirigiendo a login")
             navController.navigate("login") {
                 popUpTo("splash") { inclusive = true }
             }
         }
+
+        Log.i("SplashScreen", "🏁 ═══════════════════════════════════")
+        Log.i("SplashScreen", "🏁 SPLASH SCREEN FINALIZADO")
+        Log.i("SplashScreen", "🏁 ═══════════════════════════════════")
     }
 
     // --- UI del Splash ---

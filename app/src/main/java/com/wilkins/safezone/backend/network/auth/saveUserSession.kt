@@ -16,7 +16,8 @@ object SessionManager {
 
     private const val PREFS_NAME = "supabase_session_prefs"
     private const val KEY_SESSION = "session_data"
-    private const val KEY_IS_GOOGLE_AUTH = "is_google_auth" // 🔥 Para saber si usó Google
+    private const val KEY_IS_GOOGLE_AUTH = "is_google_auth"
+    private const val KEY_STATUS_ID = "status_id" // 🔥 Nueva clave para status_id
 
     fun saveSession(context: Context, session: UserSession, isGoogleAuth: Boolean = false) {
         try {
@@ -24,11 +25,14 @@ object SessionManager {
             val jsonSession = Json.encodeToString(session)
             prefs.edit()
                 .putString(KEY_SESSION, jsonSession)
-                .putBoolean(KEY_IS_GOOGLE_AUTH, isGoogleAuth) // 🔥 Guardar si es Google
+                .putBoolean(KEY_IS_GOOGLE_AUTH, isGoogleAuth)
                 .apply()
 
             Log.i("SessionManager", "✅ Sesión guardada correctamente.")
-            Log.i("SessionManager", "🔐 Tipo de autenticación: ${if (isGoogleAuth) "Google" else "Email/Password"}")
+            Log.i(
+                "SessionManager",
+                "🔐 Tipo de autenticación: ${if (isGoogleAuth) "Google" else "Email/Password"}"
+            )
         } catch (e: Exception) {
             Log.e("SessionManager", "❌ Error guardando sesión: ${e.message}", e)
         }
@@ -57,27 +61,27 @@ object SessionManager {
             .remove(KEY_IS_GOOGLE_AUTH)
             .remove("user_id")
             .remove("role_id")
+            .remove(KEY_STATUS_ID) // 🔥 Limpiar también el status_id
             .apply()
         Log.i("SessionManager", "🧹 Sesión eliminada correctamente.")
     }
 
-    /**
-     * 🔥 Logout mejorado que también cierra sesión de Google si es necesario
-     */
     suspend fun logout(context: Context, supabaseClient: SupabaseClient) {
         try {
             Log.i("SessionManager", "═══════════════════════════════════")
             Log.i("SessionManager", "🚪 INICIANDO PROCESO DE LOGOUT")
 
-            // 🔥 Verificar si la sesión actual es de Google
             val isGoogle = isGoogleAuth(context)
-            Log.i("SessionManager", "🔐 Tipo de autenticación: ${if (isGoogle) "Google" else "Email/Password"}")
+            Log.i(
+                "SessionManager",
+                "🔐 Tipo de autenticación: ${if (isGoogle) "Google" else "Email/Password"}"
+            )
 
             // 1. Cerrar sesión en Supabase
             supabaseClient.auth.signOut()
             Log.i("SessionManager", "✅ Sesión cerrada en Supabase.")
 
-            // 2. 🔥 Si la autenticación fue con Google, cerrar sesión de Google también
+            // 2. Si la autenticación fue con Google, cerrar sesión de Google también
             if (isGoogle) {
                 Log.i("SessionManager", "🔄 Cerrando sesión de Google...")
                 val result = GoogleSignInBridge.signOut(context)
@@ -86,7 +90,6 @@ object SessionManager {
                     Log.i("SessionManager", "✅ Sesión de Google cerrada correctamente")
                 }.onFailure { e ->
                     Log.e("SessionManager", "⚠️ Error al cerrar sesión de Google: ${e.message}")
-                    // Continuar con el proceso aunque falle
                 }
             }
 
@@ -97,7 +100,6 @@ object SessionManager {
             Log.i("SessionManager", "═══════════════════════════════════")
         } catch (e: Exception) {
             Log.e("SessionManager", "❌ Error durante logout: ${e.message}", e)
-            // Limpiar sesión local aunque falle la llamada a Supabase
             clearSession(context)
         }
     }
@@ -123,25 +125,39 @@ object SessionManager {
         Log.i("SessionManager", "💾 GUARDANDO DATOS DEL USUARIO")
         Log.i("SessionManager", "   - User ID: ${user.id}")
         Log.i("SessionManager", "   - Role ID recibido: ${user.role_id}")
+        Log.i("SessionManager", "   - Status ID recibido: ${user.status_id}") // 🔥 Log del status
         Log.i("SessionManager", "   - Role ID (con ?:-1): ${user.role_id ?: -1}")
+        Log.i("SessionManager", "   - Status ID (con ?:0): ${user.status_id ?: 0}") // 🔥 Log del status
         Log.i("SessionManager", "═══════════════════════════════════")
 
         val editor = prefs.edit()
         editor.putString("user_id", user.id)
         editor.putInt("role_id", user.role_id ?: -1)
-        val success = editor.commit() // Usar commit() en vez de apply() para verificar
+        editor.putInt(KEY_STATUS_ID, user.status_id ?: 0) // 🔥 Guardar status_id
+        val success = editor.commit()
 
         Log.i("SessionManager", "   - Commit exitoso: $success")
 
         // Verificar inmediatamente después de guardar
-        val verificacion = prefs.getInt("role_id", -999)
-        Log.i("SessionManager", "✅ Verificación inmediata: role_id = $verificacion")
+        val verificacionRole = prefs.getInt("role_id", -999)
+        val verificacionStatus = prefs.getInt(KEY_STATUS_ID, -999) // 🔥 Verificar status
 
-        if (verificacion != (user.role_id ?: -1)) {
-            Log.e("SessionManager", "❌ ERROR CRÍTICO: El valor NO se guardó correctamente!")
-            Log.e("SessionManager", "   Esperado: ${user.role_id ?: -1}, Obtenido: $verificacion")
-        } else {
-            Log.i("SessionManager", "✅ Datos guardados correctamente")
+        Log.i("SessionManager", "✅ Verificación inmediata:")
+        Log.i("SessionManager", "   - role_id = $verificacionRole")
+        Log.i("SessionManager", "   - status_id = $verificacionStatus") // 🔥 Log verificación
+
+        if (verificacionRole != (user.role_id ?: -1)) {
+            Log.e("SessionManager", "❌ ERROR CRÍTICO: El role_id NO se guardó correctamente!")
+            Log.e("SessionManager", "   Esperado: ${user.role_id ?: -1}, Obtenido: $verificacionRole")
+        }
+
+        if (verificacionStatus != (user.status_id ?: 0)) {
+            Log.e("SessionManager", "❌ ERROR CRÍTICO: El status_id NO se guardó correctamente!")
+            Log.e("SessionManager", "   Esperado: ${user.status_id ?: 0}, Obtenido: $verificacionStatus")
+        }
+
+        if (verificacionRole == (user.role_id ?: -1) && verificacionStatus == (user.status_id ?: 0)) {
+            Log.i("SessionManager", "✅ Todos los datos guardados correctamente")
         }
     }
 
@@ -162,5 +178,46 @@ object SessionManager {
         Log.i("SessionManager", "═══════════════════════════════════")
 
         return role
+    }
+
+    // 🔥 FUNCIÓN CORREGIDA - Ahora usa el mismo PREFS_NAME
+    fun getUserStatus(context: Context): Int? {
+        val prefs = context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
+        val statusId = if (prefs.contains(KEY_STATUS_ID)) {
+            prefs.getInt(KEY_STATUS_ID, 0)
+        } else null
+
+        Log.i("SessionManager", "═══════════════════════════════════")
+        Log.i("SessionManager", "📖 LEYENDO STATUS DEL USUARIO")
+        Log.i("SessionManager", "   - Status ID leído: $statusId")
+        Log.i("SessionManager", "   - Clave existe: ${prefs.contains(KEY_STATUS_ID)}")
+
+        // Debug: Listar todas las claves
+        val allKeys = prefs.all
+        Log.i("SessionManager", "   - Todas las claves en SharedPreferences:")
+        allKeys.forEach { (key, value) ->
+            Log.i("SessionManager", "     $key = $value")
+        }
+        Log.i("SessionManager", "═══════════════════════════════════")
+
+        return statusId
+    }
+
+    // 🔥 FUNCIÓN ADICIONAL - Por si necesitas guardar status manualmente
+    fun saveUserStatus(context: Context, statusId: Int) {
+        val prefs = context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
+        val success = prefs.edit()
+            .putInt(KEY_STATUS_ID, statusId)
+            .commit()
+
+        Log.i("SessionManager", "═══════════════════════════════════")
+        Log.i("SessionManager", "💾 GUARDANDO STATUS_ID")
+        Log.i("SessionManager", "   - Status ID: $statusId")
+        Log.i("SessionManager", "   - Guardado exitoso: $success")
+
+        // Verificar
+        val verificacion = prefs.getInt(KEY_STATUS_ID, -999)
+        Log.i("SessionManager", "   - Verificación: $verificacion")
+        Log.i("SessionManager", "═══════════════════════════════════")
     }
 }
