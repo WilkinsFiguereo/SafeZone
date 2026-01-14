@@ -14,7 +14,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import com.wilkins.safezone.ui.theme.PrimaryColor
+import com.wilkins.safezone.navigation.theme.PrimaryColor
 
 // Badge de estado con colores según el tipo
 @Composable

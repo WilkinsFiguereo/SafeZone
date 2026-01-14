@@ -36,7 +36,7 @@ import com.wilkins.safezone.navigation.associationRoutes
 import com.wilkins.safezone.navigation.generalRoutes
 import com.wilkins.safezone.navigation.moderatorRoutes
 import com.wilkins.safezone.navigation.userRoutes
-import com.wilkins.safezone.ui.theme.SafeZoneTheme
+import com.wilkins.safezone.navigation.theme.SafeZoneTheme
 import io.github.jan.supabase.gotrue.auth
 
 /**

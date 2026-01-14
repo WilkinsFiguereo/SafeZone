@@ -1,6 +1,5 @@
 package com.wilkins.safezone.frontend.ui.Moderator.Dashboard
 
-
 import android.content.Context
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
@@ -14,20 +13,16 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
+import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.NavController
-import com.wilkins.safezone.frontend.ui.Moderator.screens.Dasbhoard.Components.DashboardStatsCard
-import com.wilkins.safezone.frontend.ui.Moderator.screens.Dasbhoard.Components.LatestNewsCard
-import com.wilkins.safezone.frontend.ui.Moderator.screens.Dasbhoard.Components.LatestReportsCard
-import com.wilkins.safezone.frontend.ui.Moderator.screens.Dasbhoard.Components.NewsItem
-import com.wilkins.safezone.frontend.ui.Moderator.screens.Dasbhoard.Components.QuickAction
-import com.wilkins.safezone.frontend.ui.Moderator.screens.Dasbhoard.Components.QuickActionsCard
-import com.wilkins.safezone.frontend.ui.Moderator.screens.Dasbhoard.Components.ReportItem
-import com.wilkins.safezone.frontend.ui.Moderator.screens.Dasbhoard.Components.ReportPriority
-import com.wilkins.safezone.frontend.ui.Moderator.screens.Dasbhoard.Components.ReportStatus
-import com.wilkins.safezone.frontend.ui.Moderator.screens.Dasbhoard.Components.StatItem
+import com.wilkins.safezone.backend.network.Admin.CrudUser.CrudUser
+import com.wilkins.safezone.backend.network.GlobalAssociation.ReportsRepository
+import com.wilkins.safezone.backend.network.Moderator.News.NewsViewModel
 import com.wilkins.safezone.frontend.ui.Moderator.ModeratorSideMenu
-import com.wilkins.safezone.ui.theme.PrimaryColor
+import com.wilkins.safezone.frontend.ui.Moderator.screens.Dasbhoard.Components.*
+import com.wilkins.safezone.navigation.theme.PrimaryColor
 import io.github.jan.supabase.SupabaseClient
+import kotlinx.coroutines.launch
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -35,137 +30,144 @@ fun ModeratorDashboard(
     navController: NavController,
     moderatorId: String,
     modifier: Modifier = Modifier,
-    onNewsClick: (NewsItem) -> Unit = {},
-    onReportClick: (ReportItem) -> Unit = {},
-    onViewAllNewsClick: () -> Unit = {},
-    onViewAllReportsClick: () -> Unit = {},
     context: Context,
     supabaseClient: SupabaseClient
 ) {
     var isMenuOpen by remember { mutableStateOf(false) }
+    val scope = rememberCoroutineScope()
 
-    // Sample data - Reemplaza esto con datos reales de tu ViewModel
-    val stats = remember {
+    // ViewModels y Repositories
+    val newsViewModel: NewsViewModel = viewModel()
+    val reportsRepository = remember { ReportsRepository() }
+    val crudUser = remember { CrudUser() }
+
+    // Estados
+    val newsList by newsViewModel.newsList.collectAsState()
+    var reportsList by remember { mutableStateOf<List<com.wilkins.safezone.backend.network.GlobalAssociation.ReportDto>>(emptyList()) }
+    var usersCount by remember { mutableStateOf(0) }
+    var isLoading by remember { mutableStateOf(true) }
+
+    // Estadísticas calculadas
+    val activeReportsCount = reportsList.filter { it.idReportingStatus in listOf(1, 2) }.size
+    val newsCount = newsList.size
+
+    // Cargar datos al iniciar
+    LaunchedEffect(Unit) {
+        isLoading = true
+
+        // Cargar noticias
+        newsViewModel.loadNews()
+
+        // Cargar reportes
+        scope.launch {
+            reportsRepository.getAllReports().onSuccess { reports ->
+                reportsList = reports
+            }
+        }
+
+        // Cargar usuarios
+        scope.launch {
+            val users = crudUser.getAllProfiles()
+            usersCount = users.size
+        }
+
+        isLoading = false
+    }
+
+    // Convertir reportes a ReportItems para el dashboard
+    val dashboardReports = reportsList.take(5).map { report ->
+        val description = report.description ?: ""
+
+        ReportItem(
+            id = report.id,
+            title = description.take(50) + if (description.length > 50) "..." else "",
+            description = description,
+            reportedBy = if (report.isAnonymous) "Anónimo" else (report.userName ?: "Usuario"),
+            timestamp = formatTimestamp(report.createdAt),
+            priority = when (report.idReportingStatus) {
+                1 -> ReportPriority.HIGH
+                2 -> ReportPriority.MEDIUM
+                else -> ReportPriority.LOW
+            },
+            status = when (report.idReportingStatus) {
+                1 -> ReportStatus.PENDING
+                2 -> ReportStatus.IN_PROGRESS
+                3 -> ReportStatus.RESOLVED
+                else -> ReportStatus.PENDING
+            },
+            location = report.reportLocation ?: ""
+        )
+    }
+
+    // Convertir noticias a NewsItems
+    val dashboardNews = newsList.take(5).map { news ->
+        NewsItem(
+            id = news.id ?: "",
+            title = news.title,
+            summary = news.description.take(100) + if (news.description.length > 100) "..." else "",
+            author = "Moderador",
+            timestamp = formatTimestamp(news.createdAt),
+            views = 0,
+            isPublished = true
+        )
+    }
+
+    // Estadísticas
+    val stats = remember(activeReportsCount, newsCount, usersCount) {
         listOf(
             StatItem(
                 title = "Reportes Activos",
-                value = "24",
+                value = activeReportsCount.toString(),
                 icon = Icons.Default.Warning,
-                trend = "+12%",
-                trendUp = true
+                trend = "+${activeReportsCount}",
+                trendUp = activeReportsCount > 0
             ),
             StatItem(
                 title = "Noticias Publicadas",
-                value = "156",
+                value = newsCount.toString(),
                 icon = Icons.Default.Newspaper,
-                trend = "+8%",
-                trendUp = true
+                trend = "+${newsCount}",
+                trendUp = newsCount > 0
             ),
             StatItem(
                 title = "Usuarios Activos",
-                value = "1,847",
+                value = usersCount.toString(),
                 icon = Icons.Default.People,
-                trend = "+15%",
-                trendUp = true
+                trend = "+${usersCount}",
+                trendUp = usersCount > 0
             ),
             StatItem(
-                title = "Resoluciones Hoy",
-                value = "18",
-                icon = Icons.Default.CheckCircle,
-                trend = "-5%",
+                title = "Encuestas",
+                value = "0",
+                icon = Icons.Default.Poll,
+                trend = "0%",
                 trendUp = false
             )
         )
     }
 
-    val newsList = remember {
-        listOf(
-            NewsItem(
-                id = "1",
-                title = "Nueva política de seguridad implementada",
-                summary = "Se han actualizado las normativas de seguridad en todas las zonas residenciales...",
-                author = "Admin Principal",
-                timestamp = "Hace 2 horas",
-                views = 342,
-                isPublished = true
-            ),
-            NewsItem(
-                id = "2",
-                title = "Mantenimiento programado del sistema",
-                summary = "El próximo lunes se realizará mantenimiento preventivo...",
-                author = "Moderador Tech",
-                timestamp = "Hace 5 horas",
-                views = 128,
-                isPublished = false
-            ),
-            NewsItem(
-                id = "3",
-                title = "Alerta de zona de alto riesgo",
-                summary = "Se ha identificado una zona con reportes frecuentes de incidentes...",
-                author = "Moderador Seguridad",
-                timestamp = "Hace 1 día",
-                views = 567,
-                isPublished = true
-            )
-        )
-    }
-
-    val reportsList = remember {
-        listOf(
-            ReportItem(
-                id = "1",
-                title = "Iluminación deficiente en parque central",
-                description = "Varias luces del parque están fundidas creando zonas oscuras...",
-                reportedBy = "Usuario123",
-                timestamp = "Hace 30 min",
-                priority = ReportPriority.HIGH,
-                status = ReportStatus.PENDING,
-                location = "Parque Central"
-            ),
-            ReportItem(
-                id = "2",
-                title = "Ruido excesivo en zona residencial",
-                description = "Quejas de múltiples residentes por ruido nocturno...",
-                reportedBy = "ResidenteX",
-                timestamp = "Hace 1 hora",
-                priority = ReportPriority.MEDIUM,
-                status = ReportStatus.IN_PROGRESS,
-                location = "Sector Norte"
-            ),
-            ReportItem(
-                id = "3",
-                title = "Basura acumulada en esquina",
-                description = "Acumulación de basura en la esquina de la calle principal...",
-                reportedBy = "Vecino45",
-                timestamp = "Hace 3 horas",
-                priority = ReportPriority.LOW,
-                status = ReportStatus.RESOLVED,
-                location = "Calle Principal"
-            )
-        )
-    }
-
+    // Acciones rápidas
     val quickActions = remember {
         listOf(
             QuickAction(
                 title = "Nueva Noticia",
                 icon = Icons.Default.Add,
-                onClick = { navController.navigate("moderatorCreateNews") }
+                onClick = { navController.navigate("newsSave") }
             ),
             QuickAction(
                 title = "Ver Reportes",
                 icon = Icons.Default.Report,
-                onClick = { navController.navigate("moderatorReports") }
+                onClick = { navController.navigate("ReportReviewList") }
             ),
             QuickAction(
                 title = "Usuarios",
                 icon = Icons.Default.People,
-                onClick = { navController.navigate("moderatorUsers") }
+                onClick = { navController.navigate("moderatorUser") }
             ),
             QuickAction(
                 title = "Estadísticas",
                 icon = Icons.Default.BarChart,
-                onClick = { navController.navigate("moderatorStats") }
+                onClick = { navController.navigate("example_tar") }
             )
         )
     }
@@ -208,12 +210,12 @@ fun ModeratorDashboard(
                                     containerColor = Color.Red,
                                     contentColor = Color.White
                                 ) {
-                                    Text("5")
+                                    Text(activeReportsCount.toString())
                                 }
                             }
                         ) {
                             IconButton(onClick = {
-                                navController.navigate("moderatorNotifications")
+                                navController.navigate("example_tar")
                             }) {
                                 Icon(
                                     imageVector = Icons.Default.Notifications,
@@ -223,7 +225,7 @@ fun ModeratorDashboard(
                             }
                         }
                         IconButton(onClick = {
-                            navController.navigate("moderatorProfile")
+                            navController.navigate("example_tar")
                         }) {
                             Icon(
                                 imageVector = Icons.Default.AccountCircle,
@@ -235,121 +237,141 @@ fun ModeratorDashboard(
                 )
             }
         ) { paddingValues ->
-            LazyColumn(
-                modifier = Modifier
-                    .fillMaxSize()
-                    .padding(paddingValues)
-                    .background(MaterialTheme.colorScheme.background),
-                contentPadding = PaddingValues(16.dp),
-                verticalArrangement = Arrangement.spacedBy(16.dp)
-            ) {
-                // Header con saludo
-                item {
-                    Card(
-                        modifier = Modifier.fillMaxWidth(),
-                        colors = CardDefaults.cardColors(
-                            containerColor = PrimaryColor.copy(alpha = 0.1f)
-                        )
-                    ) {
-                        Row(
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .padding(16.dp),
-                            verticalAlignment = Alignment.CenterVertically
-                        ) {
-                            Icon(
-                                imageVector = Icons.Default.Warning,
-                                contentDescription = null,
-                                tint = PrimaryColor,
-                                modifier = Modifier.size(32.dp)
+            if (isLoading) {
+                Box(
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .padding(paddingValues),
+                    contentAlignment = Alignment.Center
+                ) {
+                    CircularProgressIndicator(color = PrimaryColor)
+                }
+            } else {
+                LazyColumn(
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .padding(paddingValues)
+                        .background(MaterialTheme.colorScheme.background),
+                    contentPadding = PaddingValues(16.dp),
+                    verticalArrangement = Arrangement.spacedBy(16.dp)
+                ) {
+                    // Header
+                    item {
+                        Card(
+                            modifier = Modifier.fillMaxWidth(),
+                            colors = CardDefaults.cardColors(
+                                containerColor = PrimaryColor.copy(alpha = 0.1f)
                             )
-                            Spacer(modifier = Modifier.width(12.dp))
-                            Column {
-                                Text(
-                                    text = "¡Bienvenido de vuelta!",
-                                    style = MaterialTheme.typography.titleMedium,
-                                    fontWeight = FontWeight.Bold
+                        ) {
+                            Row(
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .padding(16.dp),
+                                verticalAlignment = Alignment.CenterVertically
+                            ) {
+                                Icon(
+                                    imageVector = Icons.Default.Warning,
+                                    contentDescription = null,
+                                    tint = PrimaryColor,
+                                    modifier = Modifier.size(32.dp)
                                 )
-                                Text(
-                                    text = "Aquí está el resumen de hoy",
-                                    style = MaterialTheme.typography.bodyMedium,
-                                    color = MaterialTheme.colorScheme.onSurfaceVariant
-                                )
+                                Spacer(modifier = Modifier.width(12.dp))
+                                Column {
+                                    Text(
+                                        text = "¡Bienvenido de vuelta!",
+                                        style = MaterialTheme.typography.titleMedium,
+                                        fontWeight = FontWeight.Bold
+                                    )
+                                    Text(
+                                        text = "Aquí está el resumen de hoy",
+                                        style = MaterialTheme.typography.bodyMedium,
+                                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                                    )
+                                }
                             }
                         }
                     }
-                }
 
-                // Estadísticas
-                item {
-                    DashboardStatsCard(
-                        stats = stats,
-                        primaryColor = PrimaryColor
-                    )
-                }
-
-                // Acciones Rápidas
-                item {
-                    QuickActionsCard(
-                        actions = quickActions,
-                        primaryColor = PrimaryColor
-                    )
-                }
-
-                // Últimas Noticias
-                item {
-                    LatestNewsCard(
-                        newsList = newsList,
-                        onNewsClick = onNewsClick,
-                        onViewAllClick = onViewAllNewsClick,
-                        primaryColor = PrimaryColor
-                    )
-                }
-
-                // Últimos Reportes
-                item {
-                    LatestReportsCard(
-                        reportsList = reportsList,
-                        onReportClick = onReportClick,
-                        onViewAllClick = onViewAllReportsClick,
-                        primaryColor = PrimaryColor
-                    )
-                }
-
-                // Footer con información adicional
-                item {
-                    Card(
-                        modifier = Modifier.fillMaxWidth(),
-                        colors = CardDefaults.cardColors(
-                            containerColor = MaterialTheme.colorScheme.surfaceVariant
+                    // Estadísticas
+                    item {
+                        DashboardStatsCard(
+                            stats = stats,
+                            primaryColor = PrimaryColor
                         )
-                    ) {
-                        Row(
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .padding(16.dp),
-                            horizontalArrangement = Arrangement.SpaceBetween,
-                            verticalAlignment = Alignment.CenterVertically
-                        ) {
-                            Column {
-                                Text(
-                                    text = "Última actualización",
-                                    style = MaterialTheme.typography.bodySmall,
-                                    color = MaterialTheme.colorScheme.onSurfaceVariant
-                                )
-                                Text(
-                                    text = "Hace 5 minutos",
-                                    style = MaterialTheme.typography.bodyMedium,
-                                    fontWeight = FontWeight.SemiBold
-                                )
-                            }
+                    }
 
-                            IconButton(onClick = { /* Refresh */ }) {
-                                Icon(
-                                    imageVector = Icons.Default.Refresh,
-                                    contentDescription = "Actualizar",
-                                    tint = PrimaryColor
-                                )
+                    // Acciones Rápidas
+                    item {
+                        QuickActionsCard(
+                            actions = quickActions,
+                            primaryColor = PrimaryColor
+                        )
+                    }
+
+                    // Últimas Noticias
+                    item {
+                        LatestNewsCard(
+                            newsList = dashboardNews,
+                            onNewsClick = { navController.navigate("example_tar") },
+                            onViewAllClick = { navController.navigate("moderatorCreateNews") },
+                            primaryColor = PrimaryColor
+                        )
+                    }
+
+                    // Últimos Reportes
+                    item {
+                        LatestReportsCard(
+                            reportsList = dashboardReports,
+                            onReportClick = { navController.navigate("example_tar") },
+                            onViewAllClick = { navController.navigate("example_tar") },
+                            primaryColor = PrimaryColor
+                        )
+                    }
+
+                    // Footer
+                    item {
+                        Card(
+                            modifier = Modifier.fillMaxWidth(),
+                            colors = CardDefaults.cardColors(
+                                containerColor = MaterialTheme.colorScheme.surfaceVariant
+                            )
+                        ) {
+                            Row(
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .padding(16.dp),
+                                horizontalArrangement = Arrangement.SpaceBetween,
+                                verticalAlignment = Alignment.CenterVertically
+                            ) {
+                                Column {
+                                    Text(
+                                        text = "Última actualización",
+                                        style = MaterialTheme.typography.bodySmall,
+                                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                                    )
+                                    Text(
+                                        text = "Hace 5 minutos",
+                                        style = MaterialTheme.typography.bodyMedium,
+                                        fontWeight = FontWeight.SemiBold
+                                    )
+                                }
+
+                                IconButton(onClick = {
+                                    scope.launch {
+                                        isLoading = true
+                                        newsViewModel.loadNews()
+                                        reportsRepository.getAllReports().onSuccess {
+                                            reportsList = it
+                                        }
+                                        isLoading = false
+                                    }
+                                }) {
+                                    Icon(
+                                        imageVector = Icons.Default.Refresh,
+                                        contentDescription = "Actualizar",
+                                        tint = PrimaryColor
+                                    )
+                                }
                             }
                         }
                     }
@@ -361,15 +383,18 @@ fun ModeratorDashboard(
             ModeratorSideMenu(
                 navController = navController,
                 moderatorId = moderatorId,
-                moderatorName = "Nombre del Moderador", // Agrega el nombre del moderador
+                moderatorName = "Nombre del Moderador",
                 currentRoute = "moderatorDashboard",
                 isMenuOpen = isMenuOpen,
-                onMenuToggle = { isOpen ->
-                    isMenuOpen = isOpen
-                },
-                context = context, // Agrega el context
-                supabaseClient = supabaseClient // Agrega el supabaseClient
+                onMenuToggle = { isMenuOpen = it },
+                context = context,
+                supabaseClient = supabaseClient
             )
         }
     }
+}
+
+private fun formatTimestamp(timestamp: String?): String {
+    if (timestamp.isNullOrBlank()) return "Fecha desconocida"
+    return "Hace 1 hora" // Implementa formato real si lo necesitas
 }

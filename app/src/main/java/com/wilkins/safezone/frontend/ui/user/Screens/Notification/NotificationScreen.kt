@@ -29,6 +29,7 @@ import com.wilkins.safezone.backend.network.SupabaseService
 import com.wilkins.safezone.backend.network.User.Notification.NotificationData
 import com.wilkins.safezone.backend.network.User.Notification.NotificationRepository
 import com.wilkins.safezone.backend.network.auth.SessionManager.getUserProfile
+import com.wilkins.safezone.frontend.ui.user.Screens.profile.RoleBasedMenu
 import io.github.jan.supabase.SupabaseClient
 import io.github.jan.supabase.gotrue.auth
 import kotlinx.coroutines.launch
@@ -57,6 +58,8 @@ fun NotificationsScreen(navController: NavController, context: Context, subaseCl
     var notifications by remember { mutableStateOf<List<NotificationData>>(emptyList()) }
     var showMenu by remember { mutableStateOf(false) }
 
+    val currentRoute = navController.currentBackStackEntry?.destination?.route ?: ""
+    var isMenuOpen by remember { mutableStateOf(false) }
     val userState = produceState<AppUser?>(initialValue = null) {
         value = getUserProfile(context)
     }
@@ -348,13 +351,12 @@ fun NotificationsScreen(navController: NavController, context: Context, subaseCl
             }
         }
 
-        SideMenu(
+        RoleBasedMenu(
             navController = navController,
-            modifier = Modifier.align(Alignment.TopCenter),
-            userId = userId,
-            userName = user?.name ?: "Usuario",
-            context = context,
-            supabaseClient = subaseClient
+            currentRoute = currentRoute,
+            isMenuOpen = isMenuOpen,
+            onMenuToggle = { isMenuOpen = it },
+            modifier = Modifier.align(Alignment.TopCenter)
         )
     }
 }

@@ -29,7 +29,7 @@ import androidx.lifecycle.viewmodel.compose.viewModel
 import coil.compose.AsyncImage
 import com.wilkins.safezone.backend.network.Moderator.News.News
 import com.wilkins.safezone.backend.network.Moderator.News.NewsViewModel
-import com.wilkins.safezone.ui.theme.PrimaryColor
+import com.wilkins.safezone.navigation.theme.PrimaryColor
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable

@@ -29,7 +29,7 @@ import com.wilkins.safezone.backend.network.GlobalAssociation.ReportDto
 import com.wilkins.safezone.backend.network.GlobalAssociation.ReportUtils
 import com.wilkins.safezone.backend.network.GlobalAssociation.ReportsRepository
 import com.wilkins.safezone.frontend.ui.GlobalAssociation.GovernmentMenu
-import com.wilkins.safezone.ui.theme.PrimaryColor
+import com.wilkins.safezone.navigation.theme.PrimaryColor
 import kotlinx.coroutines.launch
 import kotlin.collections.get
 

@@ -30,7 +30,7 @@ import androidx.navigation.NavController
 import com.wilkins.safezone.backend.network.Admin.CrudUser.CreateUserRequest
 import com.wilkins.safezone.backend.network.Admin.CrudUser.Role
 import com.wilkins.safezone.bridge.Crud.CreateUserViewModel
-import com.wilkins.safezone.ui.theme.PrimaryColor
+import com.wilkins.safezone.navigation.theme.PrimaryColor
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable

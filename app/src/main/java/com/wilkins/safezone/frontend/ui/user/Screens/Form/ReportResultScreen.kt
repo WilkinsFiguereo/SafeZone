@@ -16,7 +16,7 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.navigation.NavController
-import com.wilkins.safezone.ui.theme.PrimaryColor
+import com.wilkins.safezone.navigation.theme.PrimaryColor
 import kotlinx.coroutines.delay
 
 @Composable

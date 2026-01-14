@@ -32,7 +32,7 @@ import com.wilkins.safezone.backend.network.GlobalAssociation.ReportDto
 import com.wilkins.safezone.backend.network.GlobalAssociation.ReportUtils
 import com.wilkins.safezone.backend.network.GlobalAssociation.ReportsRepository
 import com.wilkins.safezone.frontend.ui.Moderator.ModeratorSideMenu
-import com.wilkins.safezone.ui.theme.PrimaryColor
+import com.wilkins.safezone.navigation.theme.PrimaryColor
 import io.github.jan.supabase.SupabaseClient
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch

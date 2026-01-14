@@ -1,4 +1,4 @@
-package com.wilkins.safezone.ui.theme
+package com.wilkins.safezone.navigation.theme
 
 import androidx.compose.material3.Typography
 import androidx.compose.ui.text.TextStyle

@@ -30,7 +30,7 @@ import com.wilkins.safezone.backend.network.User.ReportSystem.ReportType
 import com.wilkins.safezone.backend.network.auth.SessionManager
 import com.wilkins.safezone.frontend.ui.user.Screens.News.components.BanUserDialog
 import com.wilkins.safezone.frontend.ui.user.Screens.News.components.ReportUserDialog
-import com.wilkins.safezone.ui.theme.PrimaryColor
+import com.wilkins.safezone.navigation.theme.PrimaryColor
 import io.github.jan.supabase.gotrue.auth
 import kotlinx.coroutines.launch
 
@@ -42,9 +42,11 @@ fun ProfileHeader(
     followViewModel: FollowViewModel,
     userId: String,
     userName: String,
+    userStatusId: Int, // Agregado para saber si está baneado
     onEditClick: () -> Unit,
     onFollowClick: () -> Unit,
     onActionComplete: (String) -> Unit = {},
+    onStatusChanged: (Int) -> Unit = {}, // Callback para actualizar el status en el padre
     modifier: Modifier = Modifier
 ) {
     val followState by followViewModel.followState.collectAsState()
@@ -56,10 +58,12 @@ fun ProfileHeader(
         SessionManager.getUserRole(context)
     }
     val isModerator = currentUserRoleId in 2..4
+    val isBanned = userStatusId == 3
 
     // Estados para diálogos
     var showReportDialog by remember { mutableStateOf(false) }
     var showBanDialog by remember { mutableStateOf(false) }
+    var showUnbanDialog by remember { mutableStateOf(false) }
     var reportTypes by remember { mutableStateOf<List<ReportType>>(emptyList()) }
     var isLoadingAction by remember { mutableStateOf(false) }
 
@@ -124,6 +128,7 @@ fun ProfileHeader(
                             showMenu = showOptionsMenu,
                             onShowMenuChange = { showOptionsMenu = it },
                             isModerator = isModerator,
+                            isBanned = isBanned,
                             onReportClick = {
                                 scope.launch {
                                     val result = reportService.getAllReportTypes()
@@ -135,6 +140,9 @@ fun ProfileHeader(
                             },
                             onBanClick = {
                                 showBanDialog = true
+                            },
+                            onUnbanClick = {
+                                showUnbanDialog = true
                             },
                             onShareClick = {
                                 val shareIntent = reportService.createShareProfileIntent(userName, userId)
@@ -197,9 +205,34 @@ fun ProfileHeader(
 
                     result.onSuccess {
                         showBanDialog = false
+                        onStatusChanged(3) // Actualizar a baneado
                         onActionComplete("Usuario baneado exitosamente")
                     }.onFailure {
                         onActionComplete("Error al banear usuario")
+                    }
+                }
+            }
+        )
+    }
+
+    // Diálogo de desbaneo
+    if (showUnbanDialog) {
+        UnbanUserDialog(
+            userName = userName,
+            isLoading = isLoadingAction,
+            onDismiss = { showUnbanDialog = false },
+            onConfirm = {
+                scope.launch {
+                    isLoadingAction = true
+                    val result = reportService.unbanUser(userId)
+                    isLoadingAction = false
+
+                    result.onSuccess {
+                        showUnbanDialog = false
+                        onStatusChanged(1) // Actualizar a online
+                        onActionComplete("Usuario desbaneado exitosamente")
+                    }.onFailure {
+                        onActionComplete("Error al desbanear usuario")
                     }
                 }
             }
@@ -332,8 +365,10 @@ private fun ProfileOptionsButton(
     showMenu: Boolean,
     onShowMenuChange: (Boolean) -> Unit,
     isModerator: Boolean,
+    isBanned: Boolean,
     onReportClick: () -> Unit,
     onBanClick: () -> Unit,
+    onUnbanClick: () -> Unit,
     onBlockClick: () -> Unit,
     onShareClick: () -> Unit,
     modifier: Modifier = Modifier
@@ -359,7 +394,7 @@ private fun ProfileOptionsButton(
             onDismissRequest = { onShowMenuChange(false) },
             modifier = Modifier
                 .background(Color.White)
-                .width(220.dp)
+                .width(240.dp)
         ) {
             // Reportar (disponible para todos)
             DropdownMenuItem(
@@ -446,7 +481,7 @@ private fun ProfileOptionsButton(
                     modifier = Modifier.padding(vertical = 4.dp)
                 )
 
-                // Banear usuario
+                // Banear/Desbanear usuario (según estado actual)
                 DropdownMenuItem(
                     text = {
                         Row(
@@ -454,20 +489,20 @@ private fun ProfileOptionsButton(
                             verticalAlignment = Alignment.CenterVertically
                         ) {
                             Icon(
-                                imageVector = Icons.Outlined.Gavel,
+                                imageVector = if (isBanned) Icons.Outlined.CheckCircle else Icons.Outlined.Gavel,
                                 contentDescription = null,
-                                tint = Color(0xFFD32F2F),
+                                tint = if (isBanned) Color(0xFF4CAF50) else Color(0xFFD32F2F),
                                 modifier = Modifier.size(20.dp)
                             )
                             Column {
                                 Text(
-                                    text = "Banear usuario",
+                                    text = if (isBanned) "Desbanear usuario" else "Banear usuario",
                                     fontSize = 14.sp,
                                     color = Color(0xFF212121),
                                     fontWeight = FontWeight.SemiBold
                                 )
                                 Text(
-                                    text = "Acción de moderador",
+                                    text = if (isBanned) "Restaurar acceso" else "Acción de moderador",
                                     fontSize = 11.sp,
                                     color = Color(0xFF757575)
                                 )
@@ -476,7 +511,11 @@ private fun ProfileOptionsButton(
                     },
                     onClick = {
                         onShowMenuChange(false)
-                        onBanClick()
+                        if (isBanned) {
+                            onUnbanClick()
+                        } else {
+                            onBanClick()
+                        }
                     }
                 )
 

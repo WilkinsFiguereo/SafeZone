@@ -15,9 +15,11 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.scale
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
@@ -30,8 +32,10 @@ import com.wilkins.safezone.GenericUserUi.AdminMenu
 import com.wilkins.safezone.backend.network.Admin.CrudUser.CrudUser
 import com.wilkins.safezone.backend.network.Admin.CrudUser.UserProfileViewModel
 import com.wilkins.safezone.backend.network.Admin.CrudUser.Usuario
+import com.wilkins.safezone.backend.network.SupabaseService
 import com.wilkins.safezone.frontend.ui.Admin.Screens.CrudUser.components.SearchBar
-import com.wilkins.safezone.ui.theme.PrimaryColor
+import com.wilkins.safezone.navigation.theme.PrimaryColor
+import io.github.jan.supabase.storage.storage
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 
@@ -432,6 +436,8 @@ fun ModernUsersTable(
 }
 
 // ✅ NUEVO COMPONENTE: Item de Usuario Moderno con Card
+// ✅ REEMPLAZO COMPLETO del componente ModernUserListItem en CrudUsuarios.kt
+
 @Composable
 fun ModernUserListItem(
     usuario: Usuario,
@@ -439,6 +445,7 @@ fun ModernUserListItem(
     onClick: (String) -> Unit,
     modifier: Modifier = Modifier
 ) {
+    val context = LocalContext.current
     var isPressed by remember { mutableStateOf(false) }
     val scale by animateFloatAsState(if (isPressed) 0.98f else 1f, label = "scale")
 
@@ -447,6 +454,20 @@ fun ModernUserListItem(
         2 -> Color(0xFF4ECDC4) // Moderador - Turquesa
         3 -> Color(0xFF45B7D1) // Usuario - Azul
         else -> MaterialTheme.colorScheme.primary
+    }
+
+    // Obtener URL de la foto de perfil si existe
+    val profilePhotoUrl = remember(usuario.photoProfile) {
+        if (!usuario.photoProfile.isNullOrEmpty()) {
+            try {
+                val bucket = SupabaseService.getInstance().storage.from("UserProfile")
+                bucket.publicUrl(usuario.photoProfile!!)
+            } catch (e: Exception) {
+                null
+            }
+        } else {
+            null
+        }
     }
 
     Card(
@@ -479,27 +500,49 @@ fun ModernUserListItem(
                 modifier = Modifier.weight(1f),
                 verticalAlignment = Alignment.CenterVertically
             ) {
-                // Avatar con gradiente
+                // Avatar con imagen o gradiente
                 Box(
                     modifier = Modifier
                         .size(48.dp)
+                        .clip(CircleShape)
                         .background(
-                            brush = Brush.linearGradient(
-                                colors = listOf(
-                                    roleColor.copy(alpha = 0.8f),
-                                    roleColor.copy(alpha = 0.5f)
+                            if (profilePhotoUrl == null) {
+                                Brush.linearGradient(
+                                    colors = listOf(
+                                        roleColor.copy(alpha = 0.8f),
+                                        roleColor.copy(alpha = 0.5f)
+                                    )
                                 )
-                            ),
-                            shape = CircleShape
+                            } else {
+                                Brush.linearGradient(
+                                    colors = listOf(Color.Transparent, Color.Transparent)
+                                )
+                            }
                         ),
                     contentAlignment = Alignment.Center
                 ) {
-                    Text(
-                        text = usuario.nombre.firstOrNull()?.uppercase() ?: "U",
-                        fontSize = 20.sp,
-                        fontWeight = FontWeight.Bold,
-                        color = Color.White
-                    )
+                    if (profilePhotoUrl != null) {
+                        coil.compose.AsyncImage(
+                            model = coil.request.ImageRequest.Builder(context)
+                                .data(profilePhotoUrl)
+                                .crossfade(true)
+                                .placeholder(android.R.drawable.ic_menu_gallery)
+                                .error(android.R.drawable.ic_menu_report_image)
+                                .build(),
+                            contentDescription = "Foto de ${usuario.nombre}",
+                            modifier = Modifier
+                                .size(48.dp)
+                                .clip(CircleShape),
+                            contentScale = androidx.compose.ui.layout.ContentScale.Crop
+                        )
+                    } else {
+                        Text(
+                            text = usuario.nombre.firstOrNull()?.uppercase() ?: "U",
+                            fontSize = 20.sp,
+                            fontWeight = FontWeight.Bold,
+                            color = Color.White
+                        )
+                    }
                 }
 
                 Spacer(modifier = Modifier.width(12.dp))

@@ -25,7 +25,7 @@ import com.wilkins.safezone.frontend.ui.GlobalAssociation.Screens.Dashboard.Comp
 import com.wilkins.safezone.frontend.ui.GlobalAssociation.Screens.Dashboard.Components.EmptyCard
 import com.wilkins.safezone.frontend.ui.GlobalAssociation.Screens.Dashboard.Components.StatisticsSection
 import com.wilkins.safezone.frontend.ui.GlobalAssociation.screens.Dashboard.Components.ReportCardAssociation
-import com.wilkins.safezone.ui.theme.PrimaryColor
+import com.wilkins.safezone.navigation.theme.PrimaryColor
 
 private const val TAG = "GovDashboardScreen"
 

@@ -33,11 +33,13 @@ fun ProfileContent(
         viewModel.getProfilePhotoUrl(userProfile.photoProfile)
     }
 
-    // Agregar estas variables
+    // Estados
     val scope = rememberCoroutineScope()
     val snackbarHostState = remember { SnackbarHostState() }
 
-    // Cambiar Column por Box para poder posicionar el Snackbar
+    // Estado mutable para el status del usuario (para actualizar cuando se banee/desbanee)
+    var currentStatusId by remember { mutableStateOf(userProfile.status_id ?: 1) }
+
     Box(modifier = modifier.fillMaxSize()) {
         Column(
             modifier = Modifier
@@ -53,8 +55,12 @@ fun ProfileContent(
                 followViewModel = followViewModel,
                 userId = userProfile.id,
                 userName = userProfile.name ?: "Usuario",
+                userStatusId = currentStatusId,
                 onEditClick = onEditClick,
                 onFollowClick = onFollowClick,
+                onStatusChanged = { newStatusId ->
+                    currentStatusId = newStatusId
+                },
                 onActionComplete = { message ->
                     scope.launch {
                         snackbarHostState.showSnackbar(
@@ -82,7 +88,7 @@ fun ProfileContent(
 
                 // Estado y estadísticas de seguimiento
                 ProfileStatusSection(
-                    statusId = userProfile.status_id,
+                    statusId = currentStatusId, // Usar el estado mutable
                     followStats = followStats
                 )
 

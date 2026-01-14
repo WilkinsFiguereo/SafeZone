@@ -34,8 +34,8 @@ import com.wilkins.safezone.backend.network.SupabaseService
 import com.wilkins.safezone.bridge.auth.GoogleSignInBridge
 import com.wilkins.safezone.bridge.auth.RegisterBridge
 import com.wilkins.safezone.frontend.ui.auth.components.TermsAndConditionsSection
-import com.wilkins.safezone.ui.theme.NameApp
-import com.wilkins.safezone.ui.theme.PrimaryColor
+import com.wilkins.safezone.navigation.theme.NameApp
+import com.wilkins.safezone.navigation.theme.PrimaryColor
 import io.github.jan.supabase.gotrue.auth
 import io.github.jan.supabase.postgrest.from
 

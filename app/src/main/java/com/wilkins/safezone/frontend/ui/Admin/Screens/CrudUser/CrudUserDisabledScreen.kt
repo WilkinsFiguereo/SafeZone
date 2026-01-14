@@ -18,7 +18,7 @@ import com.wilkins.safezone.GenericUserUi.AdminMenu
 import com.wilkins.safezone.backend.network.Admin.CrudUser.CrudUser
 import com.wilkins.safezone.backend.network.Admin.CrudUser.Usuario
 import com.wilkins.safezone.frontend.ui.Admin.Screens.CrudUser.components.SearchBar
-import com.wilkins.safezone.ui.theme.PrimaryColor
+import com.wilkins.safezone.navigation.theme.PrimaryColor
 import kotlinx.coroutines.launch
 
 @OptIn(ExperimentalMaterial3Api::class, ExperimentalFoundationApi::class)

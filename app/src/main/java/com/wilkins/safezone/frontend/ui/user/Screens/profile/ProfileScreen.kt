@@ -29,7 +29,7 @@ import com.wilkins.safezone.frontend.ui.GlobalAssociation.GovernmentMenu
 import com.wilkins.safezone.frontend.ui.Moderator.ModeratorSideMenu
 import com.wilkins.safezone.frontend.ui.user.Screens.profile.Components.EditProfileContent
 import com.wilkins.safezone.frontend.ui.user.Screens.profile.Components.ProfileContent
-import com.wilkins.safezone.ui.theme.PrimaryColor
+import com.wilkins.safezone.navigation.theme.PrimaryColor
 import io.github.jan.supabase.SupabaseClient
 import io.github.jan.supabase.gotrue.auth
 import kotlinx.coroutines.launch

@@ -27,7 +27,7 @@ import androidx.navigation.NavController
 import com.wilkins.safezone.GenericUserUi.AdminMenu
 import com.wilkins.safezone.backend.network.Admin.Dashboard.*
 import com.wilkins.safezone.backend.network.GlobalAssociation.DateUtils
-import com.wilkins.safezone.ui.theme.PrimaryColor
+import com.wilkins.safezone.navigation.theme.PrimaryColor
 import kotlinx.coroutines.async
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch

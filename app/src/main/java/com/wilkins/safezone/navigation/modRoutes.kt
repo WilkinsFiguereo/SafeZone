@@ -2,15 +2,20 @@ package com.wilkins.safezone.navigation
 
 import android.content.Context
 import android.util.Log
+import androidx.compose.runtime.LaunchedEffect
 import androidx.navigation.NavGraphBuilder
 import androidx.navigation.NavHostController
 import androidx.navigation.compose.composable
 import com.wilkins.safezone.backend.network.SupabaseService
+import com.wilkins.safezone.backend.network.auth.SessionManager
 import com.wilkins.safezone.frontend.ui.Moderator.screens.ReviewReports.ReportDetail.ReportStatusScreen
 import com.wilkins.safezone.frontend.ui.Moderator.Dashboard.ModeratorDashboard
+import com.wilkins.safezone.frontend.ui.Moderator.ModeratorUsersScreen
+import com.wilkins.safezone.frontend.ui.Moderator.screens.ModeratorUser.ModeratorBlockedUsersScreen
 import com.wilkins.safezone.frontend.ui.Moderator.screens.News.NewsListScreen
 import com.wilkins.safezone.frontend.ui.Moderator.screens.News.NewsSaveScreen
 import com.wilkins.safezone.frontend.ui.Moderator.screens.ReviewReports.ReportsList.RewiewReportsListScreen
+import com.wilkins.safezone.frontend.ui.Moderator.screens.Statistics.ModeratorStatisticsScreen
 import com.wilkins.safezone.frontend.ui.Moderator.screens.Survey.SurveyResultsScreen
 
 /**
@@ -121,4 +126,85 @@ fun NavGraphBuilder.moderatorRoutes(
 //            SurveyResultsScreen(navController = navController)
 //        }
 //    }
+
+    // ════════════════════════════════════════════
+    // Moderator User
+    // ════════════════════════════════════════════
+
+    composable("moderatorUser") {
+        if (!hasActiveSession()) {
+            Log.w("ModeratorRoutes", "⚠️ Intento de acceso sin sesión a DashboardMod")
+            navController.navigate("login") {
+                popUpTo(0) { inclusive = true }
+            }
+        } else {
+            val userId = SessionManager
+                .loadSession(context)
+                ?.user
+                ?.id
+
+            if (userId == null) {
+                Log.e("ModeratorRoutes", "❌ userId nulo, redirigiendo a login")
+                navController.navigate("login") {
+                    popUpTo(0) { inclusive = true }
+                }
+                return@composable
+            }
+
+            ModeratorUsersScreen(navController = navController, moderatorId = userId)
+        }
+    }
+
+    composable("moderatorUserDisable") {
+        if (!hasActiveSession()) {
+            Log.w("ModeratorRoutes", "⚠️ Intento de acceso sin sesión a DashboardMod")
+            navController.navigate("login") {
+                popUpTo(0) { inclusive = true }
+            }
+        } else {
+            val userId = SessionManager
+                .loadSession(context)
+                ?.user
+                ?.id
+
+            if (userId == null) {
+                Log.e("ModeratorRoutes", "❌ userId nulo, redirigiendo a login")
+                navController.navigate("login") {
+                    popUpTo(0) { inclusive = true }
+                }
+                return@composable
+            }
+
+            ModeratorBlockedUsersScreen(navController = navController, moderatorId = userId)
+        }
+    }
+
+    // ════════════════════════════════════════════
+    // Moderator Statistics
+    // ════════════════════════════════════════════
+
+    composable("moderatorStatistics") {
+        if (!hasActiveSession()) {
+            Log.w("ModeratorRoutes", "⚠️ Intento de acceso sin sesión a DashboardMod")
+            navController.navigate("login") {
+                popUpTo(0) { inclusive = true }
+            }
+        } else {
+            val userId = SessionManager
+                .loadSession(context)
+                ?.user
+                ?.id
+
+            if (userId == null) {
+                Log.e("ModeratorRoutes", "❌ userId nulo, redirigiendo a login")
+                navController.navigate("login") {
+                    popUpTo(0) { inclusive = true }
+                }
+                return@composable
+            }
+
+            val supabaseClient = SupabaseService.getInstance()
+            ModeratorStatisticsScreen(navController = navController, moderatorId = userId, context = context, supabaseClient = supabaseClient)
+        }
+    }
 }

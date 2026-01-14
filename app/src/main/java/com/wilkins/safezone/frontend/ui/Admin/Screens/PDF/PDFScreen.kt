@@ -37,8 +37,8 @@ import com.wilkins.safezone.backend.network.auth.SessionManager
 import com.wilkins.safezone.frontend.ui.Admin.Screens.PDF.components.OverlayMenu
 import com.wilkins.safezone.frontend.ui.Admin.Screens.PDF.components.ReportItem
 import com.wilkins.safezone.frontend.ui.Admin.Screens.PDF.components.ReportSection
-import com.wilkins.safezone.ui.theme.NameApp
-import com.wilkins.safezone.ui.theme.PrimaryColor
+import com.wilkins.safezone.navigation.theme.NameApp
+import com.wilkins.safezone.navigation.theme.PrimaryColor
 import kotlinx.coroutines.launch
 
 // Data classes para el menú

@@ -6,7 +6,7 @@ import androidx.navigation.NavHostController
 import androidx.navigation.compose.composable
 import com.wilkins.safezone.GenericUserUi.SplashScreen
 import com.wilkins.safezone.frontend.ui.auth.screens.Register.VerificationScreen
-import com.wilkins.safezone.ui.theme.PrimaryColor
+import com.wilkins.safezone.navigation.theme.PrimaryColor
 import com.wilkins.safezone.backend.network.SupabaseService
 import android.util.Log
 import com.wilkins.safezone.backend.network.auth.SessionManager

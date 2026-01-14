@@ -25,7 +25,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.navigation.NavController
 import com.wilkins.safezone.backend.network.auth.SessionManager.logout
-import com.wilkins.safezone.ui.theme.PrimaryColor
+import com.wilkins.safezone.navigation.theme.PrimaryColor
 import io.github.jan.supabase.SupabaseClient
 import kotlinx.coroutines.launch
 
@@ -53,7 +53,7 @@ fun ModeratorSideMenu(
             title = "Panel Principal",
             items = listOf(
                 ModeratorMenuItem(Icons.Default.Dashboard, "Dashboard", "DashboardMod"),
-                ModeratorMenuItem(Icons.Default.BarChart, "Estadísticas", "moderatorStats")
+                ModeratorMenuItem(Icons.Default.BarChart, "Estadísticas", "moderatorStatistics")
             )
         ),
         MenuSection(
@@ -76,33 +76,21 @@ fun ModeratorSideMenu(
             title = "Reportes",
             items = listOf(
                 ModeratorMenuItem(Icons.Default.Report, "Ver Reportes", "ReportReviewList"),
-                ModeratorMenuItem(
-                    Icons.Default.PendingActions,
-                    "Reportes en tu sona",
-                    "MapReports"
-                )
+                ModeratorMenuItem(Icons.Default.PendingActions, "Reportes en tu sona", "MapReports")
             )
         ),
         MenuSection(
             title = "Usuarios",
             items = listOf(
-                ModeratorMenuItem(Icons.Default.People, "Gestionar Usuarios", "moderatorUsers"),
-                ModeratorMenuItem(
-                    Icons.Default.Block,
-                    "Usuarios Bloqueados",
-                    "moderatorBlockedUsers"
-                )
+                ModeratorMenuItem(Icons.Default.People, "Gestionar Usuarios", "moderatorUser"),
+                ModeratorMenuItem(Icons.Default.Block, "Usuarios Bloqueados", "moderatorUserDisable")
             )
         ),
         MenuSection(
             title = "Configuración",
             items = listOf(
                 ModeratorMenuItem(Icons.Default.Person, "Mi Perfil", "MyProfile"),
-                ModeratorMenuItem(
-                    Icons.Default.Notifications,
-                    "Notificaciones",
-                    "moderatorNotifications"
-                ),
+                ModeratorMenuItem(Icons.Default.Notifications, "Notificaciones", "Notification"),
                 ModeratorMenuItem(Icons.Default.Settings, "Configuración", "moderatorSettings"),
                 ModeratorMenuItem(Icons.Default.Logout, "Cerrar Sesión", "logout")
             )

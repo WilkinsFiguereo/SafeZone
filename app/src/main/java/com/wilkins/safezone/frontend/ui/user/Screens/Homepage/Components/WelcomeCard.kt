@@ -22,7 +22,7 @@ import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.graphics.graphicsLayer
-import com.wilkins.safezone.ui.theme.NameApp
+import com.wilkins.safezone.navigation.theme.NameApp
 import kotlinx.coroutines.delay
 
 @Composable

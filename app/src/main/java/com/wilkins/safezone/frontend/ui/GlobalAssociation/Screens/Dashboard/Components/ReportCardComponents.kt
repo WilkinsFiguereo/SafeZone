@@ -17,7 +17,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.wilkins.safezone.backend.network.GlobalAssociation.*
 import com.wilkins.safezone.frontend.ui.GlobalAssociation.Screens.Dashboard.Components.StatusBadge
-import com.wilkins.safezone.ui.theme.PrimaryColor
+import com.wilkins.safezone.navigation.theme.PrimaryColor
 
 @Composable
 fun ReportCardAssociation(

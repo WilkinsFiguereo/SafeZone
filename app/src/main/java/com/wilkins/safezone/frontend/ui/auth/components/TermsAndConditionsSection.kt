@@ -13,8 +13,8 @@ import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.unit.TextUnit
-import com.wilkins.safezone.ui.theme.NameApp
-import com.wilkins.safezone.ui.theme.PrimaryColor
+import com.wilkins.safezone.navigation.theme.NameApp
+import com.wilkins.safezone.navigation.theme.PrimaryColor
 
 @Composable
 fun TermsAndConditionsSection(

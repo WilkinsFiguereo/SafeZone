@@ -33,8 +33,8 @@ import coil.compose.AsyncImage
 import com.wilkins.safezone.backend.network.AppUser
 import com.wilkins.safezone.backend.network.SupabaseService
 import com.wilkins.safezone.backend.network.auth.SessionManager.logout
-import com.wilkins.safezone.ui.theme.NameApp
-import com.wilkins.safezone.ui.theme.PrimaryColor
+import com.wilkins.safezone.navigation.theme.NameApp
+import com.wilkins.safezone.navigation.theme.PrimaryColor
 import io.github.jan.supabase.SupabaseClient
 import io.github.jan.supabase.storage.storage
 import kotlinx.coroutines.launch

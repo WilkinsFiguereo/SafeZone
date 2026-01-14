@@ -61,8 +61,8 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.navigation.NavController
 import com.wilkins.safezone.backend.network.SupabaseService
-import com.wilkins.safezone.ui.theme.NameApp
-import com.wilkins.safezone.ui.theme.PrimaryColor
+import com.wilkins.safezone.navigation.theme.NameApp
+import com.wilkins.safezone.navigation.theme.PrimaryColor
 import kotlinx.coroutines.launch
 
 

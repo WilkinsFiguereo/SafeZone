@@ -22,7 +22,7 @@ import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.ui.platform.LocalContext
 import androidx.navigation.NavController
-import com.wilkins.safezone.ui.theme.PrimaryColor
+import com.wilkins.safezone.navigation.theme.PrimaryColor
 import io.github.jan.supabase.SupabaseClient
 import com.wilkins.safezone.backend.network.User.Form.Affair
 import com.wilkins.safezone.backend.network.User.Form.getAffairs

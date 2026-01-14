@@ -25,8 +25,8 @@ import androidx.compose.ui.unit.sp
 import androidx.navigation.NavController
 import com.wilkins.safezone.backend.network.SupabaseService
 import com.wilkins.safezone.backend.network.auth.SessionManager
-import com.wilkins.safezone.ui.theme.NameApp
-import com.wilkins.safezone.ui.theme.PrimaryColor
+import com.wilkins.safezone.navigation.theme.NameApp
+import com.wilkins.safezone.navigation.theme.PrimaryColor
 import kotlinx.coroutines.launch
 
 @Composable
@@ -66,11 +66,7 @@ fun AdminMenu(
         MenuSection(
             title = "Reportes",
             items = listOf(
-                MenuItem(Icons.Default.Assessment, "Generar Reportes PDF", "PDF"),
-                MenuItem(Icons.Default.Pending, "Reportes Pendientes", "pending_reports"),
-                MenuItem(Icons.Default.Update, "Reportes en Proceso", "in_progress_reports"),
-                MenuItem(Icons.Default.CheckCircle, "Reportes Completados", "completed_reports"),
-                MenuItem(Icons.Default.Cancel, "Reportes Cancelados", "cancelled_reports")
+                MenuItem(Icons.Default.Assessment, "Generar Reportes PDF", "PDF")
             )
         ),
         MenuSection(

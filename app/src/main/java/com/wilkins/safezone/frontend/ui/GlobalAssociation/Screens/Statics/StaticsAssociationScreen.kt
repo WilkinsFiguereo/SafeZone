@@ -27,7 +27,7 @@ import com.wilkins.safezone.frontend.ui.GlobalAssociation.Screens.Statics.Compon
 import com.wilkins.safezone.frontend.ui.GlobalAssociation.Screens.Statics.Components.StatusPieChart
 import com.wilkins.safezone.frontend.ui.GlobalAssociation.Screens.Statics.Components.StatusSummaryTable
 import com.wilkins.safezone.frontend.ui.GlobalAssociation.Screens.Statics.Components.TopItemCard
-import com.wilkins.safezone.ui.theme.PrimaryColor
+import com.wilkins.safezone.navigation.theme.PrimaryColor
 
 private const val TAG = "GovAnalyticsScreen"
 

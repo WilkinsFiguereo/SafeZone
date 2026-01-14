@@ -19,7 +19,7 @@ import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.wilkins.safezone.backend.network.SupabaseService
-import com.wilkins.safezone.ui.theme.PrimaryColor
+import com.wilkins.safezone.navigation.theme.PrimaryColor
 import androidx.compose.ui.unit.TextUnit
 import com.wilkins.safezone.backend.network.AppUser
 import io.github.jan.supabase.SupabaseClient

@@ -16,6 +16,7 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
@@ -30,8 +31,10 @@ import androidx.navigation.NavController
 import com.wilkins.safezone.backend.network.Admin.CrudUser.Role
 import com.wilkins.safezone.backend.network.Admin.CrudUser.UserProfileViewModel
 import com.wilkins.safezone.backend.network.Admin.CrudUser.Usuario
+import com.wilkins.safezone.backend.network.SupabaseService
 import com.wilkins.safezone.bridge.profile.UpdateProfileBridge
-import com.wilkins.safezone.ui.theme.PrimaryColor
+import com.wilkins.safezone.navigation.theme.PrimaryColor
+import io.github.jan.supabase.storage.storage
 import kotlinx.coroutines.launch
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -136,6 +139,10 @@ fun UserProfileCrud(
                 .verticalScroll(rememberScrollState())
         ) {
             // Header con avatar y gradiente
+            // ✅ REEMPLAZO para la sección del Header con avatar en UserProfileCrud.kt
+// Busca la sección que dice "// Header con avatar y gradiente" y reemplázala con esto:
+
+// Header con avatar y gradiente
             Box(
                 modifier = Modifier
                     .fillMaxWidth()
@@ -150,6 +157,22 @@ fun UserProfileCrud(
                     ),
                 contentAlignment = Alignment.Center
             ) {
+                val context = LocalContext.current
+
+                // Obtener URL de la foto de perfil si existe
+                val profilePhotoUrl = remember(profile.photoProfile) {
+                    if (!profile.photoProfile.isNullOrEmpty()) {
+                        try {
+                            val bucket = SupabaseService.getInstance().storage.from("UserProfile")
+                            bucket.publicUrl(profile.photoProfile!!)
+                        } catch (e: Exception) {
+                            null
+                        }
+                    } else {
+                        null
+                    }
+                }
+
                 Surface(
                     modifier = Modifier
                         .size(120.dp)
@@ -161,70 +184,47 @@ fun UserProfileCrud(
                         modifier = Modifier
                             .fillMaxSize()
                             .padding(4.dp)
+                            .clip(CircleShape)
                             .background(
-                                Brush.linearGradient(
-                                    colors = listOf(
-                                        Color(0xFF667EEA),
-                                        Color(0xFF764BA2)
+                                if (profilePhotoUrl == null) {
+                                    Brush.linearGradient(
+                                        colors = listOf(
+                                            Color(0xFF667EEA),
+                                            Color(0xFF764BA2)
+                                        )
                                     )
-                                ),
-                                CircleShape
+                                } else {
+                                    Brush.linearGradient(
+                                        colors = listOf(Color.Transparent, Color.Transparent)
+                                    )
+                                }
                             ),
                         contentAlignment = Alignment.Center
                     ) {
-                        Icon(
-                            imageVector = Icons.Default.Person,
-                            contentDescription = "Avatar",
-                            modifier = Modifier.size(70.dp),
-                            tint = Color.White
-                        )
+                        if (profilePhotoUrl != null) {
+                            coil.compose.AsyncImage(
+                                model = coil.request.ImageRequest.Builder(context)
+                                    .data(profilePhotoUrl)
+                                    .crossfade(true)
+                                    .placeholder(android.R.drawable.ic_menu_gallery)
+                                    .error(android.R.drawable.ic_menu_report_image)
+                                    .build(),
+                                contentDescription = "Foto de perfil de ${profile.name}",
+                                modifier = Modifier.fillMaxSize(),
+                                contentScale = androidx.compose.ui.layout.ContentScale.Crop
+                            )
+                        } else {
+                            Icon(
+                                imageVector = Icons.Default.Person,
+                                contentDescription = "Avatar",
+                                modifier = Modifier.size(70.dp),
+                                tint = Color.White
+                            )
+                        }
                     }
                 }
             }
 
-            // Card con información del usuario
-            Card(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(horizontal = 20.dp)
-                    .offset(y = (-40).dp)
-                    .shadow(8.dp, RoundedCornerShape(24.dp)),
-                shape = RoundedCornerShape(24.dp),
-                colors = CardDefaults.cardColors(
-                    containerColor = Color.White
-                )
-            ) {
-                Column(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(24.dp),
-                    horizontalAlignment = Alignment.CenterHorizontally
-                ) {
-                    Text(
-                        text = nombreCompleto,
-                        fontSize = 22.sp,
-                        fontWeight = FontWeight.Bold,
-                        textAlign = TextAlign.Center,
-                        color = Color(0xFF2D3748)
-                    )
-
-                    Spacer(modifier = Modifier.height(12.dp))
-
-                    Surface(
-                        modifier = Modifier.wrapContentWidth(),
-                        shape = RoundedCornerShape(20.dp),
-                        color = Color(0xFFEDF2F7)
-                    ) {
-                        Text(
-                            text = "👤 $rolSeleccionado",
-                            modifier = Modifier.padding(horizontal = 20.dp, vertical = 8.dp),
-                            fontSize = 14.sp,
-                            fontWeight = FontWeight.SemiBold,
-                            color = Color(0xFF667EEA)
-                        )
-                    }
-                }
-            }
 
             // Información de usuario
             Column(
