@@ -1,6 +1,7 @@
 package com.wilkins.safezone.frontend.ui.Map
 
 import android.Manifest
+import android.R
 import android.annotation.SuppressLint
 import android.content.Context
 import android.content.Intent
@@ -51,6 +52,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.layout.ContentScale
 import androidx.core.content.ContextCompat
+import androidx.navigation.NavController
 import coil.request.ImageRequest
 import com.google.android.gms.location.LocationServices
 import com.google.android.gms.maps.model.BitmapDescriptor
@@ -89,6 +91,7 @@ import kotlin.math.sqrt
  */
 data class ReportMarker(
     val id: String,
+    val user_id: String?,
     val position: LatLng,
     val title: String,
     val description: String,
@@ -122,7 +125,8 @@ fun GoogleMapScreen(
     modifier: Modifier = Modifier,
     config: MapConfig = MapConfig(),
     onReportClick: ((ReportDto) -> Unit)? = null,
-    onBackClick: (() -> Unit)? = null
+    onBackClick: (() -> Unit)? = null,
+    navController: NavController,
 ) {
     Log.i("GoogleMapScreen", "🔵 Composable iniciado")
 
@@ -279,6 +283,7 @@ fun GoogleMapScreen(
                                         val displayName = userProfile?.name ?: report.userName
                                         val photoProfile = userProfile?.photoProfile
 
+
                                         markers.add(
                                             ReportMarker(
                                                 id = report.id,
@@ -291,7 +296,8 @@ fun GoogleMapScreen(
                                                 createdAt = report.createdAt,
                                                 affairId = report.idAffair,
                                                 affairName = affairName,
-                                                userName = displayName // 👈 Nombre real
+                                                userName = displayName,
+                                                user_id = report.userId
                                             )
                                         )
                                     }
@@ -413,7 +419,8 @@ fun GoogleMapScreen(
             ) {
                 ReportDetailSheet(
                     marker = marker,
-                    onClose = { selectedMarker = null }
+                    onClose = { selectedMarker = null },
+                    navController = navController
                 )
             }
         }
@@ -672,6 +679,7 @@ private fun shareTextOnly(context: Context, shareText: String, reportId: String)
 @Composable
 fun ReportDetailSheet(
     marker: ReportMarker,
+    navController: NavController, // ⬅️ NUEVO: Agregar navController
     onClose: () -> Unit
 ) {
     val context = LocalContext.current
@@ -699,27 +707,42 @@ fun ReportDetailSheet(
         modifier = Modifier
             .fillMaxWidth()
             .padding(horizontal = 16.dp)
-            .padding(bottom = 24.dp) // Reducido de 32dp
+            .padding(bottom = 24.dp)
     ) {
         Row(
             modifier = Modifier
                 .fillMaxWidth()
-                .padding(bottom = 12.dp), // Reducido de 16dp
+                .padding(bottom = 12.dp),
             verticalAlignment = Alignment.CenterVertically,
             horizontalArrangement = Arrangement.SpaceBetween
         ) {
             Column(modifier = Modifier.weight(1f)) {
                 Row(verticalAlignment = Alignment.CenterVertically) {
-                    // Mostrar imagen de perfil o ícono de usuario
+                    // 🆕 FOTO DE PERFIL CLICKEABLE
                     Box(
                         modifier = Modifier
-                            .size(36.dp) // Reducido de 40dp
+                            .size(36.dp)
                             .clip(CircleShape)
                             .background(
                                 if (isAnonymous)
                                     Color(0xFF757575).copy(alpha = 0.2f)
                                 else
                                     Color(0xFF1976D2).copy(alpha = 0.1f)
+                            )
+                            .clickable(
+                                enabled = !isAnonymous && marker.user_id != null, // Solo clickeable si NO es anónimo
+                                onClick = {
+                                    marker.user_id?.let { userId ->
+                                        // Codificar el userName para la URL
+                                        val encodedUserName = java.net.URLEncoder.encode(
+                                            marker.userName ?: "Usuario",
+                                            "UTF-8"
+                                        )
+                                        // Navegar al perfil del usuario del reporte
+                                        navController.navigate("profileUser/$userId/$encodedUserName")
+                                        onClose() // Cerrar el sheet después de navegar
+                                    }
+                                }
                             ),
                         contentAlignment = Alignment.Center
                     ) {
@@ -742,15 +765,15 @@ fun ReportDetailSheet(
                                 imageVector = Icons.Default.Person,
                                 contentDescription = "Usuario",
                                 tint = if (isAnonymous) Color(0xFF757575) else Color(0xFF1976D2),
-                                modifier = Modifier.size(18.dp) // Reducido de 20dp
+                                modifier = Modifier.size(18.dp)
                             )
                         }
                     }
-                    Spacer(modifier = Modifier.width(10.dp)) // Reducido de 12dp
+                    Spacer(modifier = Modifier.width(10.dp))
                     Column {
                         Text(
                             text = displayName,
-                            fontSize = 16.sp, // Reducido de 18sp
+                            fontSize = 16.sp,
                             fontWeight = FontWeight.Bold,
                             color = if (isAnonymous) Color(0xFF757575) else Color(0xFF212121)
                         )
@@ -762,7 +785,7 @@ fun ReportDetailSheet(
                                 imageVector = Icons.Default.LocationOn,
                                 contentDescription = null,
                                 tint = Color(0xFF757575),
-                                modifier = Modifier.size(12.dp) // Reducido de 14dp
+                                modifier = Modifier.size(12.dp)
                             )
                             Spacer(modifier = Modifier.width(4.dp))
                             Text(
@@ -771,7 +794,7 @@ fun ReportDetailSheet(
                                 } else {
                                     "Ubicación cercana"
                                 },
-                                fontSize = 11.sp, // Reducido de 12sp
+                                fontSize = 11.sp,
                                 color = Color(0xFF757575)
                             )
                         }
@@ -781,7 +804,7 @@ fun ReportDetailSheet(
 
             IconButton(
                 onClick = { shareReport(context, marker) },
-                modifier = Modifier.size(40.dp) // Tamaño definido
+                modifier = Modifier.size(40.dp)
             ) {
                 Icon(
                     imageVector = Icons.Default.Share,
@@ -793,7 +816,7 @@ fun ReportDetailSheet(
 
             IconButton(
                 onClick = onClose,
-                modifier = Modifier.size(40.dp) // Tamaño definido
+                modifier = Modifier.size(40.dp)
             ) {
                 Icon(
                     imageVector = Icons.Default.ArrowBack,
@@ -807,18 +830,18 @@ fun ReportDetailSheet(
         marker.createdAt?.let { date ->
             Row(
                 verticalAlignment = Alignment.CenterVertically,
-                modifier = Modifier.padding(bottom = 10.dp) // Reducido de 12dp
+                modifier = Modifier.padding(bottom = 10.dp)
             ) {
                 Icon(
                     imageVector = Icons.Default.AccessTime,
                     contentDescription = null,
                     tint = Color(0xFF757575),
-                    modifier = Modifier.size(14.dp) // Reducido de 16dp
+                    modifier = Modifier.size(14.dp)
                 )
-                Spacer(modifier = Modifier.width(6.dp)) // Reducido de 8dp
+                Spacer(modifier = Modifier.width(6.dp))
                 Text(
                     text = formatDateTime(date),
-                    fontSize = 13.sp, // Reducido de 14sp
+                    fontSize = 13.sp,
                     color = Color(0xFF757575),
                     fontWeight = FontWeight.Medium
                 )
@@ -829,8 +852,8 @@ fun ReportDetailSheet(
             Card(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .padding(bottom = 12.dp), // Reducido de 16dp
-                shape = RoundedCornerShape(10.dp), // Reducido de 12dp
+                    .padding(bottom = 12.dp),
+                shape = RoundedCornerShape(10.dp),
                 colors = CardDefaults.cardColors(
                     containerColor = Color(0xFF1976D2).copy(alpha = 0.1f)
                 ),
@@ -838,25 +861,25 @@ fun ReportDetailSheet(
             ) {
                 Row(
                     verticalAlignment = Alignment.CenterVertically,
-                    modifier = Modifier.padding(12.dp) // Reducido de 16dp
+                    modifier = Modifier.padding(12.dp)
                 ) {
                     Icon(
                         imageVector = Icons.Default.Category,
                         contentDescription = null,
                         tint = Color(0xFF1976D2),
-                        modifier = Modifier.size(18.dp) // Reducido de 20dp
+                        modifier = Modifier.size(18.dp)
                     )
-                    Spacer(modifier = Modifier.width(10.dp)) // Reducido de 12dp
+                    Spacer(modifier = Modifier.width(10.dp))
                     Column {
                         Text(
                             text = "Tipo de Incidente",
-                            fontSize = 11.sp, // Reducido de 12sp
+                            fontSize = 11.sp,
                             color = Color(0xFF757575),
                             fontWeight = FontWeight.Medium
                         )
                         Text(
                             text = affairName,
-                            fontSize = 14.sp, // Reducido de 16sp
+                            fontSize = 14.sp,
                             color = Color(0xFF1976D2),
                             fontWeight = FontWeight.Bold
                         )
@@ -867,17 +890,17 @@ fun ReportDetailSheet(
 
         Text(
             text = "Descripción del Reporte",
-            fontSize = 14.sp, // Reducido de 16sp
+            fontSize = 14.sp,
             fontWeight = FontWeight.Bold,
             color = Color(0xFF212121),
-            modifier = Modifier.padding(bottom = 6.dp) // Reducido de 8dp
+            modifier = Modifier.padding(bottom = 6.dp)
         )
 
         Card(
             modifier = Modifier
                 .fillMaxWidth()
-                .padding(bottom = 12.dp), // Reducido de 16dp
-            shape = RoundedCornerShape(10.dp), // Reducido de 12dp
+                .padding(bottom = 12.dp),
+            shape = RoundedCornerShape(10.dp),
             colors = CardDefaults.cardColors(
                 containerColor = Color(0xFFF8F9FA)
             ),
@@ -885,11 +908,11 @@ fun ReportDetailSheet(
         ) {
             Text(
                 text = marker.description,
-                fontSize = 13.sp, // Reducido de 14sp
+                fontSize = 13.sp,
                 color = Color(0xFF424242),
-                lineHeight = 18.sp, // Reducido de 20sp
-                modifier = Modifier.padding(12.dp), // Reducido de 16dp
-                maxLines = 4, // Limitar líneas
+                lineHeight = 18.sp,
+                modifier = Modifier.padding(12.dp),
+                maxLines = 4,
                 overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis
             )
         }
@@ -897,10 +920,10 @@ fun ReportDetailSheet(
         marker.reportImageUrl?.let { mediaUrl ->
             Text(
                 text = "Evidencia del Reporte",
-                fontSize = 14.sp, // Reducido de 16sp
+                fontSize = 14.sp,
                 fontWeight = FontWeight.Bold,
                 color = Color(0xFF212121),
-                modifier = Modifier.padding(bottom = 6.dp) // Reducido de 8dp
+                modifier = Modifier.padding(bottom = 6.dp)
             )
 
             val isVideo = isVideoUrl(mediaUrl)
@@ -908,8 +931,8 @@ fun ReportDetailSheet(
             Card(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .height(200.dp), // Reducido de 240dp
-                shape = RoundedCornerShape(10.dp), // Reducido de 12dp
+                    .height(200.dp),
+                shape = RoundedCornerShape(10.dp),
                 elevation = CardDefaults.cardElevation(defaultElevation = 4.dp)
             ) {
                 Box(
@@ -936,18 +959,18 @@ fun ReportDetailSheet(
 
             Row(
                 verticalAlignment = Alignment.CenterVertically,
-                modifier = Modifier.padding(top = 6.dp, bottom = 12.dp) // Reducido
+                modifier = Modifier.padding(top = 6.dp, bottom = 12.dp)
             ) {
                 Icon(
                     imageVector = if (isVideo) Icons.Default.VideoLibrary else Icons.Default.Photo,
                     contentDescription = null,
                     tint = Color(0xFF757575),
-                    modifier = Modifier.size(12.dp) // Reducido de 14dp
+                    modifier = Modifier.size(12.dp)
                 )
-                Spacer(modifier = Modifier.width(4.dp)) // Reducido de 6dp
+                Spacer(modifier = Modifier.width(4.dp))
                 Text(
                     text = if (isVideo) "Video relacionado al reporte" else "Imagen relacionada al reporte",
-                    fontSize = 11.sp, // Reducido de 12sp
+                    fontSize = 11.sp,
                     color = Color(0xFF757575)
                 )
             }
@@ -957,39 +980,37 @@ fun ReportDetailSheet(
             verticalAlignment = Alignment.CenterVertically,
             modifier = Modifier
                 .fillMaxWidth()
-                .padding(bottom = 16.dp) // Reducido de 24dp
+                .padding(bottom = 16.dp)
         ) {
             Box(
                 modifier = Modifier
-                    .size(7.dp) // Reducido de 8dp
+                    .size(7.dp)
                     .clip(CircleShape)
                     .background(Color(0xFFE53935))
             )
             Spacer(modifier = Modifier.width(6.dp))
             Text(
                 text = "ALTA PRIORIDAD",
-                fontSize = 10.sp, // Reducido de 11sp
+                fontSize = 10.sp,
                 color = Color(0xFFE53935),
                 fontWeight = FontWeight.Bold
             )
         }
 
-        // 🔔 BOTÓN DE SEGUIR REPORTE - Mejorado
         Card(
             modifier = Modifier
                 .fillMaxWidth()
-                .height(52.dp), // Altura óptima
+                .height(52.dp),
             shape = RoundedCornerShape(12.dp),
             colors = CardDefaults.cardColors(
                 containerColor = Color.Transparent
             ),
             elevation = CardDefaults.cardElevation(defaultElevation = 0.dp)
         ) {
-            // 🔔 BOTÓN DE SEGUIR REPORTE - Alternativa
             Box(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .wrapContentHeight(), // Deja que el contenido defina la altura
+                    .wrapContentHeight(),
                 contentAlignment = Alignment.Center
             ) {
                 LikeButton(

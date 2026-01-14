@@ -3,7 +3,7 @@ package com.wilkins.safezone.backend.network.GlobalAssociation
 import android.util.Log
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
-import com.wilkins.safezone.backend.network.Admin.Dashboard.DateParser
+import com.wilkins.safezone.backend.network.Admin.CrudUser.Dashboard.DateParser
 import com.wilkins.safezone.backend.network.GlobalAssociation.*
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow

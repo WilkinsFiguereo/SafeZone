@@ -25,10 +25,6 @@ class NotificationRepository(private val supabase: SupabaseClient) {
                 .decodeList<NotificationData>()
 
             println("✅ NotificationRepository: Se obtuvieron ${notifications.size} notificaciones")
-            notifications.forEachIndexed { index, notif ->
-                println("   [$index] ID=${notif.id}, Type=${notif.type}, Sender=${notif.senderId}, Message=${notif.message.take(50)}..., IsRead=${notif.isRead}")
-            }
-
             notifications
         } catch (e: Exception) {
             println("❌ NotificationRepository: Error al obtener notificaciones: ${e.message}")
@@ -55,7 +51,6 @@ class NotificationRepository(private val supabase: SupabaseClient) {
                 .decodeList<NotificationData>()
 
             println("✅ NotificationRepository: Se obtuvieron ${notifications.size} notificaciones no leídas")
-
             notifications
         } catch (e: Exception) {
             println("❌ NotificationRepository: Error al obtener notificaciones no leídas: ${e.message}")
@@ -82,7 +77,6 @@ class NotificationRepository(private val supabase: SupabaseClient) {
                 .decodeList<NotificationData>()
 
             println("✅ NotificationRepository: Se obtuvieron ${notifications.size} notificaciones tipo $type")
-
             notifications
         } catch (e: Exception) {
             println("❌ NotificationRepository: Error al obtener notificaciones por tipo: ${e.message}")
@@ -116,6 +110,7 @@ class NotificationRepository(private val supabase: SupabaseClient) {
 
     /**
      * Crea una nueva notificación
+     * IMPORTANTE: Esto automáticamente dispara el Realtime para que el receptor la reciba
      */
     suspend fun createNotification(notification: NotificationCreate): NotificationData? {
         return try {
@@ -128,6 +123,8 @@ class NotificationRepository(private val supabase: SupabaseClient) {
                 .decodeSingle<NotificationData>()
 
             println("✅ NotificationRepository: Notificación creada con ID=${result.id}")
+            println("📡 Realtime enviará esta notificación automáticamente al receptor")
+
             result
         } catch (e: Exception) {
             println("❌ NotificationRepository: Error al crear notificación: ${e.message}")

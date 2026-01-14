@@ -60,8 +60,16 @@ fun ModeratorSideMenu(
             title = "Gestión de Noticias",
             items = listOf(
                 ModeratorMenuItem(Icons.Default.Newspaper, "Ver Noticias", "NewsUser"),
-                ModeratorMenuItem(Icons.Default.Add, "Subir Noticia", "moderatorCreateNews"),
-                ModeratorMenuItem(Icons.Default.Edit, "Editar Noticias", "moderatorEditNews")
+                ModeratorMenuItem(Icons.Default.Add, "Subir Noticia", "newsSave"),
+                ModeratorMenuItem(Icons.Default.Edit, "Editar Noticias", "newsList")
+            )
+        ),
+        MenuSection(
+            title = "Gestión de Encuestas",
+            items = listOf(
+                ModeratorMenuItem(Icons.Default.Newspaper, "Ver Encuestas", "NewsUser"),
+                ModeratorMenuItem(Icons.Default.Add, "Subir Encuestas", "newsSave"),
+                ModeratorMenuItem(Icons.Default.Edit, "Editar Encuestas", "newsList")
             )
         ),
         MenuSection(
@@ -70,13 +78,8 @@ fun ModeratorSideMenu(
                 ModeratorMenuItem(Icons.Default.Report, "Ver Reportes", "ReportReviewList"),
                 ModeratorMenuItem(
                     Icons.Default.PendingActions,
-                    "Reportes Pendientes",
-                    "moderatorPendingReports"
-                ),
-                ModeratorMenuItem(
-                    Icons.Default.CheckCircle,
-                    "Reportes Resueltos",
-                    "moderatorResolvedReports"
+                    "Reportes en tu sona",
+                    "MapReports"
                 )
             )
         ),
@@ -94,7 +97,7 @@ fun ModeratorSideMenu(
         MenuSection(
             title = "Configuración",
             items = listOf(
-                ModeratorMenuItem(Icons.Default.Person, "Mi Perfil", "moderatorProfile"),
+                ModeratorMenuItem(Icons.Default.Person, "Mi Perfil", "MyProfile"),
                 ModeratorMenuItem(
                     Icons.Default.Notifications,
                     "Notificaciones",

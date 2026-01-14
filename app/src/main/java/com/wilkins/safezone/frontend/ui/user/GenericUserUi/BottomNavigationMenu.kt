@@ -19,6 +19,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.navigation.NavController
 import androidx.navigation.NavHostController
 import com.wilkins.safezone.ui.theme.PrimaryColor
 import io.github.jan.supabase.SupabaseClient
@@ -27,7 +28,7 @@ import io.github.jan.supabase.gotrue.auth
 @Composable
 fun BottomNavigationMenu(
     modifier: Modifier = Modifier,
-    navController: NavHostController,
+    navController: NavController,
     supabaseClient: SupabaseClient,
     selectedItem: Int = 0
 ) {

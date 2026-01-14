@@ -1,5 +1,6 @@
 package com.wilkins.safezone.frontend.ui.user.Screens.News.components
 
+import android.content.Context
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.CircleShape
@@ -14,17 +15,58 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
-import com.wilkins.safezone.frontend.ui.user.News.News
+import coil.compose.AsyncImage
+import coil.compose.SubcomposeAsyncImage
+import com.wilkins.safezone.backend.network.Moderator.News.News
+import com.wilkins.safezone.backend.network.User.Interaction.EntityType
+import com.wilkins.safezone.backend.network.User.Interaction.InteractionsRepository
+import kotlinx.coroutines.launch
+import java.text.SimpleDateFormat
+import java.util.*
 
 @Composable
 fun NewsCard(
     news: News,
     modifier: Modifier = Modifier
 ) {
+    val context = LocalContext.current
+    val scope = rememberCoroutineScope()
+    val interactionsRepo = remember { InteractionsRepository() }
+
     var liked by remember { mutableStateOf(false) }
-    var localLikes by remember { mutableStateOf(news.likes) }
+    var likesCount by remember { mutableStateOf(0) }
+    var isLoadingLike by remember { mutableStateOf(false) }
+
+    // Cargar estado inicial de likes
+    LaunchedEffect(news.id) {
+        news.id?.let { newsId ->
+            // Verificar si el usuario dio like
+            interactionsRepo.hasUserLiked(newsId, EntityType.NEWS).onSuccess {
+                liked = it
+            }
+
+            // Obtener conteo de likes
+            interactionsRepo.getLikesCount(newsId, EntityType.NEWS).onSuccess {
+                likesCount = it
+            }
+        }
+    }
+
+    // Formatear fecha
+    val formattedDate = remember(news.createdAt) {
+        try {
+            val parser = SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss", Locale.getDefault())
+            val formatter = SimpleDateFormat("dd MMM yyyy, HH:mm", Locale.getDefault())
+            val date = parser.parse(news.createdAt ?: "")
+            date?.let { formatter.format(it) } ?: "Fecha desconocida"
+        } catch (e: Exception) {
+            "Fecha desconocida"
+        }
+    }
 
     Card(
         modifier = modifier.fillMaxWidth(),
@@ -48,7 +90,6 @@ fun NewsCard(
                     horizontalArrangement = Arrangement.spacedBy(12.dp),
                     verticalAlignment = Alignment.CenterVertically
                 ) {
-                    // Avatar del autor
                     Surface(
                         shape = CircleShape,
                         color = MaterialTheme.colorScheme.primary,
@@ -56,7 +97,7 @@ fun NewsCard(
                     ) {
                         Box(contentAlignment = Alignment.Center) {
                             Text(
-                                text = news.author.first().uppercase(),
+                                text = news.userId.firstOrNull()?.uppercase() ?: "A",
                                 style = MaterialTheme.typography.titleLarge,
                                 color = MaterialTheme.colorScheme.onPrimary,
                                 fontWeight = FontWeight.Bold
@@ -66,13 +107,13 @@ fun NewsCard(
 
                     Column {
                         Text(
-                            text = news.author,
+                            text = "Administrador",
                             style = MaterialTheme.typography.titleMedium,
                             fontWeight = FontWeight.Bold,
                             color = MaterialTheme.colorScheme.onSurface
                         )
                         Text(
-                            text = news.date,
+                            text = formattedDate,
                             style = MaterialTheme.typography.bodySmall,
                             color = MaterialTheme.colorScheme.onSurfaceVariant
                         )
@@ -81,20 +122,47 @@ fun NewsCard(
             }
 
             // Imagen principal
-            Box(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .height(200.dp)
-                    .clip(RoundedCornerShape(12.dp))
-                    .background(MaterialTheme.colorScheme.surfaceVariant),
-                contentAlignment = Alignment.Center
-            ) {
-                Icon(
-                    imageVector = Icons.Default.Image,
+            if (news.imageUrl.isNotBlank()) {
+                SubcomposeAsyncImage(
+                    model = news.imageUrl,
                     contentDescription = "Imagen de noticia",
-                    modifier = Modifier.size(80.dp),
-                    tint = MaterialTheme.colorScheme.onSurfaceVariant
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .height(200.dp)
+                        .clip(RoundedCornerShape(12.dp)),
+                    contentScale = ContentScale.Crop,
+                    error = {
+                        Box(
+                            modifier = Modifier
+                                .fillMaxSize()
+                                .background(MaterialTheme.colorScheme.surfaceVariant),
+                            contentAlignment = Alignment.Center
+                        ) {
+                            Icon(
+                                imageVector = Icons.Default.Image,
+                                contentDescription = "Error al cargar imagen",
+                                modifier = Modifier.size(80.dp),
+                                tint = MaterialTheme.colorScheme.onSurfaceVariant
+                            )
+                        }
+                    }
                 )
+            } else {
+                Box(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .height(200.dp)
+                        .clip(RoundedCornerShape(12.dp))
+                        .background(MaterialTheme.colorScheme.surfaceVariant),
+                    contentAlignment = Alignment.Center
+                ) {
+                    Icon(
+                        imageVector = Icons.Default.Image,
+                        contentDescription = "Sin imagen",
+                        modifier = Modifier.size(80.dp),
+                        tint = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                }
             }
 
             // Título
@@ -112,7 +180,7 @@ fun NewsCard(
                 color = MaterialTheme.colorScheme.onSurfaceVariant
             )
 
-            // Barra de acciones (likes y compartir)
+            // Barra de acciones
             Row(
                 modifier = Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.SpaceBetween,
@@ -125,24 +193,43 @@ fun NewsCard(
                     // Botón de like
                     Row(
                         verticalAlignment = Alignment.CenterVertically,
-                        horizontalArrangement = Arrangement.spacedBy(8.dp),
-                        modifier = Modifier
+                        horizontalArrangement = Arrangement.spacedBy(8.dp)
                     ) {
                         IconButton(
                             onClick = {
-                                liked = !liked
-                                localLikes = if (liked) localLikes + 1 else localLikes - 1
-                            }
+                                news.id?.let { newsId ->
+                                    isLoadingLike = true
+                                    scope.launch {
+                                        interactionsRepo.toggleLike(newsId, EntityType.NEWS)
+                                            .onSuccess { nowLiked ->
+                                                liked = nowLiked
+                                                likesCount = if (nowLiked) likesCount + 1 else likesCount - 1
+                                            }
+                                            .onFailure {
+                                                // Mostrar error si es necesario
+                                            }
+                                        isLoadingLike = false
+                                    }
+                                }
+                            },
+                            enabled = !isLoadingLike
                         ) {
-                            Icon(
-                                imageVector = if (liked) Icons.Filled.Favorite else Icons.Outlined.FavoriteBorder,
-                                contentDescription = "Me gusta",
-                                tint = if (liked) MaterialTheme.colorScheme.error else MaterialTheme.colorScheme.onSurfaceVariant,
-                                modifier = Modifier.size(24.dp)
-                            )
+                            if (isLoadingLike) {
+                                CircularProgressIndicator(
+                                    modifier = Modifier.size(24.dp),
+                                    strokeWidth = 2.dp
+                                )
+                            } else {
+                                Icon(
+                                    imageVector = if (liked) Icons.Filled.Favorite else Icons.Outlined.FavoriteBorder,
+                                    contentDescription = "Me gusta",
+                                    tint = if (liked) MaterialTheme.colorScheme.error else MaterialTheme.colorScheme.onSurfaceVariant,
+                                    modifier = Modifier.size(24.dp)
+                                )
+                            }
                         }
                         Text(
-                            text = "$localLikes",
+                            text = "$likesCount",
                             style = MaterialTheme.typography.titleMedium,
                             color = MaterialTheme.colorScheme.onSurface,
                             fontWeight = FontWeight.Bold
@@ -150,7 +237,14 @@ fun NewsCard(
                     }
 
                     // Botón de compartir
-                    IconButton(onClick = { /* TODO: Compartir */ }) {
+                    IconButton(
+                        onClick = {
+                            shareNews(
+                                context = context,
+                                news = news
+                            )
+                        }
+                    ) {
                         Icon(
                             imageVector = Icons.Default.Share,
                             contentDescription = "Compartir",
@@ -160,14 +254,16 @@ fun NewsCard(
                     }
                 }
             }
-
-            Divider(
-                modifier = Modifier.padding(vertical = 8.dp),
-                color = MaterialTheme.colorScheme.outlineVariant
-            )
-
-            // Sección de comentarios
-            CommentSection(comments = news.comments)
         }
     }
+}
+
+private fun shareNews(context: Context, news: News) {
+    val shareUtils = ShareUtils(context)
+    shareUtils.shareNews(
+        title = news.title,
+        description = news.description,
+        imageUrl = news.imageUrl,
+        videoUrl = news.videoUrl
+    )
 }

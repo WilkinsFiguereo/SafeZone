@@ -1,0 +1,466 @@
+package com.wilkins.safezone.backend.network.Moderator.News
+
+
+import android.content.Context
+import android.media.MediaMetadataRetriever
+import android.net.Uri
+import android.util.Log
+import androidx.lifecycle.ViewModel
+import androidx.lifecycle.viewModelScope
+import com.wilkins.safezone.backend.network.SupabaseService
+import io.github.jan.supabase.gotrue.auth
+import io.github.jan.supabase.postgrest.from
+import io.github.jan.supabase.storage.storage
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
+import java.io.File
+import java.io.FileOutputStream
+import java.util.UUID
+
+class NewsViewModel : ViewModel() {
+
+    private val supabase = SupabaseService.getInstance()
+    private val TAG = "NewsViewModel"
+
+    private val _newsList = MutableStateFlow<List<News>>(emptyList())
+    val newsList: StateFlow<List<News>> = _newsList.asStateFlow()
+
+    private val _isLoading = MutableStateFlow(false)
+    val isLoading: StateFlow<Boolean> = _isLoading.asStateFlow()
+
+    private val _errorMessage = MutableStateFlow<String?>(null)
+    val errorMessage: StateFlow<String?> = _errorMessage.asStateFlow()
+
+    // 🔥 Cargar todas las noticias
+    fun loadNews() {
+        viewModelScope.launch {
+            try {
+                _isLoading.value = true
+                _errorMessage.value = null
+                Log.d(TAG, "📥 Cargando noticias desde Supabase...")
+
+                val news = supabase.from("news")
+                    .select()
+                    .decodeList<News>()
+
+                val sortedNews = news.sortedByDescending { it.createdAt ?: "" }
+                _newsList.value = sortedNews
+
+                Log.d(TAG, "✅ ${news.size} noticias cargadas exitosamente")
+                Log.d(TAG, "📊 Destacadas: ${news.count { it.isImportant }}, Normales: ${news.count { !it.isImportant }}")
+                Log.d(TAG, "🎥 Con video: ${news.count { !it.videoUrl.isNullOrBlank() }}")
+
+            } catch (e: Exception) {
+                Log.e(TAG, "❌ Error al cargar noticias: ${e.message}", e)
+                e.printStackTrace()
+                _newsList.value = emptyList()
+                _errorMessage.value = "Error al cargar noticias: ${e.message}"
+            } finally {
+                _isLoading.value = false
+            }
+        }
+    }
+
+    // 🔥 Crear noticia con imagen Y/O video
+    fun createNews(
+        context: Context,
+        title: String,
+        description: String,
+        isImportant: Boolean,
+        imageUri: Uri?,
+        videoUri: Uri?,
+        onSuccess: () -> Unit,
+        onError: (String) -> Unit
+    ) {
+        viewModelScope.launch {
+            try {
+                Log.d(TAG, "📝 Iniciando creación de noticia...")
+                _isLoading.value = true
+
+                val currentUser = supabase.auth.currentUserOrNull()
+                if (currentUser == null) {
+                    withContext(Dispatchers.Main) {
+                        onError("No hay usuario autenticado.")
+                    }
+                    return@launch
+                }
+
+                // Validar que tenga al menos imagen o video
+                if (imageUri == null && videoUri == null) {
+                    withContext(Dispatchers.Main) {
+                        onError("Debes seleccionar al menos una imagen o un video")
+                    }
+                    return@launch
+                }
+
+                // Subir imagen (si existe)
+                var imageUrl: String? = null
+                if (imageUri != null) {
+                    Log.d(TAG, "📤 Subiendo imagen...")
+                    imageUrl = uploadImage(context, imageUri)
+                    if (imageUrl == null) {
+                        withContext(Dispatchers.Main) {
+                            onError("Error al subir la imagen.")
+                        }
+                        return@launch
+                    }
+                }
+
+                // Subir video (si existe)
+                var videoUrl: String? = null
+                if (videoUri != null) {
+                    Log.d(TAG, "🎥 Subiendo video...")
+
+                    // Validar duración del video
+                    val duration = getVideoDuration(context, videoUri)
+                    if (duration > 120000) { // 120 segundos = 2 minutos
+                        withContext(Dispatchers.Main) {
+                            onError("El video no debe superar los 2 minutos de duración")
+                        }
+                        return@launch
+                    }
+
+                    videoUrl = uploadVideo(context, videoUri)
+                    if (videoUrl == null) {
+                        withContext(Dispatchers.Main) {
+                            onError("Error al subir el video.")
+                        }
+                        return@launch
+                    }
+                }
+
+                // Crear noticia
+                val news = News(
+                    title = title,
+                    description = description,
+                    imageUrl = imageUrl ?: "",
+                    videoUrl = videoUrl,
+                    isImportant = isImportant,
+                    userId = currentUser.id
+                )
+
+                supabase.from("news").insert(news)
+                Log.d(TAG, "✅ Noticia creada exitosamente")
+                Log.d(TAG, "📊 Título: $title | Destacada: $isImportant | Tiene video: ${videoUrl != null}")
+
+                // Recargar noticias
+                loadNews()
+
+                withContext(Dispatchers.Main) {
+                    onSuccess()
+                }
+
+            } catch (e: Exception) {
+                Log.e(TAG, "❌ Error en createNews: ${e.message}", e)
+                e.printStackTrace()
+                withContext(Dispatchers.Main) {
+                    onError("Error: ${e.message ?: "Error desconocido"}")
+                }
+            } finally {
+                _isLoading.value = false
+            }
+        }
+    }
+
+    // 🔥 Actualizar noticia
+    fun updateNews(
+        context: Context,
+        newsId: String,
+        title: String,
+        description: String,
+        isImportant: Boolean,
+        newImageUri: Uri?,
+        newVideoUri: Uri?,
+        currentImageUrl: String,
+        currentVideoUrl: String?,
+        onSuccess: () -> Unit,
+        onError: (String) -> Unit
+    ) {
+        viewModelScope.launch {
+            try {
+                Log.d(TAG, "📝 Actualizando noticia ID: $newsId")
+                _isLoading.value = true
+
+                val currentUser = supabase.auth.currentUserOrNull()
+                if (currentUser == null) {
+                    withContext(Dispatchers.Main) {
+                        onError("No hay usuario autenticado.")
+                    }
+                    return@launch
+                }
+
+                // Actualizar imagen si hay una nueva
+                val finalImageUrl = if (newImageUri != null) {
+                    Log.d(TAG, "📤 Subiendo nueva imagen...")
+                    uploadImage(context, newImageUri) ?: currentImageUrl
+                } else {
+                    currentImageUrl
+                }
+
+                // Actualizar video si hay uno nuevo
+                val finalVideoUrl = if (newVideoUri != null) {
+                    Log.d(TAG, "🎥 Subiendo nuevo video...")
+
+                    val duration = getVideoDuration(context, newVideoUri)
+                    if (duration > 120000) {
+                        withContext(Dispatchers.Main) {
+                            onError("El video no debe superar los 2 minutos de duración")
+                        }
+                        return@launch
+                    }
+
+                    uploadVideo(context, newVideoUri)
+                } else {
+                    currentVideoUrl
+                }
+
+                val updatedNews = News(
+                    id = newsId,
+                    title = title,
+                    description = description,
+                    imageUrl = finalImageUrl,
+                    videoUrl = finalVideoUrl,
+                    isImportant = isImportant,
+                    userId = currentUser.id
+                )
+
+                supabase.from("news")
+                    .update(updatedNews) {
+                        filter {
+                            eq("id", newsId)
+                        }
+                    }
+
+                Log.d(TAG, "✅ Noticia actualizada exitosamente")
+                loadNews()
+
+                withContext(Dispatchers.Main) {
+                    onSuccess()
+                }
+
+            } catch (e: Exception) {
+                Log.e(TAG, "❌ Error al actualizar: ${e.message}", e)
+                e.printStackTrace()
+                withContext(Dispatchers.Main) {
+                    onError("Error: ${e.message}")
+                }
+            } finally {
+                _isLoading.value = false
+            }
+        }
+    }
+
+    // 🔥 Eliminar noticia
+    fun deleteNews(
+        newsId: String,
+        imageUrl: String,
+        videoUrl: String?,
+        onSuccess: () -> Unit,
+        onError: (String) -> Unit
+    ) {
+        viewModelScope.launch {
+            try {
+                Log.d(TAG, "🗑️ Eliminando noticia ID: $newsId")
+                _isLoading.value = true
+
+                supabase.from("news").delete {
+                    filter {
+                        eq("id", newsId)
+                    }
+                }
+
+                // Eliminar imagen
+                try {
+                    val fileName = imageUrl.substringAfterLast("/")
+                    if (fileName.isNotBlank()) {
+                        supabase.storage.from("news-images").delete(fileName)
+                        Log.d(TAG, "🗑️ Imagen eliminada: $fileName")
+                    }
+                } catch (e: Exception) {
+                    Log.w(TAG, "⚠️ No se pudo eliminar imagen: ${e.message}")
+                }
+
+                // Eliminar video
+                if (!videoUrl.isNullOrBlank()) {
+                    try {
+                        val fileName = videoUrl.substringAfterLast("/")
+                        if (fileName.isNotBlank()) {
+                            supabase.storage.from("news-videos").delete(fileName)
+                            Log.d(TAG, "🗑️ Video eliminado: $fileName")
+                        }
+                    } catch (e: Exception) {
+                        Log.w(TAG, "⚠️ No se pudo eliminar video: ${e.message}")
+                    }
+                }
+
+                Log.d(TAG, "✅ Noticia eliminada")
+                loadNews()
+
+                withContext(Dispatchers.Main) {
+                    onSuccess()
+                }
+
+            } catch (e: Exception) {
+                Log.e(TAG, "❌ Error al eliminar: ${e.message}", e)
+                e.printStackTrace()
+                withContext(Dispatchers.Main) {
+                    onError("Error: ${e.message}")
+                }
+            } finally {
+                _isLoading.value = false
+            }
+        }
+    }
+
+    // 🔥 Subir imagen
+    private suspend fun uploadImage(context: Context, imageUri: Uri): String? {
+        return withContext(Dispatchers.IO) {
+            var file: File? = null
+            try {
+                val timestamp = System.currentTimeMillis()
+                val randomId = UUID.randomUUID().toString().take(8)
+                val fileName = "news_${timestamp}_${randomId}.jpg"
+
+                Log.d(TAG, "📁 Preparando imagen: $fileName")
+
+                val inputStream = context.contentResolver.openInputStream(imageUri)
+                    ?: run {
+                        Log.e(TAG, "❌ No se pudo abrir el InputStream")
+                        return@withContext null
+                    }
+
+                file = File(context.cacheDir, fileName)
+                val outputStream = FileOutputStream(file)
+
+                inputStream.use { input ->
+                    outputStream.use { output ->
+                        input.copyTo(output)
+                    }
+                }
+
+                if (!file.exists() || file.length() == 0L) {
+                    Log.e(TAG, "❌ Archivo vacío o no existe")
+                    file?.delete()
+                    return@withContext null
+                }
+
+                val maxSize = 5 * 1024 * 1024 // 5MB
+                if (file.length() > maxSize) {
+                    Log.e(TAG, "❌ Imagen muy grande: ${file.length()} bytes")
+                    file.delete()
+                    return@withContext null
+                }
+
+                Log.d(TAG, "📤 Subiendo imagen a Supabase Storage...")
+                val bucket = supabase.storage.from("news-images")
+                val fileBytes = file.readBytes()
+
+                bucket.upload(
+                    path = fileName,
+                    data = fileBytes,
+                    upsert = false
+                )
+
+                val publicUrl = bucket.publicUrl(fileName)
+                Log.d(TAG, "✅ Imagen subida exitosamente")
+
+                file.delete()
+
+                publicUrl.takeIf { it.isNotBlank() }
+
+            } catch (e: Exception) {
+                Log.e(TAG, "❌ Error al subir imagen: ${e.message}", e)
+                e.printStackTrace()
+                file?.delete()
+                null
+            }
+        }
+    }
+
+    // 🔥 Subir video
+    private suspend fun uploadVideo(context: Context, videoUri: Uri): String? {
+        return withContext(Dispatchers.IO) {
+            var file: File? = null
+            try {
+                val timestamp = System.currentTimeMillis()
+                val randomId = UUID.randomUUID().toString().take(8)
+                val fileName = "news_video_${timestamp}_${randomId}.mp4"
+
+                Log.d(TAG, "📁 Preparando video: $fileName")
+
+                val inputStream = context.contentResolver.openInputStream(videoUri)
+                    ?: run {
+                        Log.e(TAG, "❌ No se pudo abrir el InputStream del video")
+                        return@withContext null
+                    }
+
+                file = File(context.cacheDir, fileName)
+                val outputStream = FileOutputStream(file)
+
+                inputStream.use { input ->
+                    outputStream.use { output ->
+                        input.copyTo(output)
+                    }
+                }
+
+                if (!file.exists() || file.length() == 0L) {
+                    Log.e(TAG, "❌ Video vacío o no existe")
+                    file?.delete()
+                    return@withContext null
+                }
+
+                val maxSize = 50 * 1024 * 1024 // 50MB (2 minutos aproximado)
+                if (file.length() > maxSize) {
+                    Log.e(TAG, "❌ Video muy grande: ${file.length()} bytes")
+                    file.delete()
+                    return@withContext null
+                }
+
+                Log.d(TAG, "📤 Subiendo video a Supabase Storage...")
+                val bucket = supabase.storage.from("news-videos")
+                val fileBytes = file.readBytes()
+
+                bucket.upload(
+                    path = fileName,
+                    data = fileBytes,
+                    upsert = false
+                )
+
+                val publicUrl = bucket.publicUrl(fileName)
+                Log.d(TAG, "✅ Video subido exitosamente")
+
+                file.delete()
+
+                publicUrl.takeIf { it.isNotBlank() }
+
+            } catch (e: Exception) {
+                Log.e(TAG, "❌ Error al subir video: ${e.message}", e)
+                e.printStackTrace()
+                file?.delete()
+                null
+            }
+        }
+    }
+
+    // 🔥 Obtener duración del video en milisegundos
+    private fun getVideoDuration(context: Context, videoUri: Uri): Long {
+        return try {
+            val retriever = MediaMetadataRetriever()
+            retriever.setDataSource(context, videoUri)
+            val duration = retriever.extractMetadata(MediaMetadataRetriever.METADATA_KEY_DURATION)
+            retriever.release()
+            duration?.toLongOrNull() ?: 0L
+        } catch (e: Exception) {
+            Log.e(TAG, "❌ Error al obtener duración del video: ${e.message}")
+            0L
+        }
+    }
+
+    fun clearError() {
+        _errorMessage.value = null
+    }
+}

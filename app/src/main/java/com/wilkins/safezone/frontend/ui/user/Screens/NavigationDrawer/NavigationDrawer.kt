@@ -85,7 +85,7 @@ fun NavigationDrawer(navController: NavController, context: Context, supabaseCli
                     .fillMaxWidth()
                     .clickable {
                         // Navegar a la pantalla Profile
-                        navController.navigate("profile")
+                        navController.navigate("MyProfile")
                     },
                 shape = RoundedCornerShape(16.dp),
                 colors = CardDefaults.cardColors(containerColor = cardColor),

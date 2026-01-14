@@ -76,9 +76,11 @@ fun Profile(navController: NavController, context: Context, supabaseClient: Supa
                 .align(Alignment.BottomCenter)
         ) {
             BottomNavigationMenu(
-                onNewsClick = { /* Navegar a noticias */ },
-                onAlertClick = { /* Crear nueva alerta */ },
-                onMyAlertsClick = { /* Ver mis alertas */ }
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .align(Alignment.BottomCenter),
+                navController = navController,
+                supabaseClient = supabaseClient
             )
         }
     }

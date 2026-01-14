@@ -1,4 +1,4 @@
-package com.wilkins.safezone.backend.network.Admin.Dashboard
+package com.wilkins.safezone.backend.network.Admin.CrudUser.Dashboard
 
 import com.wilkins.safezone.backend.network.SupabaseService
 import com.wilkins.safezone.backend.network.GlobalAssociation.ReportDto

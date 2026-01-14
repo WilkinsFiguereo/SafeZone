@@ -87,7 +87,8 @@ fun UserHomeScreen(navController: NavController, context: Context, supabaseClien
                 onViewAllClick = {
                     // Navegar a la pantalla de mapa completo
                     navController.navigate("MapReports")
-                }
+                },
+                navController
             )
 
             Spacer(modifier = Modifier.height(16.dp))
@@ -101,9 +102,11 @@ fun UserHomeScreen(navController: NavController, context: Context, supabaseClien
                 .align(Alignment.BottomCenter)
         ) {
             BottomNavigationMenu(
-                onNewsClick = { },
-                onAlertClick = { },
-                onMyAlertsClick = { }
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .align(Alignment.BottomCenter),
+                navController = navController,
+                supabaseClient = supabaseClient
             )
         }
 
@@ -123,7 +126,8 @@ fun UserHomeScreen(navController: NavController, context: Context, supabaseClien
  */
 @Composable
 fun NearbyReportsMapCard(
-    onViewAllClick: () -> Unit = {}
+    onViewAllClick: () -> Unit = {},
+    navController: NavController
 ) {
     Card(
         modifier = Modifier
@@ -173,7 +177,8 @@ fun NearbyReportsMapCard(
                         // Manejar click en marcador
                         // Puedes navegar a detalles del reporte o mostrar un dialog
                         println("Click en reporte: ${report.description}")
-                    }
+                    },
+                    navController = navController
                 )
             }
 

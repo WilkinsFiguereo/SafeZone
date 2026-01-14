@@ -8,6 +8,8 @@ import androidx.navigation.compose.composable
 import com.wilkins.safezone.backend.network.SupabaseService
 import com.wilkins.safezone.frontend.ui.Moderator.screens.ReviewReports.ReportDetail.ReportStatusScreen
 import com.wilkins.safezone.frontend.ui.Moderator.Dashboard.ModeratorDashboard
+import com.wilkins.safezone.frontend.ui.Moderator.screens.News.NewsListScreen
+import com.wilkins.safezone.frontend.ui.Moderator.screens.News.NewsSaveScreen
 import com.wilkins.safezone.frontend.ui.Moderator.screens.ReviewReports.ReportsList.RewiewReportsListScreen
 
 /**
@@ -71,6 +73,36 @@ fun NavGraphBuilder.moderatorRoutes(
         } else {
             val supabaseClient = SupabaseService.getInstance()
             RewiewReportsListScreen(navController = navController, initialStatusId = 5, moderatorId = "MOD001", moderatorName = "Moderador", supabaseClient = supabaseClient)
+        }
+    }
+
+    // ════════════════════════════════════════════
+    // News save
+    // ════════════════════════════════════════════
+    composable("newsSave") {
+        if (!hasActiveSession()) {
+            Log.w("ModeratorRoutes", "⚠️ Intento de acceso sin sesión a DashboardMod")
+            navController.navigate("login") {
+                popUpTo(0) { inclusive = true }
+            }
+        } else {
+
+            NewsSaveScreen(onNavigateBack = { navController.popBackStack() })
+        }
+    }
+
+    // ════════════════════════════════════════════
+    // News save
+    // ════════════════════════════════════════════
+    composable("newsList") {
+        if (!hasActiveSession()) {
+            Log.w("ModeratorRoutes", "⚠️ Intento de acceso sin sesión a DashboardMod")
+            navController.navigate("login") {
+                popUpTo(0) { inclusive = true }
+            }
+        } else {
+
+            NewsListScreen(onNavigateBack = { navController.popBackStack() })
         }
     }
 }

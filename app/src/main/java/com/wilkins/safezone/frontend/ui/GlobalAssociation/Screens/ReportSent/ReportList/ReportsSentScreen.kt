@@ -56,7 +56,9 @@ enum class ReportStatus(val id: Int, val label: String, val color: Color, val ic
     PENDING(1, "Pendiente", Color(0xFFFFA726), Icons.Default.Pending),
     IN_PROGRESS(2, "En Proceso", Color(0xFF2196F3), Icons.Default.Update),
     COMPLETED(3, "Finalizado", Color(0xFF4CAF50), Icons.Default.CheckCircle),
-    CANCELLED(4, "Cancelado", Color(0xFFE53935), Icons.Default.Cancel);
+    CANCELLED(4, "Cancelado", Color(0xFFE53935), Icons.Default.Cancel),
+    UNDER_REVIEW(5, "En Revision", Color(0xFFE87B2B), Icons.Default.Cancel);
+
 
     companion object {
         fun fromId(id: Int): ReportStatus {
@@ -249,7 +251,8 @@ fun ReportsSentScreen(
             ReportStatus.PENDING to allReports.count { it.status == ReportStatus.PENDING },
             ReportStatus.IN_PROGRESS to allReports.count { it.status == ReportStatus.IN_PROGRESS },
             ReportStatus.COMPLETED to allReports.count { it.status == ReportStatus.COMPLETED },
-            ReportStatus.CANCELLED to allReports.count { it.status == ReportStatus.CANCELLED }
+            ReportStatus.CANCELLED to allReports.count { it.status == ReportStatus.CANCELLED },
+            ReportStatus.UNDER_REVIEW to allReports.count { it.status == ReportStatus.UNDER_REVIEW }
         )
     }
 

@@ -6,21 +6,30 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.zIndex
+import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.NavController
+import com.wilkins.safezone.GenericUserUi.AdminMenu
 import com.wilkins.safezone.GenericUserUi.BottomNavigationMenu
 import com.wilkins.safezone.GenericUserUi.SideMenu
 import com.wilkins.safezone.backend.network.AppUser
+import com.wilkins.safezone.backend.network.Moderator.News.NewsViewModel
+import com.wilkins.safezone.backend.network.SupabaseService
+import com.wilkins.safezone.backend.network.auth.SessionManager
 import com.wilkins.safezone.backend.network.auth.SessionManager.getUserProfile
-import com.wilkins.safezone.frontend.ui.user.News.NewsData
+import com.wilkins.safezone.frontend.ui.GlobalAssociation.GovernmentMenu
+import com.wilkins.safezone.frontend.ui.Moderator.ModeratorSideMenu
 import com.wilkins.safezone.frontend.ui.user.News.NewsFilter
 import com.wilkins.safezone.frontend.ui.user.News.NewsSearchBar
 import com.wilkins.safezone.frontend.ui.user.Screens.News.components.NewsCard
 import com.wilkins.safezone.frontend.ui.user.Screens.News.components.NewsListItem
+import com.wilkins.safezone.frontend.ui.user.Screens.profile.RoleBasedMenu
 import io.github.jan.supabase.SupabaseClient
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -29,41 +38,64 @@ fun NewsScreen(
     navController: NavController,
     userId: String,
     context: Context,
-    supabaseClient: SupabaseClient
+    supabaseClient: SupabaseClient,
+    viewModel: NewsViewModel = viewModel()
 ) {
     var searchQuery by remember { mutableStateOf("") }
     var selectedFilter by remember { mutableStateOf(NewsFilter.ALL) }
+
     val userState = produceState<AppUser?>(initialValue = null) {
         value = getUserProfile(context)
     }
 
+    // 🔥 Estados del ViewModel
+    val newsList by viewModel.newsList.collectAsState()
+    val isLoading by viewModel.isLoading.collectAsState()
+    val errorMessage by viewModel.errorMessage.collectAsState()
+
     val user = userState.value
-    // Filtrar noticias según la búsqueda y categoría
-    val filteredLatestNews = remember(searchQuery, selectedFilter) {
-        var news = NewsData.latestNews
 
-        // Filtrar por categoría
-        if (selectedFilter != NewsFilter.ALL) {
-            news = news.filter { it.category == selectedFilter.displayName }
-        }
-
-        // Filtrar por búsqueda
-        if (searchQuery.isNotEmpty()) {
-            news = news.filter {
-                it.title.contains(searchQuery, ignoreCase = true) ||
-                        it.description.contains(searchQuery, ignoreCase = true) ||
-                        it.author.contains(searchQuery, ignoreCase = true)
-            }
-        }
-
-        news
+    val currentRoute = navController.currentBackStackEntry?.destination?.route ?: ""
+    var isMenuOpen by remember { mutableStateOf(false) }
+    // 🔥 Cargar noticias al iniciar
+    LaunchedEffect(Unit) {
+        viewModel.loadNews()
     }
 
-    val showFeaturedNews = (searchQuery.isEmpty() ||
-            NewsData.featuredNews.title.contains(searchQuery, ignoreCase = true) ||
-            NewsData.featuredNews.description.contains(searchQuery, ignoreCase = true) ||
-            NewsData.featuredNews.author.contains(searchQuery, ignoreCase = true)) &&
-            (selectedFilter == NewsFilter.ALL || NewsData.featuredNews.category == selectedFilter.displayName)
+    // 🔥 Obtener la noticia destacada (última con isImportant = true)
+    val featuredNews = remember(newsList) {
+        newsList
+            .filter { it.isImportant }
+            .maxByOrNull { it.createdAt ?: "" }
+    }
+
+    // 🔥 Obtener noticias normales (ordenadas por fecha)
+    val regularNews = remember(newsList) {
+        newsList
+            .filter { !it.isImportant }
+            .sortedByDescending { it.createdAt ?: "" }
+    }
+
+    // 🔥 Filtrar noticias según búsqueda
+    val filteredNews = remember(regularNews, searchQuery) {
+        if (searchQuery.isEmpty()) {
+            regularNews
+        } else {
+            regularNews.filter {
+                it.title.contains(searchQuery, ignoreCase = true) ||
+                        it.description.contains(searchQuery, ignoreCase = true)
+            }
+        }
+    }
+
+    // 🔥 Verificar si mostrar la noticia destacada según búsqueda
+    val showFeaturedNews = remember(featuredNews, searchQuery) {
+        featuredNews != null && (
+                searchQuery.isEmpty() ||
+                        featuredNews.title.contains(searchQuery, ignoreCase = true) ||
+                        featuredNews.description.contains(searchQuery, ignoreCase = true)
+                )
+    }
 
     Box(modifier = Modifier.fillMaxSize()) {
         // Contenido principal
@@ -85,8 +117,37 @@ fun NewsScreen(
                     )
                 }
 
-                // Noticia más relevante
-                if (showFeaturedNews) {
+                // 🔥 Mostrar loading
+                if (isLoading && newsList.isEmpty()) {
+                    item {
+                        Box(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .padding(32.dp),
+                            contentAlignment = Alignment.Center
+                        ) {
+                            CircularProgressIndicator()
+                        }
+                    }
+                }
+
+                // 🔥 Mostrar error
+                if (errorMessage != null) {
+                    item {
+                        Text(
+                            text = errorMessage ?: "Error desconocido",
+                            style = MaterialTheme.typography.bodyLarge,
+                            color = MaterialTheme.colorScheme.error,
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .padding(32.dp),
+                            textAlign = TextAlign.Center
+                        )
+                    }
+                }
+
+                // 🔥 Noticia destacada (última con isImportant = true)
+                if (showFeaturedNews && featuredNews != null) {
                     item {
                         Column(modifier = Modifier.padding(horizontal = 16.dp)) {
                             Row(
@@ -94,7 +155,7 @@ fun NewsScreen(
                                     .fillMaxWidth()
                                     .padding(bottom = 12.dp),
                                 horizontalArrangement = Arrangement.Start,
-                                verticalAlignment = androidx.compose.ui.Alignment.CenterVertically
+                                verticalAlignment = Alignment.CenterVertically
                             ) {
                                 Surface(
                                     shape = MaterialTheme.shapes.small,
@@ -109,36 +170,39 @@ fun NewsScreen(
                                     )
                                 }
                             }
-                            NewsCard(news = NewsData.featuredNews)
+                            NewsCard(news = featuredNews)
                         }
                     }
                 }
 
-                // Últimas noticias
-                item {
-                    Row(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .padding(horizontal = 16.dp, vertical = 12.dp),
-                        horizontalArrangement = Arrangement.Start,
-                        verticalAlignment = androidx.compose.ui.Alignment.CenterVertically
-                    ) {
-                        Surface(
-                            shape = MaterialTheme.shapes.small,
-                            color = MaterialTheme.colorScheme.secondaryContainer
+                // Últimas noticias header
+                if (filteredNews.isNotEmpty()) {
+                    item {
+                        Row(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .padding(horizontal = 16.dp, vertical = 12.dp),
+                            horizontalArrangement = Arrangement.Start,
+                            verticalAlignment = Alignment.CenterVertically
                         ) {
-                            Text(
-                                text = "📰 ÚLTIMAS NOTICIAS",
-                                style = MaterialTheme.typography.labelLarge,
-                                fontWeight = FontWeight.Bold,
-                                color = MaterialTheme.colorScheme.onSecondaryContainer,
-                                modifier = Modifier.padding(horizontal = 12.dp, vertical = 6.dp)
-                            )
+                            Surface(
+                                shape = MaterialTheme.shapes.small,
+                                color = MaterialTheme.colorScheme.secondaryContainer
+                            ) {
+                                Text(
+                                    text = "📰 ÚLTIMAS NOTICIAS",
+                                    style = MaterialTheme.typography.labelLarge,
+                                    fontWeight = FontWeight.Bold,
+                                    color = MaterialTheme.colorScheme.onSecondaryContainer,
+                                    modifier = Modifier.padding(horizontal = 12.dp, vertical = 6.dp)
+                                )
+                            }
                         }
                     }
                 }
 
-                if (filteredLatestNews.isEmpty()) {
+                // 🔥 Lista de noticias normales
+                if (filteredNews.isEmpty() && !isLoading) {
                     item {
                         Text(
                             text = "No se encontraron noticias",
@@ -151,7 +215,7 @@ fun NewsScreen(
                         )
                     }
                 } else {
-                    items(filteredLatestNews) { news ->
+                    items(filteredNews) { news ->
                         NewsListItem(
                             news = news,
                             modifier = Modifier.padding(horizontal = 16.dp)
@@ -161,45 +225,118 @@ fun NewsScreen(
             }
         }
 
-        // Bottom Navigation Menu (encima del contenido)
+        // Bottom Navigation Menu
         Box(
             modifier = Modifier
-                .align(androidx.compose.ui.Alignment.BottomCenter)
+                .align(Alignment.BottomCenter)
                 .zIndex(2f)
         ) {
             BottomNavigationMenu(
-                selectedItem = 0,
-                onNewsClick = {
-                    navController.navigate("NewsUser") {
-                        launchSingleTop = true
-                    }
-                },
-                onAlertClick = {
-                    navController.navigate("AlertUser") {
-                        launchSingleTop = true
-                    }
-                },
-                onMyAlertsClick = {
-                    navController.navigate("MyAlertsUser") {
-                        launchSingleTop = true
-                    }
-                }
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .align(Alignment.BottomCenter),
+                navController = navController,
+                supabaseClient = supabaseClient
             )
         }
 
-        // Side Menu (encima de todo, incluso del bottom menu)
+        // Side Menu
         Box(
             modifier = Modifier
                 .fillMaxSize()
                 .zIndex(3f)
         ) {
+            RoleBasedMenu(
+                navController = navController,
+                currentRoute = currentRoute,
+                isMenuOpen = isMenuOpen,
+                onMenuToggle = { isMenuOpen = it },
+                modifier = Modifier.align(Alignment.TopCenter)
+            )
+        }
+    }
+}
+
+@Composable
+fun RoleBasedMenu(
+    navController: NavController,
+    currentRoute: String,
+    isMenuOpen: Boolean,
+    onMenuToggle: (Boolean) -> Unit,
+    modifier: Modifier = Modifier,
+    content: @Composable () -> Unit = {}
+) {
+    val context = LocalContext.current
+    val supabaseClient = SupabaseService.getInstance()
+
+    // 🔥 Rol desde SessionManager (fuente oficial)
+    val roleId = remember {
+        SessionManager.getUserRole(context)
+    }
+
+    when (roleId) {
+
+        // 🧍 USUARIO NORMAL
+        1 -> {
             SideMenu(
                 navController = navController,
-                userId = userId,
-                userName = user?.name ?: "Usuario",
+                userId = SessionManager.loadSession(context)?.user?.id ?: "",
+                userName = "Usuario",
+                currentRoute = currentRoute,
+                isMenuOpen = isMenuOpen,
+                onMenuToggle = onMenuToggle,
+                context = context,
+                supabaseClient = supabaseClient,
+                modifier = modifier
+            )
+        }
+
+        // 👑 ADMIN
+        2 -> {
+            AdminMenu(
+                navController = navController,
+                currentRoute = currentRoute,
+                isMenuOpen = isMenuOpen,
+                onMenuToggle = onMenuToggle,
+                modifier = modifier,
+                content = content
+            )
+        }
+
+        // 🛡️ MODERADOR
+        3 -> {
+            ModeratorSideMenu(
+                navController = navController,
+                moderatorId = SessionManager.loadSession(context)?.user?.id ?: "",
+                moderatorName = "Moderador",
+                currentRoute = currentRoute,
+                modifier = modifier,
+                isMenuOpen = isMenuOpen,
+                onMenuToggle = onMenuToggle,
                 context = context,
                 supabaseClient = supabaseClient
             )
+        }
+
+        // 🏛️ GOBIERNO
+        4 -> {
+            GovernmentMenu(
+                navController = navController,
+                currentRoute = currentRoute,
+                isMenuOpen = isMenuOpen,
+                onMenuToggle = onMenuToggle,
+                modifier = modifier,
+                content = content
+            )
+        }
+
+        // 🚨 SIN ROL
+        else -> {
+            LaunchedEffect(Unit) {
+                navController.navigate("login") {
+                    popUpTo(0) { inclusive = true }
+                }
+            }
         }
     }
 }

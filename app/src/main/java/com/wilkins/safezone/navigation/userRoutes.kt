@@ -122,6 +122,40 @@ fun NavGraphBuilder.userRoutes(
         }
     }
 
+    composable("profileUser/{userId}/{userName}") { backStackEntry ->
+        val userId = backStackEntry.arguments?.getString("userId") ?: ""
+        val encodedUserName = backStackEntry.arguments?.getString("userName") ?: ""
+
+        // Decodificar el userName
+        val userName = try {
+            java.net.URLDecoder.decode(encodedUserName, "UTF-8")
+        } catch (e: Exception) {
+            "Usuario"
+        }
+
+        if (!hasActiveSession()) {
+            Log.w("UserRoutes", "⚠️ Intento de acceso sin sesión a Profile")
+            navController.navigate("login") {
+                popUpTo(0) { inclusive = true }
+            }
+        } else {
+            val supabaseClient = SupabaseService.getInstance()
+
+            ProfileScreenWithMenu(
+                userId = userId,
+                userName = userName, // ⬅️ userName decodificado
+                navController = navController,
+                supabaseClient = supabaseClient,
+                onNavigateToChangePassword = {
+                    navController.navigate("change_password")
+                },
+                onNavigateToChangeEmail = {
+                    navController.navigate("change_email")
+                }
+            )
+        }
+    }
+
     // ════════════════════════════════════════════
     // SETTINGS
     // ════════════════════════════════════════════
@@ -224,7 +258,8 @@ fun NavGraphBuilder.userRoutes(
             GoogleMapScreen(
                 onBackClick = {
                     navController.popBackStack()
-                }
+                },
+                navController = navController
             )
         }
     }

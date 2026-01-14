@@ -28,6 +28,8 @@ android {
             )
         }
     }
+
+
     compileOptions {
         sourceCompatibility = JavaVersion.VERSION_11
         targetCompatibility = JavaVersion.VERSION_11
@@ -42,6 +44,7 @@ android {
 }
 
 dependencies {
+
     // ===== SUPABASE =====
     implementation("io.github.jan-tennert.supabase:postgrest-kt:2.5.4")
     implementation("io.github.jan-tennert.supabase:gotrue-kt:2.5.4")
@@ -63,6 +66,9 @@ dependencies {
     // Ya deberías tener estas de Supabase
     implementation("io.github.jan-tennert.supabase:gotrue-kt:2.0.0")
     implementation("io.github.jan-tennert.supabase:postgrest-kt:2.0.0")
+    implementation(libs.androidx.compose.material3)
+    implementation(libs.androidx.compose.foundation.layout)
+    implementation(libs.ui.graphics)
 
     // ===== KTOR CLIENT =====
     val ktorVersion = "2.3.7"
@@ -71,12 +77,14 @@ dependencies {
     implementation("io.ktor:ktor-client-content-negotiation:$ktorVersion")
     implementation("io.ktor:ktor-serialization-kotlinx-json:$ktorVersion")
     implementation("io.ktor:ktor-client-logging:$ktorVersion")
+    implementation("io.ktor:ktor-utils:$ktorVersion")
 
     // ===== SERIALIZACIÓN =====
     implementation("org.jetbrains.kotlinx:kotlinx-serialization-json:1.6.3")
 
     // ===== COROUTINES =====
     implementation("org.jetbrains.kotlinx:kotlinx-coroutines-android:1.7.3")
+    implementation("org.jetbrains.kotlinx:kotlinx-coroutines-core:1.7.3")
 
     // ===== NAVEGACIÓN =====
     implementation("androidx.navigation:navigation-compose:2.7.7")
@@ -87,6 +95,10 @@ dependencies {
     implementation("androidx.compose.material:material-icons-extended:1.6.1")
     implementation("io.ktor:ktor-client-cio:2.3.7")
     implementation("io.coil-kt:coil-compose:2.5.0")
+    implementation("androidx.compose.ui:ui:1.5.4")
+    implementation("androidx.compose.material3:material3:1.1.2")
+    implementation("androidx.compose.ui:ui-tooling-preview:1.5.4")
+    implementation("androidx.activity:activity-compose:1.8.1")
 
     // ===== ACCOMPANIST =====
     implementation("com.google.accompanist:accompanist-pager:0.32.0")
@@ -102,6 +114,12 @@ dependencies {
     implementation("com.google.android.gms:play-services-location:21.3.0")
     implementation("org.jetbrains.kotlinx:kotlinx-coroutines-play-services:1.7.3")
 
+    // WorkManager (para sincronización en background)
+    implementation("androidx.work:work-runtime-ktx:2.9.0")
+
+    // Core
+    implementation("androidx.core:core-ktx:1.12.0")
+    implementation("androidx.appcompat:appcompat:1.6.1")
     // ===== ANDROIDX CORE =====
     implementation(libs.androidx.core.ktx)
     implementation(libs.androidx.lifecycle.runtime.ktx)
