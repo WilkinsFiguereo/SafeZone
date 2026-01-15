@@ -225,7 +225,7 @@ fun ModeratorDashboard(
                             }
                         ) {
                             IconButton(onClick = {
-                                navController.navigate("example_tar")
+                                navController.navigate("Notification")
                             }) {
                                 Icon(
                                     imageVector = Icons.Default.Notifications,
@@ -235,7 +235,7 @@ fun ModeratorDashboard(
                             }
                         }
                         IconButton(onClick = {
-                            navController.navigate("example_tar")
+                            navController.navigate("Profile")
                         }) {
                             Icon(
                                 imageVector = Icons.Default.AccountCircle,
@@ -322,7 +322,7 @@ fun ModeratorDashboard(
                     item {
                         LatestNewsCard(
                             newsList = dashboardNews,
-                            onNewsClick = { navController.navigate("example_tar") },
+                            onNewsClick = { navController.navigate("") },
                             onViewAllClick = { navController.navigate("moderatorCreateNews") },
                             primaryColor = PrimaryColor
                         )
@@ -332,8 +332,8 @@ fun ModeratorDashboard(
                     item {
                         LatestReportsCard(
                             reportsList = dashboardReports,
-                            onReportClick = { navController.navigate("example_tar") },
-                            onViewAllClick = { navController.navigate("example_tar") },
+                            onReportClick = { navController.navigate("NewsUser") },
+                            onViewAllClick = { navController.navigate("NewsUser") },
                             primaryColor = PrimaryColor
                         )
                     }
