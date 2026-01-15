@@ -19,6 +19,7 @@ import com.wilkins.safezone.backend.network.Admin.CrudUser.CrudUser
 import com.wilkins.safezone.backend.network.AppUser
 import com.wilkins.safezone.backend.network.GlobalAssociation.ReportsRepository
 import com.wilkins.safezone.backend.network.Moderator.News.NewsViewModel
+import com.wilkins.safezone.backend.network.Moderator.Survery.SurveyViewModel
 import com.wilkins.safezone.backend.network.auth.SessionManager
 import com.wilkins.safezone.backend.network.auth.SessionManager.getUserProfile
 import com.wilkins.safezone.frontend.ui.Moderator.ModeratorSideMenu
@@ -41,11 +42,13 @@ fun ModeratorDashboard(
 
     // ViewModels y Repositories
     val newsViewModel: NewsViewModel = viewModel()
+    val surveyViewModel: SurveyViewModel = viewModel()
     val reportsRepository = remember { ReportsRepository() }
     val crudUser = remember { CrudUser() }
 
     // Estados
     val newsList by newsViewModel.newsList.collectAsState()
+    val surveysList by surveyViewModel.surveys.collectAsState()
     var reportsList by remember { mutableStateOf<List<com.wilkins.safezone.backend.network.GlobalAssociation.ReportDto>>(emptyList()) }
     var usersCount by remember { mutableStateOf(0) }
     var isLoading by remember { mutableStateOf(true) }
@@ -53,6 +56,7 @@ fun ModeratorDashboard(
     // Estadísticas calculadas
     val activeReportsCount = reportsList.filter { it.idReportingStatus in listOf(1, 2) }.size
     val newsCount = newsList.size
+    val surveysCount = surveysList.size
 
     // Cargar datos al iniciar
     LaunchedEffect(Unit) {
@@ -60,6 +64,9 @@ fun ModeratorDashboard(
 
         // Cargar noticias
         newsViewModel.loadNews()
+
+        // Cargar encuestas
+        surveyViewModel.fetchSurveys()
 
         // Cargar reportes
         scope.launch {
@@ -116,7 +123,7 @@ fun ModeratorDashboard(
     }
 
     // Estadísticas
-    val stats = remember(activeReportsCount, newsCount, usersCount) {
+    val stats = remember(activeReportsCount, newsCount, usersCount, surveysCount) {
         listOf(
             StatItem(
                 title = "Reportes Activos",
@@ -141,10 +148,10 @@ fun ModeratorDashboard(
             ),
             StatItem(
                 title = "Encuestas",
-                value = "0",
+                value = surveysCount.toString(),
                 icon = Icons.Default.Poll,
-                trend = "0%",
-                trendUp = false
+                trend = "+${surveysCount}",
+                trendUp = surveysCount > 0
             )
         )
     }
@@ -168,9 +175,9 @@ fun ModeratorDashboard(
                 onClick = { navController.navigate("moderatorUser") }
             ),
             QuickAction(
-                title = "Estadísticas",
-                icon = Icons.Default.BarChart,
-                onClick = { navController.navigate("example_tar") }
+                title = "Nueva Encuesta",
+                icon = Icons.Default.Poll,
+                onClick = { navController.navigate("createSurvey") }
             )
         )
     }
@@ -273,7 +280,7 @@ fun ModeratorDashboard(
                                 verticalAlignment = Alignment.CenterVertically
                             ) {
                                 Icon(
-                                    imageVector = Icons.Default.Warning,
+                                    imageVector = Icons.Default.Dashboard,
                                     contentDescription = null,
                                     tint = PrimaryColor,
                                     modifier = Modifier.size(32.dp)
@@ -363,6 +370,7 @@ fun ModeratorDashboard(
                                     scope.launch {
                                         isLoading = true
                                         newsViewModel.loadNews()
+                                        surveyViewModel.fetchSurveys()
                                         reportsRepository.getAllReports().onSuccess {
                                             reportsList = it
                                         }

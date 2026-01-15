@@ -19,6 +19,7 @@ import com.wilkins.safezone.backend.network.Admin.CrudUser.CrudUser
 import com.wilkins.safezone.backend.network.AppUser
 import com.wilkins.safezone.backend.network.GlobalAssociation.ReportsRepository
 import com.wilkins.safezone.backend.network.Moderator.News.NewsViewModel
+import com.wilkins.safezone.backend.network.Moderator.Survery.SurveyViewModel
 import com.wilkins.safezone.backend.network.auth.SessionManager.getUserProfile
 import com.wilkins.safezone.frontend.ui.Moderator.ModeratorSideMenu
 import com.wilkins.safezone.frontend.ui.Moderator.screens.Statistics.Components.*
@@ -40,14 +41,17 @@ fun ModeratorStatisticsScreen(
 
     // ViewModels y Repositories
     val newsViewModel: NewsViewModel = viewModel()
+    val surveyViewModel: SurveyViewModel = viewModel()
     val reportsRepository = remember { ReportsRepository() }
     val crudUser = remember { CrudUser() }
 
     // Estados
     val newsList by newsViewModel.newsList.collectAsState()
+    val surveysList by surveyViewModel.surveys.collectAsState()
     var reportsList by remember { mutableStateOf<List<com.wilkins.safezone.backend.network.GlobalAssociation.ReportDto>>(emptyList()) }
     var usersCount by remember { mutableStateOf(0) }
     var activeUsersCount by remember { mutableStateOf(0) }
+    var totalSurveyResponses by remember { mutableStateOf(0) }
     var isLoading by remember { mutableStateOf(true) }
     var selectedPeriod by remember { mutableStateOf("Mes") }
 
@@ -56,6 +60,7 @@ fun ModeratorStatisticsScreen(
         isLoading = true
 
         newsViewModel.loadNews()
+        surveyViewModel.fetchSurveys()
 
         scope.launch {
             reportsRepository.getAllReports().onSuccess { reports ->
@@ -69,6 +74,17 @@ fun ModeratorStatisticsScreen(
             activeUsersCount = users.count { it.statusId == 1 }
         }
 
+        // Cargar respuestas de encuestas
+        scope.launch {
+            var totalResponses = 0
+            surveysList.forEach { survey ->
+                surveyViewModel.fetchSurveyResults(survey.id)
+                val results = surveyViewModel.surveyResults.value
+                totalResponses += results.values.sumOf { it.size }
+            }
+            totalSurveyResponses = totalResponses
+        }
+
         isLoading = false
     }
 
@@ -79,6 +95,7 @@ fun ModeratorStatisticsScreen(
     val resolvedReports = reportsList.count { it.idReportingStatus == 3 }
     val totalNews = newsList.size
     val importantNews = newsList.count { it.isImportant }
+    val totalSurveys = surveysList.size
 
     // Estadísticas generales
     val generalStats = remember(totalReports, totalNews, usersCount, activeUsersCount) {
@@ -166,24 +183,28 @@ fun ModeratorStatisticsScreen(
         )
     }
 
-    // Estadísticas de encuestas (estático por ahora)
-    val surveyStats = remember {
+    // Estadísticas de encuestas (ahora dinámico)
+    val surveyStats = remember(totalSurveys, totalSurveyResponses, usersCount) {
+        val participationRate = if (usersCount > 0 && totalSurveyResponses > 0) {
+            ((totalSurveyResponses.toFloat() / (usersCount * totalSurveys)) * 100).toInt()
+        } else 0
+
         listOf(
             SurveyStatItem(
                 label = "Encuestas Activas",
-                value = 0,
+                value = totalSurveys,
                 icon = Icons.Default.Poll,
                 color = Color(0xFF00BCD4)
             ),
             SurveyStatItem(
                 label = "Respuestas Totales",
-                value = 0,
+                value = totalSurveyResponses,
                 icon = Icons.Default.CheckCircle,
                 color = Color(0xFF4CAF50)
             ),
             SurveyStatItem(
                 label = "Participación",
-                value = 0,
+                value = participationRate,
                 icon = Icons.Default.TrendingUp,
                 color = Color(0xFFFF9800),
                 suffix = "%"
@@ -227,9 +248,20 @@ fun ModeratorStatisticsScreen(
                             scope.launch {
                                 isLoading = true
                                 newsViewModel.loadNews()
+                                surveyViewModel.fetchSurveys()
                                 reportsRepository.getAllReports().onSuccess {
                                     reportsList = it
                                 }
+
+                                // Recargar respuestas de encuestas
+                                var totalResponses = 0
+                                surveysList.forEach { survey ->
+                                    surveyViewModel.fetchSurveyResults(survey.id)
+                                    val results = surveyViewModel.surveyResults.value
+                                    totalResponses += results.values.sumOf { it.size }
+                                }
+                                totalSurveyResponses = totalResponses
+
                                 isLoading = false
                             }
                         }) {
@@ -303,7 +335,7 @@ fun ModeratorStatisticsScreen(
                         )
                     }
 
-                    // Estadísticas de encuestas
+                    // Estadísticas de encuestas (ahora con datos reales)
                     item {
                         SurveyStatsCard(
                             stats = surveyStats,

@@ -50,3 +50,4 @@ data class Comment(
     val displayPhotoUrl: String?
         get() = authorPhotoUrl ?: users?.photoUrl
 }
+

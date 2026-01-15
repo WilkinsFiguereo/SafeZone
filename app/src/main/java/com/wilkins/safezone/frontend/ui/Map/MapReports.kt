@@ -18,26 +18,44 @@ import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material.DropdownMenu
+import androidx.compose.material.DropdownMenuItem
+import androidx.compose.material.LocalTextStyle
+import androidx.compose.material.OutlinedTextField
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.Send
 import androidx.compose.material.icons.filled.AccessTime
 import androidx.compose.material.icons.filled.ArrowBack
 import androidx.compose.material.icons.filled.Category
+import androidx.compose.material.icons.filled.ChatBubbleOutline
+import androidx.compose.material.icons.filled.Close
+import androidx.compose.material.icons.filled.Flag
 import androidx.compose.material.icons.filled.LocationOn
+import androidx.compose.material.icons.filled.MoreVert
 import androidx.compose.material.icons.filled.Person
 import androidx.compose.material.icons.filled.Photo
+import androidx.compose.material.icons.filled.Send
 import androidx.compose.material.icons.filled.Share
 import androidx.compose.material.icons.filled.VideoLibrary
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.CircularProgressIndicator
+import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.FloatingActionButton
 import androidx.compose.material3.FloatingActionButtonDefaults
+import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.ModalBottomSheet
+import androidx.compose.material3.OutlinedTextField
+import androidx.compose.material3.OutlinedTextFieldDefaults
+import androidx.compose.material3.SnackbarDuration
+import androidx.compose.material3.SnackbarHostState
+import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.rememberModalBottomSheetState
 import androidx.compose.runtime.*
@@ -53,6 +71,7 @@ import androidx.compose.ui.unit.sp
 import androidx.compose.ui.layout.ContentScale
 import androidx.core.content.ContextCompat
 import androidx.navigation.NavController
+import coil.compose.AsyncImage
 import coil.request.ImageRequest
 import com.google.android.gms.location.LocationServices
 import com.google.android.gms.maps.model.BitmapDescriptor
@@ -70,21 +89,33 @@ import com.wilkins.safezone.backend.network.GlobalAssociation.ReportsRepository
 import com.wilkins.safezone.backend.network.GlobalAssociation.ReportDto
 import com.wilkins.safezone.backend.network.SupabaseService
 import com.wilkins.safezone.backend.network.User.Interaction.EntityType
+import com.wilkins.safezone.backend.network.User.ReportSystem.ReportService
+import com.wilkins.safezone.backend.network.User.ReportSystem.ReportType
 import com.wilkins.safezone.frontend.ui.Map.Components.LikeButton
+import io.github.jan.supabase.gotrue.auth
 import io.github.jan.supabase.postgrest.postgrest
 import io.github.jan.supabase.storage.storage
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import java.text.SimpleDateFormat
 import java.util.Calendar
+import java.util.Date
 import java.util.Locale
+import java.util.UUID
 import kotlin.coroutines.resume
 import kotlin.coroutines.suspendCoroutine
 import kotlin.math.atan2
 import kotlin.math.cos
 import kotlin.math.sin
 import kotlin.math.sqrt
+import androidx.compose.foundation.lazy.items
+import androidx.compose.material.icons.filled.Delete
+import com.wilkins.safezone.backend.network.User.ReportComment.ReportCommentDto
+import com.wilkins.safezone.backend.network.User.ReportComment.ReportCommentService
+import com.wilkins.safezone.backend.network.auth.SessionManager
+
 
 /**
  * Modelo para los marcadores en el mapa
@@ -679,10 +710,12 @@ private fun shareTextOnly(context: Context, shareText: String, reportId: String)
 @Composable
 fun ReportDetailSheet(
     marker: ReportMarker,
-    navController: NavController, // ⬅️ NUEVO: Agregar navController
+    navController: NavController,
     onClose: () -> Unit
 ) {
     val context = LocalContext.current
+    val coroutineScope = rememberCoroutineScope()
+    val snackbarHostState = remember { SnackbarHostState() }
 
     // Obtener URL de la foto de perfil si existe
     val profilePhotoUrl = remember(marker.userImageUrl) {
@@ -699,102 +732,198 @@ fun ReportDetailSheet(
         }
     }
 
-    // Determinar si es anónimo
-    val isAnonymous = marker.userName.isNullOrEmpty() || marker.userName == "Usuario anónimo"
-    val displayName = if (isAnonymous) "Usuario anónimo" else marker.userName!!
+    // Variables para comentarios - usando ReportCommentDto
+    var comments by remember { mutableStateOf<List<ReportCommentDto>>(emptyList()) }
+    var isLoadingComments by remember { mutableStateOf(false) }
+    var commentText by remember { mutableStateOf("") }
+    var isPostingComment by remember { mutableStateOf(false) }
+
+    // Servicios
+    val commentService = remember { ReportCommentService() }
+
+    // Obtener usuario actual
+    val currentUser = remember { SupabaseService.getInstance().auth.currentUserOrNull() }
+    val currentUserId = currentUser?.id ?: ""
+
+    // Cargar perfil del usuario actual
+    var currentUserProfile by remember { mutableStateOf<AppUser?>(null) }
+
+    LaunchedEffect(currentUserId) {
+        if (currentUserId.isNotBlank()) {
+            try {
+                currentUserProfile = SessionManager.getUserProfile(context)
+                Log.d("ReportDetailSheet", "Perfil cargado: ${currentUserProfile?.name}")
+            } catch (e: Exception) {
+                Log.e("ReportDetailSheet", "Error cargando perfil", e)
+            }
+        }
+    }
+
+    // Función para cargar comentarios desde la BD
+    fun loadComments(reportId: String) {
+        if (isLoadingComments) return
+
+        Log.d("ReportDetailSheet", "🔄 loadComments() llamado para reporte: $reportId")
+        isLoadingComments = true
+
+        coroutineScope.launch {
+            try {
+                Log.d("ReportDetailSheet", "📥 Iniciando carga de comentarios...")
+
+                val fetchedComments = commentService.getCommentsForReport(reportId)
+
+                Log.d("ReportDetailSheet", "✅ Comentarios cargados: ${fetchedComments.size}")
+
+                // DEBUG: Ver detalles de cada comentario
+                fetchedComments.forEachIndexed { index, comment ->
+                    Log.d("ReportDetailSheet", "   [${index + 1}] ${comment.getDisplayName()}: ${comment.message}")
+                    Log.d("ReportDetailSheet", "       ID: ${comment.id}")
+                    Log.d("ReportDetailSheet", "       user_id: ${comment.userId}")
+                    Log.d("ReportDetailSheet", "       report_id: ${comment.reportId}")
+                }
+
+                comments = fetchedComments
+
+            } catch (e: Exception) {
+                Log.e("ReportDetailSheet", "❌ Error cargando comentarios", e)
+
+                coroutineScope.launch {
+                    snackbarHostState.showSnackbar(
+                        message = "Error al cargar comentarios: ${e.message}",
+                        duration = SnackbarDuration.Long
+                    )
+                }
+            } finally {
+                isLoadingComments = false
+                Log.d("ReportDetailSheet", "🏁 loadComments() completado")
+            }
+        }
+    }
+
+    // Cargar comentarios cuando el sheet se abre
+    LaunchedEffect(marker.id) {
+        Log.d("ReportDetailSheet", "🎯 Sheet abierto para reporte: ${marker.id}")
+        loadComments(marker.id)
+    }
+
+    // Función para postear comentario en la BD
+    fun postComment() {
+        if (commentText.isBlank() || isPostingComment || currentUserId.isBlank()) {
+            if (currentUserId.isBlank()) {
+                coroutineScope.launch {
+                    snackbarHostState.showSnackbar(
+                        message = "Debes iniciar sesión para comentar",
+                        duration = SnackbarDuration.Short
+                    )
+                }
+            }
+            return
+        }
+
+        isPostingComment = true
+        coroutineScope.launch {
+            try {
+                Log.d("ReportDetailSheet", "📤 Publicando comentario: ${commentText.take(50)}...")
+
+                val result = commentService.createCommentForReport(
+                    reportId = marker.id,
+                    userId = currentUserId,
+                    message = commentText.trim()
+                )
+
+                if (result.isSuccess) {
+                    val newComment = result.getOrThrow()
+
+                    Log.d("ReportDetailSheet", "✅ Comentario publicado: ${newComment.id}")
+                    Log.d("ReportDetailSheet", "   Mensaje: ${newComment.message}")
+                    Log.d("ReportDetailSheet", "   Usuario: ${newComment.getDisplayName()}")
+
+                    // Agregar el nuevo comentario al inicio de la lista
+                    comments = comments + newComment  // Cambié a agregar al final para mejor UX
+
+                    // Limpiar el campo de texto
+                    commentText = ""
+
+                    snackbarHostState.showSnackbar(
+                        message = "✅ Comentario publicado",
+                        duration = SnackbarDuration.Short
+                    )
+
+                    // Recargar comentarios para asegurar que tenemos toda la info
+                    loadComments(marker.id)
+
+                } else {
+                    throw result.exceptionOrNull() ?: Exception("Error desconocido al crear comentario")
+                }
+
+            } catch (e: Exception) {
+                Log.e("ReportDetailSheet", "❌ Error publicando comentario", e)
+
+                snackbarHostState.showSnackbar(
+                    message = "❌ Error: ${e.message ?: "No se pudo publicar el comentario"}",
+                    duration = SnackbarDuration.Long
+                )
+            } finally {
+                isPostingComment = false
+            }
+        }
+    }
 
     Column(
         modifier = Modifier
             .fillMaxWidth()
             .padding(horizontal = 16.dp)
-            .padding(bottom = 24.dp)
     ) {
-        Row(
+        // Contenido principal con scroll
+        LazyColumn(
             modifier = Modifier
                 .fillMaxWidth()
-                .padding(bottom = 12.dp),
-            verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.SpaceBetween
+                .weight(1f),
+            contentPadding = PaddingValues(bottom = 16.dp),
+            verticalArrangement = Arrangement.spacedBy(8.dp)
         ) {
-            Column(modifier = Modifier.weight(1f)) {
-                Row(verticalAlignment = Alignment.CenterVertically) {
-                    // 🆕 FOTO DE PERFIL CLICKEABLE
+            item {
+                ReportHeaderSection(
+                    marker = marker,
+                    profilePhotoUrl = profilePhotoUrl,
+                    navController = navController,
+                    onClose = onClose,
+                    context = context
+                )
+            }
+
+            item {
+                ReportContentSection(marker = marker)
+            }
+
+            // Sección de comentarios
+            item {
+                CommentsHeaderSection(
+                    commentsCount = comments.size,
+                    modifier = Modifier.padding(top = 16.dp, bottom = 12.dp)
+                )
+            }
+
+            if (isLoadingComments) {
+                item {
                     Box(
                         modifier = Modifier
-                            .size(36.dp)
-                            .clip(CircleShape)
-                            .background(
-                                if (isAnonymous)
-                                    Color(0xFF757575).copy(alpha = 0.2f)
-                                else
-                                    Color(0xFF1976D2).copy(alpha = 0.1f)
-                            )
-                            .clickable(
-                                enabled = !isAnonymous && marker.user_id != null, // Solo clickeable si NO es anónimo
-                                onClick = {
-                                    marker.user_id?.let { userId ->
-                                        // Codificar el userName para la URL
-                                        val encodedUserName = java.net.URLEncoder.encode(
-                                            marker.userName ?: "Usuario",
-                                            "UTF-8"
-                                        )
-                                        // Navegar al perfil del usuario del reporte
-                                        navController.navigate("profileUser/$userId/$encodedUserName")
-                                        onClose() // Cerrar el sheet después de navegar
-                                    }
-                                }
-                            ),
+                            .fillMaxWidth()
+                            .padding(vertical = 32.dp),
                         contentAlignment = Alignment.Center
                     ) {
-                        if (!isAnonymous && profilePhotoUrl != null) {
-                            // Mostrar foto de perfil del usuario
-                            coil.compose.AsyncImage(
-                                model = ImageRequest.Builder(LocalContext.current)
-                                    .data(profilePhotoUrl)
-                                    .crossfade(true)
-                                    .placeholder(android.R.drawable.ic_menu_gallery)
-                                    .error(android.R.drawable.ic_menu_report_image)
-                                    .build(),
-                                contentDescription = "Foto de perfil de $displayName",
-                                modifier = Modifier.fillMaxSize(),
-                                contentScale = ContentScale.Crop
-                            )
-                        } else {
-                            // Mostrar ícono por defecto (anónimo o sin foto)
-                            Icon(
-                                imageVector = Icons.Default.Person,
-                                contentDescription = "Usuario",
-                                tint = if (isAnonymous) Color(0xFF757575) else Color(0xFF1976D2),
-                                modifier = Modifier.size(18.dp)
-                            )
-                        }
-                    }
-                    Spacer(modifier = Modifier.width(10.dp))
-                    Column {
-                        Text(
-                            text = displayName,
-                            fontSize = 16.sp,
-                            fontWeight = FontWeight.Bold,
-                            color = if (isAnonymous) Color(0xFF757575) else Color(0xFF212121)
-                        )
-                        Row(
-                            verticalAlignment = Alignment.CenterVertically,
-                            modifier = Modifier.padding(top = 2.dp)
+                        Column(
+                            horizontalAlignment = Alignment.CenterHorizontally,
+                            verticalArrangement = Arrangement.spacedBy(12.dp)
                         ) {
-                            Icon(
-                                imageVector = Icons.Default.LocationOn,
-                                contentDescription = null,
-                                tint = Color(0xFF757575),
-                                modifier = Modifier.size(12.dp)
+                            CircularProgressIndicator(
+                                modifier = Modifier.size(32.dp),
+                                strokeWidth = 3.dp,
+                                color = Color(0xFF1976D2)
                             )
-                            Spacer(modifier = Modifier.width(4.dp))
                             Text(
-                                text = if (marker.distance > 0) {
-                                    "${String.format("%.1f", marker.distance)} km"
-                                } else {
-                                    "Ubicación cercana"
-                                },
-                                fontSize = 11.sp,
+                                text = "Cargando comentarios...",
+                                fontSize = 14.sp,
                                 color = Color(0xFF757575)
                             )
                         }
@@ -802,6 +931,286 @@ fun ReportDetailSheet(
                 }
             }
 
+            if (comments.isEmpty() && !isLoadingComments) {
+                item {
+                    EmptyCommentsMessage(
+                        modifier = Modifier.padding(vertical = 32.dp)
+                    )
+                }
+            } else {
+                items(comments, key = { it.id }) { comment ->
+                    CommentItemCompact(
+                        comment = comment,
+                        currentUserId = currentUserId,
+                        navController = navController,
+                        modifier = Modifier.padding(bottom = 8.dp)
+                    )
+                }
+            }
+        }
+
+        // Input de comentarios en la parte inferior
+        CommentInputBarCompact(
+            commentText = commentText,
+            onCommentChange = { commentText = it },
+            onSendClick = { postComment() },
+            isPosting = isPostingComment,
+            isEnabled = currentUser != null,
+            modifier = Modifier.padding(bottom = 8.dp)
+        )
+    }
+}
+
+@Composable
+private fun CommentItemCompact(
+    comment: ReportCommentDto,  // Cambiado a ReportCommentDto
+    currentUserId: String,
+    navController: NavController,
+    modifier: Modifier = Modifier
+) {
+    var showMenu by remember { mutableStateOf(false) }
+
+    // Determinar si es el usuario actual
+    val isCurrentUser = comment.userId == currentUserId
+    val displayName = comment.getDisplayName()
+
+    Surface(
+        modifier = modifier.fillMaxWidth(),
+        shape = RoundedCornerShape(8.dp),
+        color = Color(0xFFFAFAFA),
+        border = BorderStroke(1.dp, Color(0xFFF0F0F0))
+    ) {
+        Column(
+            modifier = Modifier.padding(12.dp)
+        ) {
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.Top
+            ) {
+                // Información del usuario
+                Row(
+                    verticalAlignment = Alignment.CenterVertically,
+                    modifier = Modifier.weight(1f)
+                ) {
+                    Box(
+                        modifier = Modifier
+                            .size(28.dp)
+                            .clip(CircleShape)
+                            .background(Color(0xFF1976D2).copy(alpha = 0.1f))
+                            .clickable {
+                                val encodedName = java.net.URLEncoder.encode(
+                                    displayName,
+                                    "UTF-8"
+                                )
+                                navController.navigate("profileUser/${comment.userId}/$encodedName")
+                            },
+                        contentAlignment = Alignment.Center
+                    ) {
+                        if (comment.userPhotoUrl != null) {
+                            AsyncImage(
+                                model = comment.userPhotoUrl,
+                                contentDescription = "Foto de perfil",
+                                modifier = Modifier.fillMaxSize(),
+                                contentScale = ContentScale.Crop
+                            )
+                        } else {
+                            Icon(
+                                imageVector = Icons.Default.Person,
+                                contentDescription = "Usuario",
+                                tint = Color(0xFF1976D2),
+                                modifier = Modifier.size(14.dp)
+                            )
+                        }
+                    }
+
+                    Spacer(modifier = Modifier.width(8.dp))
+
+                    Column(
+                        modifier = Modifier.weight(1f)
+                    ) {
+                        Text(
+                            text = displayName,
+                            fontSize = 13.sp,
+                            fontWeight = FontWeight.Bold,
+                            color = Color(0xFF212121),
+                            modifier = Modifier.clickable {
+                                val encodedName = java.net.URLEncoder.encode(
+                                    displayName,
+                                    "UTF-8"
+                                )
+                                navController.navigate("profileUser/${comment.userId}/$encodedName")
+                            }
+                        )
+                        Text(
+                            text = formatCommentDate(comment.createdAt),
+                            fontSize = 11.sp,
+                            color = Color(0xFF757575)
+                        )
+                    }
+                }
+
+                // Menú de opciones
+                if (isCurrentUser) {
+                    Box {
+                        IconButton(
+                            onClick = { showMenu = true },
+                            modifier = Modifier.size(32.dp)
+                        ) {
+                            Icon(
+                                imageVector = Icons.Default.MoreVert,
+                                contentDescription = "Opciones",
+                                tint = Color(0xFF757575),
+                                modifier = Modifier.size(16.dp)
+                            )
+                        }
+
+                        DropdownMenu(
+                            expanded = showMenu,
+                            onDismissRequest = { showMenu = false }
+                        ) {
+                            // Opción para eliminar (solo el propio usuario)
+                            DropdownMenuItem(
+                                text = {
+                                    Text(
+                                        text = "Eliminar",
+                                        fontSize = 13.sp,
+                                        color = Color(0xFFE53935)
+                                    )
+                                },
+                                onClick = {
+                                    showMenu = false
+                                    // TODO: Implementar eliminación de comentario
+                                },
+                                leadingIcon = {
+                                    Icon(
+                                        Icons.Default.Delete,
+                                        null,
+                                        tint = Color(0xFFE53935),
+                                        modifier = Modifier.size(16.dp)
+                                    )
+                                }
+                            )
+                        }
+                    }
+                }
+            }
+
+            // Contenido del comentario
+            Text(
+                text = comment.message,
+                fontSize = 13.sp,
+                color = Color(0xFF424242),
+                lineHeight = 16.sp,
+                modifier = Modifier.padding(top = 8.dp)
+            )
+        }
+    }
+}
+
+
+@Composable
+private fun ReportHeaderSection(
+    marker: ReportMarker,
+    profilePhotoUrl: String?,
+    navController: NavController,
+    onClose: () -> Unit,
+    context: Context
+) {
+    val isAnonymous = marker.userName.isNullOrEmpty() || marker.userName == "Usuario anónimo"
+    val displayName = if (isAnonymous) "Usuario anónimo" else marker.userName!!
+
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(top = 16.dp, bottom = 16.dp),
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.SpaceBetween
+    ) {
+        Row(
+            verticalAlignment = Alignment.CenterVertically,
+            modifier = Modifier.weight(1f)
+        ) {
+            // Foto de perfil
+            Box(
+                modifier = Modifier
+                    .size(36.dp)
+                    .clip(CircleShape)
+                    .background(
+                        if (isAnonymous)
+                            Color(0xFF757575).copy(alpha = 0.2f)
+                        else
+                            Color(0xFF1976D2).copy(alpha = 0.1f)
+                    )
+                    .clickable(
+                        enabled = !isAnonymous && marker.user_id != null,
+                        onClick = {
+                            marker.user_id?.let { userId ->
+                                val encodedUserName = java.net.URLEncoder.encode(
+                                    marker.userName ?: "Usuario",
+                                    "UTF-8"
+                                )
+                                navController.navigate("profileUser/$userId/$encodedUserName")
+                                onClose()
+                            }
+                        }
+                    ),
+                contentAlignment = Alignment.Center
+            ) {
+                if (!isAnonymous && profilePhotoUrl != null) {
+                    AsyncImage(
+                        model = ImageRequest.Builder(LocalContext.current)
+                            .data(profilePhotoUrl)
+                            .crossfade(true)
+                            .build(),
+                        contentDescription = "Foto de perfil de $displayName",
+                        modifier = Modifier.fillMaxSize(),
+                        contentScale = ContentScale.Crop
+                    )
+                } else {
+                    Icon(
+                        imageVector = Icons.Default.Person,
+                        contentDescription = "Usuario",
+                        tint = if (isAnonymous) Color(0xFF757575) else Color(0xFF1976D2),
+                        modifier = Modifier.size(18.dp)
+                    )
+                }
+            }
+
+            Spacer(modifier = Modifier.width(12.dp))
+
+            Column {
+                Text(
+                    text = displayName,
+                    fontSize = 16.sp,
+                    fontWeight = FontWeight.Bold,
+                    color = if (isAnonymous) Color(0xFF757575) else Color(0xFF212121)
+                )
+
+                Row(
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Icon(
+                        imageVector = Icons.Default.LocationOn,
+                        contentDescription = null,
+                        tint = Color(0xFF757575),
+                        modifier = Modifier.size(12.dp)
+                    )
+                    Spacer(modifier = Modifier.width(4.dp))
+                    Text(
+                        text = if (marker.distance > 0) {
+                            "${String.format("%.1f", marker.distance)} km"
+                        } else {
+                            "Ubicación cercana"
+                        },
+                        fontSize = 11.sp,
+                        color = Color(0xFF757575)
+                    )
+                }
+            }
+        }
+
+        Row {
             IconButton(
                 onClick = { shareReport(context, marker) },
                 modifier = Modifier.size(40.dp)
@@ -819,18 +1228,26 @@ fun ReportDetailSheet(
                 modifier = Modifier.size(40.dp)
             ) {
                 Icon(
-                    imageVector = Icons.Default.ArrowBack,
+                    imageVector = Icons.Default.Close,
                     contentDescription = "Cerrar",
                     tint = Color(0xFF757575),
                     modifier = Modifier.size(20.dp)
                 )
             }
         }
+    }
+}
 
+@Composable
+private fun ReportContentSection(marker: ReportMarker) {
+    Column(
+        modifier = Modifier.fillMaxWidth()
+    ) {
+        // Fecha
         marker.createdAt?.let { date ->
             Row(
                 verticalAlignment = Alignment.CenterVertically,
-                modifier = Modifier.padding(bottom = 10.dp)
+                modifier = Modifier.padding(bottom = 12.dp)
             ) {
                 Icon(
                     imageVector = Icons.Default.AccessTime,
@@ -848,12 +1265,13 @@ fun ReportDetailSheet(
             }
         }
 
+        // Tipo de incidente
         marker.affairName?.let { affairName ->
             Card(
                 modifier = Modifier
                     .fillMaxWidth()
                     .padding(bottom = 12.dp),
-                shape = RoundedCornerShape(10.dp),
+                shape = RoundedCornerShape(8.dp),
                 colors = CardDefaults.cardColors(
                     containerColor = Color(0xFF1976D2).copy(alpha = 0.1f)
                 ),
@@ -861,25 +1279,25 @@ fun ReportDetailSheet(
             ) {
                 Row(
                     verticalAlignment = Alignment.CenterVertically,
-                    modifier = Modifier.padding(12.dp)
+                    modifier = Modifier.padding(10.dp)
                 ) {
                     Icon(
                         imageVector = Icons.Default.Category,
                         contentDescription = null,
                         tint = Color(0xFF1976D2),
-                        modifier = Modifier.size(18.dp)
+                        modifier = Modifier.size(16.dp)
                     )
-                    Spacer(modifier = Modifier.width(10.dp))
+                    Spacer(modifier = Modifier.width(8.dp))
                     Column {
                         Text(
                             text = "Tipo de Incidente",
-                            fontSize = 11.sp,
+                            fontSize = 10.sp,
                             color = Color(0xFF757575),
                             fontWeight = FontWeight.Medium
                         )
                         Text(
                             text = affairName,
-                            fontSize = 14.sp,
+                            fontSize = 13.sp,
                             color = Color(0xFF1976D2),
                             fontWeight = FontWeight.Bold
                         )
@@ -888,8 +1306,9 @@ fun ReportDetailSheet(
             }
         }
 
+        // Descripción
         Text(
-            text = "Descripción del Reporte",
+            text = "Descripción",
             fontSize = 14.sp,
             fontWeight = FontWeight.Bold,
             color = Color(0xFF212121),
@@ -900,7 +1319,7 @@ fun ReportDetailSheet(
             modifier = Modifier
                 .fillMaxWidth()
                 .padding(bottom = 12.dp),
-            shape = RoundedCornerShape(10.dp),
+            shape = RoundedCornerShape(8.dp),
             colors = CardDefaults.cardColors(
                 containerColor = Color(0xFFF8F9FA)
             ),
@@ -911,15 +1330,14 @@ fun ReportDetailSheet(
                 fontSize = 13.sp,
                 color = Color(0xFF424242),
                 lineHeight = 18.sp,
-                modifier = Modifier.padding(12.dp),
-                maxLines = 4,
-                overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis
+                modifier = Modifier.padding(12.dp)
             )
         }
 
+        // Media (imagen/video)
         marker.reportImageUrl?.let { mediaUrl ->
             Text(
-                text = "Evidencia del Reporte",
+                text = "Evidencia",
                 fontSize = 14.sp,
                 fontWeight = FontWeight.Bold,
                 color = Color(0xFF212121),
@@ -931,9 +1349,10 @@ fun ReportDetailSheet(
             Card(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .height(200.dp),
-                shape = RoundedCornerShape(10.dp),
-                elevation = CardDefaults.cardElevation(defaultElevation = 4.dp)
+                    .height(180.dp)
+                    .padding(bottom = 8.dp),
+                shape = RoundedCornerShape(8.dp),
+                elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
             ) {
                 Box(
                     modifier = Modifier.fillMaxSize(),
@@ -942,12 +1361,10 @@ fun ReportDetailSheet(
                     if (isVideo) {
                         VideoPlayerComposable(videoUrl = mediaUrl)
                     } else {
-                        coil.compose.AsyncImage(
+                        AsyncImage(
                             model = ImageRequest.Builder(LocalContext.current)
                                 .data(mediaUrl)
                                 .crossfade(true)
-                                .placeholder(android.R.drawable.ic_menu_gallery)
-                                .error(android.R.drawable.ic_menu_report_image)
                                 .build(),
                             contentDescription = "Imagen del reporte",
                             modifier = Modifier.fillMaxSize(),
@@ -956,52 +1373,15 @@ fun ReportDetailSheet(
                     }
                 }
             }
-
-            Row(
-                verticalAlignment = Alignment.CenterVertically,
-                modifier = Modifier.padding(top = 6.dp, bottom = 12.dp)
-            ) {
-                Icon(
-                    imageVector = if (isVideo) Icons.Default.VideoLibrary else Icons.Default.Photo,
-                    contentDescription = null,
-                    tint = Color(0xFF757575),
-                    modifier = Modifier.size(12.dp)
-                )
-                Spacer(modifier = Modifier.width(4.dp))
-                Text(
-                    text = if (isVideo) "Video relacionado al reporte" else "Imagen relacionada al reporte",
-                    fontSize = 11.sp,
-                    color = Color(0xFF757575)
-                )
-            }
         }
 
-        Row(
-            verticalAlignment = Alignment.CenterVertically,
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(bottom = 16.dp)
-        ) {
-            Box(
-                modifier = Modifier
-                    .size(7.dp)
-                    .clip(CircleShape)
-                    .background(Color(0xFFE53935))
-            )
-            Spacer(modifier = Modifier.width(6.dp))
-            Text(
-                text = "ALTA PRIORIDAD",
-                fontSize = 10.sp,
-                color = Color(0xFFE53935),
-                fontWeight = FontWeight.Bold
-            )
-        }
-
+        // Botón de like
         Card(
             modifier = Modifier
                 .fillMaxWidth()
-                .height(52.dp),
-            shape = RoundedCornerShape(12.dp),
+                .height(48.dp)
+                .padding(bottom = 16.dp),
+            shape = RoundedCornerShape(10.dp),
             colors = CardDefaults.cardColors(
                 containerColor = Color.Transparent
             ),
@@ -1018,12 +1398,204 @@ fun ReportDetailSheet(
                     entityType = EntityType.REPORT,
                     modifier = Modifier.fillMaxWidth(),
                     showCount = true,
-                    compactMode = false
+                    compactMode = true
                 )
+            }
+        }
+
+        // Separador
+        HorizontalDivider(
+            modifier = Modifier.padding(vertical = 8.dp),
+            thickness = 1.dp,
+            color = Color(0xFFEEEEEE)
+        )
+    }
+}
+
+@Composable
+private fun CommentsHeaderSection(
+    commentsCount: Int,
+    modifier: Modifier = Modifier
+) {
+    Row(
+        modifier = modifier.fillMaxWidth(),
+        horizontalArrangement = Arrangement.SpaceBetween,
+        verticalAlignment = Alignment.CenterVertically
+    ) {
+        Row(
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Icon(
+                imageVector = Icons.Default.ChatBubbleOutline,
+                contentDescription = null,
+                tint = Color(0xFF1976D2),
+                modifier = Modifier.size(18.dp)
+            )
+            Spacer(modifier = Modifier.width(8.dp))
+            Text(
+                text = "Comentarios",
+                fontSize = 16.sp,
+                fontWeight = FontWeight.Bold,
+                color = Color(0xFF212121)
+            )
+        }
+
+        Text(
+            text = "$commentsCount",
+            fontSize = 14.sp,
+            fontWeight = FontWeight.Medium,
+            color = Color(0xFF757575)
+        )
+    }
+}
+
+
+// Función mejorada para formatear fechas
+private fun formatCommentDate(dateString: String): String {
+    return try {
+        // Manejar diferentes formatos de fecha
+        val inputFormat = when {
+            dateString.contains("T") && dateString.contains(".") ->
+                SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss.SSSSSSXXX", Locale.getDefault())
+            dateString.contains("T") ->
+                SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss", Locale.getDefault())
+            else ->
+                SimpleDateFormat("yyyy-MM-dd HH:mm:ss", Locale.getDefault())
+        }
+
+        val date = inputFormat.parse(dateString)
+        val now = Date()
+        val diff = now.time - date.time
+
+        // Mostrar tiempo relativo
+        return when {
+            diff < 60_000 -> "Hace un momento"
+            diff < 3_600_000 -> "Hace ${(diff / 60_000).toInt()} min"
+            diff < 86_400_000 -> "Hace ${(diff / 3_600_000).toInt()} h"
+            diff < 7 * 86_400_000 -> {
+                val days = (diff / 86_400_000).toInt()
+                if (days == 1) "Ayer" else "Hace $days días"
+            }
+            else -> {
+                val outputFormat = SimpleDateFormat("dd/MM/yy", Locale.getDefault())
+                outputFormat.format(date)
+            }
+        }
+    } catch (e: Exception) {
+        Log.e("formatCommentDate", "Error formateando fecha: $dateString", e)
+        "Fecha desconocida"
+    }
+}
+
+@Composable
+private fun CommentInputBarCompact(
+    commentText: String,
+    onCommentChange: (String) -> Unit,
+    onSendClick: () -> Unit,
+    isPosting: Boolean,
+    isEnabled: Boolean,
+    modifier: Modifier = Modifier
+) {
+    Surface(
+        modifier = modifier.fillMaxWidth(),
+        color = Color.White,
+        shadowElevation = 4.dp
+    ) {
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(8.dp),
+            horizontalArrangement = Arrangement.spacedBy(8.dp),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            // Campo de texto
+            OutlinedTextField(
+                value = commentText,
+                onValueChange = onCommentChange,
+                modifier = Modifier.weight(1f),
+                placeholder = {
+                    Text(
+                        text = if (isEnabled) "Escribe un comentario..." else "Inicia sesión para comentar",
+                        fontSize = 13.sp
+                    )
+                },
+                shape = RoundedCornerShape(20.dp),
+                colors = OutlinedTextFieldDefaults.colors(
+                    focusedBorderColor = Color(0xFF1976D2),
+                    unfocusedBorderColor = Color(0xFFE0E0E0),
+                    disabledBorderColor = Color(0xFFF0F0F0),
+                    disabledPlaceholderColor = Color(0xFFBDBDBD)
+                ),
+                maxLines = 2,
+                enabled = isEnabled && !isPosting,
+                textStyle = LocalTextStyle.current.copy(fontSize = 13.sp)
+            )
+
+            // Botón de enviar
+            Box(
+                modifier = Modifier
+                    .size(40.dp)
+                    .clip(CircleShape)
+                    .background(
+                        if (commentText.isNotBlank() && !isPosting && isEnabled)
+                            Color(0xFF1976D2)
+                        else
+                            Color(0xFFE0E0E0)
+                    )
+                    .clickable(
+                        enabled = commentText.isNotBlank() && !isPosting && isEnabled,
+                        onClick = onSendClick
+                    ),
+                contentAlignment = Alignment.Center
+            ) {
+                if (isPosting) {
+                    CircularProgressIndicator(
+                        modifier = Modifier.size(20.dp),
+                        strokeWidth = 2.dp,
+                        color = Color.White
+                    )
+                } else {
+                    Icon(
+                        imageVector = Icons.Default.Send,
+                        contentDescription = "Enviar",
+                        tint = Color.White,
+                        modifier = Modifier.size(18.dp)
+                    )
+                }
             }
         }
     }
 }
+
+@Composable
+private fun EmptyCommentsMessage(modifier: Modifier = Modifier) {
+    Column(
+        modifier = modifier.fillMaxWidth(),
+        horizontalAlignment = Alignment.CenterHorizontally,
+        verticalArrangement = Arrangement.spacedBy(8.dp)
+    ) {
+        Icon(
+            imageVector = Icons.Default.ChatBubbleOutline,
+            contentDescription = null,
+            tint = Color(0xFFE0E0E0),
+            modifier = Modifier.size(48.dp)
+        )
+        Text(
+            text = "No hay comentarios aún",
+            fontSize = 14.sp,
+            color = Color(0xFF9E9E9E)
+        )
+        Text(
+            text = "¡Sé el primero en comentar!",
+            fontSize = 12.sp,
+            color = Color(0xFFBDBDBD)
+        )
+    }
+}
+
+
+// Modelo de datos para comentarios
+
 
 fun isVideoUrl(url: String): Boolean {
     val videoExtensions = listOf(".mp4", ".mov", ".avi", ".mkv", ".webm", ".3gp", ".flv")
