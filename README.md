@@ -218,10 +218,24 @@ API Key
 
 
 6. Ejecutar la aplicación en un emulador o dispositivo físico.
+---
+📓 Credenciales 
 
+Usuario
+user@gmail.com
+123456
 
+Administrador
+admin@admin
+admin123
 
+Moderador
+Mod@gmail.com
+Mod123
 
+Asociación Gubernamental
+association@gmail.com
+ass123
 ---
 
 🗺️ Permisos Utilizados
