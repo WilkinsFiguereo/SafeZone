@@ -378,7 +378,7 @@ fun CommentItem(
                         .clip(CircleShape)
                         .background(MaterialTheme.colorScheme.primaryContainer)
                         .clickable {
-                            navController.navigate("profile/${comment.userId}")
+                            navController.navigate("profileUser/${comment.userId}/${comment.authorName}")
                         },
                     contentAlignment = Alignment.Center
                 ) {

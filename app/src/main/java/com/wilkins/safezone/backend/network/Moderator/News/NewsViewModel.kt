@@ -526,7 +526,7 @@ class NewsViewModel : ViewModel() {
                         Log.d(TAG, "  🔍 [$index] Buscando usuario: ${comment.userId}")
 
                         val userData = supabase
-                            .from("users")
+                            .from("profiles")
                             .select {
                                 filter {
                                     eq("id", comment.userId)
