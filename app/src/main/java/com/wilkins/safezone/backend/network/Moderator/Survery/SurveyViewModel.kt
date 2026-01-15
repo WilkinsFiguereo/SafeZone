@@ -49,6 +49,30 @@ data class CreateQuestionRequest(
 )
 
 @Serializable
+data class InsertSurveyRequest(
+    val title: String,
+    val description: String?
+)
+
+@Serializable
+data class InsertQuestionRequest(
+    val survey_id: String,
+    val question_text: String,
+    val question_type: String,
+    val options: List<String>,
+    val required: Boolean,
+    val order: Int
+)
+
+@Serializable
+data class InsertResponseRequest(
+    val survey_id: String,
+    val user_id: String,
+    val question_id: String,
+    val answer_text: String
+)
+
+@Serializable
 data class SurveyResponse(
     val id: String,
     val survey_id: String,
@@ -181,75 +205,59 @@ class SurveyViewModel : ViewModel() {
                 }
 
                 // Crear la encuesta
-                val surveyData = mapOf(
-                    "title" to title,
-                    "description" to description
+                val surveyRequest = InsertSurveyRequest(
+                    title = title,
+                    description = description
                 )
 
                 val surveyResponse = supabase
                     .from("surveys")
-                    .insert(surveyData)
+                    .insert(surveyRequest) {
+                        select()
+                    }
                     .decodeSingle<Survey>()
 
                 Log.d("SurveyViewModel", "Encuesta creada con ID: ${surveyResponse.id}")
 
-                // Insertar preguntas usando una estrategia diferente
+                // Insertar preguntas
                 questions.forEach { question ->
                     try {
-                        // Crear el objeto según el tipo
-                        when (question.question_type) {
+                        val questionRequest = when (question.question_type) {
                             "multiple_choice" -> {
                                 val validOptions = question.options?.filter { it.isNotBlank() } ?: emptyList()
-
-                                // NO decodificar la respuesta, solo insertar
-                                supabase.from("survey_questions").insert(
-                                    mapOf(
-                                        "survey_id" to surveyResponse.id,
-                                        "question_text" to question.question_text,
-                                        "question_type" to question.question_type,
-                                        "options" to validOptions,
-                                        "required" to question.required,
-                                        "order" to question.order
-                                    )
-                                ) {
-                                    select()
-                                }
-                                Log.d("SurveyViewModel", "✓ Multiple choice insertada con ${validOptions.size} opciones")
+                                InsertQuestionRequest(
+                                    survey_id = surveyResponse.id,
+                                    question_text = question.question_text,
+                                    question_type = question.question_type,
+                                    options = validOptions,
+                                    required = question.required,
+                                    order = question.order
+                                )
                             }
-
                             "boolean" -> {
-                                supabase.from("survey_questions").insert(
-                                    mapOf(
-                                        "survey_id" to surveyResponse.id,
-                                        "question_text" to question.question_text,
-                                        "question_type" to question.question_type,
-                                        "options" to listOf("Sí", "No"),
-                                        "required" to question.required,
-                                        "order" to question.order
-                                    )
-                                ) {
-                                    select()
-                                }
-                                Log.d("SurveyViewModel", "✓ Boolean insertada")
+                                InsertQuestionRequest(
+                                    survey_id = surveyResponse.id,
+                                    question_text = question.question_text,
+                                    question_type = question.question_type,
+                                    options = listOf("Sí", "No"),
+                                    required = question.required,
+                                    order = question.order
+                                )
                             }
-
                             else -> {
-                                // Para text y number, enviar array vacío explícitamente
-                                supabase.from("survey_questions").insert(
-                                    mapOf(
-                                        "survey_id" to surveyResponse.id,
-                                        "question_text" to question.question_text,
-                                        "question_type" to question.question_type,
-                                        "options" to emptyList<String>(),
-                                        "required" to question.required,
-                                        "order" to question.order
-                                    )
-                                ) {
-                                    select()
-                                }
-                                Log.d("SurveyViewModel", "✓ ${question.question_type} insertada")
+                                InsertQuestionRequest(
+                                    survey_id = surveyResponse.id,
+                                    question_text = question.question_text,
+                                    question_type = question.question_type,
+                                    options = emptyList(),
+                                    required = question.required,
+                                    order = question.order
+                                )
                             }
                         }
+
+                        supabase.from("survey_questions").insert(questionRequest)
+                        Log.d("SurveyViewModel", "✓ Pregunta insertada: ${question.question_type}")
 
                     } catch (e: Exception) {
                         Log.e("SurveyViewModel", "✗ Error insertando: ${question.question_text}")
@@ -297,6 +305,7 @@ class SurveyViewModel : ViewModel() {
         }
     }
 
+    // VERSIÓN SIMPLIFICADA: Solo permite responder una vez
     fun submitSurveyResponses(
         surveyId: String,
         userId: String,
@@ -309,20 +318,44 @@ class SurveyViewModel : ViewModel() {
             _successMessage.value = null
 
             try {
-                answers.forEach { (questionId, answerText) ->
-                    val responseData = mapOf(
-                        "survey_id" to surveyId,
-                        "user_id" to userId,
-                        "question_id" to questionId,
-                        "answer_text" to answerText
+                // Verificar si ya respondió (seguridad adicional)
+                val existingResponses = supabase
+                    .from("survey_responses")
+                    .select {
+                        filter {
+                            eq("survey_id", surveyId)
+                            eq("user_id", userId)
+                        }
+                    }
+                    .decodeList<SurveyResponse>()
+
+                if (existingResponses.isNotEmpty()) {
+                    _error.value = "Ya has respondido esta encuesta anteriormente"
+                    _isLoading.value = false
+                    return@launch
+                }
+
+                // Filtrar respuestas vacías
+                val validAnswers = answers.filter { it.value.isNotBlank() }
+
+                // Insertar respuestas
+                validAnswers.forEach { (questionId, answerText) ->
+                    val responseRequest = InsertResponseRequest(
+                        survey_id = surveyId,
+                        user_id = userId,
+                        question_id = questionId,
+                        answer_text = answerText
                     )
 
                     supabase
                         .from("survey_responses")
-                        .insert(responseData)
+                        .insert(responseRequest)
+
+                    Log.d("SurveyViewModel", "✓ Respuesta insertada para pregunta: $questionId")
                 }
 
                 _successMessage.value = "Respuestas enviadas exitosamente"
+                Log.d("SurveyViewModel", "Total de respuestas guardadas: ${validAnswers.size}")
                 onSuccess()
 
             } catch (e: Exception) {
@@ -334,6 +367,7 @@ class SurveyViewModel : ViewModel() {
         }
     }
 
+    // Verificar si el usuario ya respondió la encuesta
     fun hasUserResponded(
         surveyId: String,
         userId: String,

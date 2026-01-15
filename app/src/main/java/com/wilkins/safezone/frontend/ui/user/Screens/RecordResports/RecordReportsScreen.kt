@@ -441,6 +441,12 @@ fun StatusChip(statusId: Int) {
             "Rechazado",
             Icons.Default.Cancel
         )
+        4 -> Quadruple(
+            Color(0xFFFFEBEE),
+            Color(0xFFFF8400),
+            "En revision",
+            Icons.Default.Cancel
+        )
         else -> Quadruple(
             Color(0xFFF5F5F5),
             Color(0xFF616161),

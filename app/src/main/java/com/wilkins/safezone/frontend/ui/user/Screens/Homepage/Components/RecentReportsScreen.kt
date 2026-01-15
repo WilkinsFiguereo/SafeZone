@@ -1,6 +1,5 @@
 package com.wilkins.safezone.frontend.ui.user.Screens.Homepage.Components
 
-
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.CircleShape
@@ -37,7 +36,7 @@ enum class ReportType(val label: String, val icon: ImageVector) {
 
 @Composable
 fun RecentReportsSection(
-    reports: List<Report> = getSampleReports(),
+    reports: List<Report> = emptyList(),
     onSeeAllClick: () -> Unit = {},
     modifier: Modifier = Modifier
 ) {
@@ -75,11 +74,46 @@ fun RecentReportsSection(
         }
 
         // Reports List
-        Column(
-            verticalArrangement = Arrangement.spacedBy(10.dp)
-        ) {
-            reports.take(3).forEach { report ->
-                SimpleReportCard(report = report)
+        if (reports.isEmpty()) {
+            // Mensaje cuando no hay reportes
+            Card(
+                modifier = Modifier.fillMaxWidth(),
+                shape = RoundedCornerShape(12.dp),
+                colors = CardDefaults.cardColors(
+                    containerColor = Color(0xFFF5F5F5)
+                )
+            ) {
+                Box(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(32.dp),
+                    contentAlignment = Alignment.Center
+                ) {
+                    Column(
+                        horizontalAlignment = Alignment.CenterHorizontally,
+                        verticalArrangement = Arrangement.spacedBy(8.dp)
+                    ) {
+                        Icon(
+                            imageVector = Icons.Default.Info,
+                            contentDescription = null,
+                            tint = Color.Gray,
+                            modifier = Modifier.size(48.dp)
+                        )
+                        Text(
+                            text = "No hay reportes recientes",
+                            fontSize = 14.sp,
+                            color = Color.Gray
+                        )
+                    }
+                }
+            }
+        } else {
+            Column(
+                verticalArrangement = Arrangement.spacedBy(10.dp)
+            ) {
+                reports.take(3).forEach { report ->
+                    SimpleReportCard(report = report)
+                }
             }
         }
     }
@@ -173,39 +207,6 @@ fun SimpleReportCard(report: Report) {
     }
 }
 
-fun getSampleReports(): List<Report> {
-    return listOf(
-        Report(
-            id = 1,
-            type = ReportType.EMERGENCY,
-            description = "Situación de emergencia cerca de zona comercial",
-            timeAgo = "5 min",
-            distance = "0.8 km"
-        ),
-        Report(
-            id = 2,
-            type = ReportType.THEFT,
-            description = "Intento de robo reportado en la zona",
-            timeAgo = "15 min",
-            distance = "1.2 km"
-        ),
-        Report(
-            id = 3,
-            type = ReportType.ACCIDENT,
-            description = "Accidente vehicular menor",
-            timeAgo = "25 min",
-            distance = "2.1 km"
-        ),
-        Report(
-            id = 4,
-            type = ReportType.SUSPICIOUS,
-            description = "Actividad sospechosa reportada",
-            timeAgo = "1 hora",
-            distance = "0.5 km"
-        )
-    )
-}
-
 @Preview(showBackground = true)
 @Composable
 fun RecentReportsSectionPreview() {
@@ -213,6 +214,9 @@ fun RecentReportsSectionPreview() {
         modifier = Modifier.fillMaxSize(),
         color = Color(0xFFF5F5F5)
     ) {
-        RecentReportsSection()
+        RecentReportsSection(
+            reports = emptyList(),
+            onSeeAllClick = {}
+        )
     }
 }

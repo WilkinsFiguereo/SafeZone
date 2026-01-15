@@ -90,6 +90,7 @@ fun SideMenu(
             title = "Información",
             items = listOf(
                 MenuItem(Icons.Default.Newspaper, "Noticias", "NewsUser"),
+                MenuItem(Icons.Default.Newspaper, "Encuestas", "SurveyUser"),
                 MenuItem(Icons.Default.Place, "Reportes en tu zona", "MapReports")
             )
         ),

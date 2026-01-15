@@ -39,7 +39,7 @@ fun NewsScreen(
     userId: String,
     context: Context,
     supabaseClient: SupabaseClient,
-    viewModel: NewsViewModel = viewModel()
+    viewModel: NewsViewModel // ✅ Ya no usa = viewModel(), se pasa desde fuera
 ) {
     var searchQuery by remember { mutableStateOf("") }
     var selectedFilter by remember { mutableStateOf(NewsFilter.ALL) }
@@ -48,35 +48,31 @@ fun NewsScreen(
         value = getUserProfile(context)
     }
 
-    // 🔥 Estados del ViewModel
     val newsList by viewModel.newsList.collectAsState()
     val isLoading by viewModel.isLoading.collectAsState()
     val errorMessage by viewModel.errorMessage.collectAsState()
 
     val user = userState.value
-
     val currentRoute = navController.currentBackStackEntry?.destination?.route ?: ""
     var isMenuOpen by remember { mutableStateOf(false) }
-    // 🔥 Cargar noticias al iniciar
+
+    // Cargar noticias al iniciar
     LaunchedEffect(Unit) {
         viewModel.loadNews()
     }
 
-    // 🔥 Obtener la noticia destacada (última con isImportant = true)
     val featuredNews = remember(newsList) {
         newsList
             .filter { it.isImportant }
             .maxByOrNull { it.createdAt ?: "" }
     }
 
-    // 🔥 Obtener noticias normales (ordenadas por fecha)
     val regularNews = remember(newsList) {
         newsList
             .filter { !it.isImportant }
             .sortedByDescending { it.createdAt ?: "" }
     }
 
-    // 🔥 Filtrar noticias según búsqueda
     val filteredNews = remember(regularNews, searchQuery) {
         if (searchQuery.isEmpty()) {
             regularNews
@@ -88,7 +84,6 @@ fun NewsScreen(
         }
     }
 
-    // 🔥 Verificar si mostrar la noticia destacada según búsqueda
     val showFeaturedNews = remember(featuredNews, searchQuery) {
         featuredNews != null && (
                 searchQuery.isEmpty() ||
@@ -98,7 +93,6 @@ fun NewsScreen(
     }
 
     Box(modifier = Modifier.fillMaxSize()) {
-        // Contenido principal
         Column(modifier = Modifier.fillMaxSize()) {
             LazyColumn(
                 modifier = Modifier
@@ -107,7 +101,6 @@ fun NewsScreen(
                 verticalArrangement = Arrangement.spacedBy(16.dp),
                 contentPadding = PaddingValues(top = 72.dp, bottom = 100.dp)
             ) {
-                // Buscador
                 item {
                     NewsSearchBar(
                         searchQuery = searchQuery,
@@ -117,7 +110,6 @@ fun NewsScreen(
                     )
                 }
 
-                // 🔥 Mostrar loading
                 if (isLoading && newsList.isEmpty()) {
                     item {
                         Box(
@@ -131,7 +123,6 @@ fun NewsScreen(
                     }
                 }
 
-                // 🔥 Mostrar error
                 if (errorMessage != null) {
                     item {
                         Text(
@@ -146,7 +137,6 @@ fun NewsScreen(
                     }
                 }
 
-                // 🔥 Noticia destacada (última con isImportant = true)
                 if (showFeaturedNews && featuredNews != null) {
                     item {
                         Column(modifier = Modifier.padding(horizontal = 16.dp)) {
@@ -170,12 +160,16 @@ fun NewsScreen(
                                     )
                                 }
                             }
-                            NewsCard(news = featuredNews)
+                            NewsCard(
+                                news = featuredNews,
+                                onCommentClick = {
+                                    navController.navigate("news_detail/${featuredNews.id}")
+                                }
+                            )
                         }
                     }
                 }
 
-                // Últimas noticias header
                 if (filteredNews.isNotEmpty()) {
                     item {
                         Row(
@@ -201,7 +195,6 @@ fun NewsScreen(
                     }
                 }
 
-                // 🔥 Lista de noticias normales
                 if (filteredNews.isEmpty() && !isLoading) {
                     item {
                         Text(
@@ -218,6 +211,9 @@ fun NewsScreen(
                     items(filteredNews) { news ->
                         NewsListItem(
                             news = news,
+                            onCommentClick = {
+                                navController.navigate("news_detail/${news.id}")
+                            },
                             modifier = Modifier.padding(horizontal = 16.dp)
                         )
                     }
@@ -225,7 +221,6 @@ fun NewsScreen(
             }
         }
 
-        // Bottom Navigation Menu
         Box(
             modifier = Modifier
                 .align(Alignment.BottomCenter)
@@ -240,7 +235,6 @@ fun NewsScreen(
             )
         }
 
-        // Side Menu
         Box(
             modifier = Modifier
                 .fillMaxSize()

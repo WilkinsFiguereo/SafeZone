@@ -1,6 +1,5 @@
 package com.wilkins.safezone.frontend.ui.Moderator.screens.Survey
 
-
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll

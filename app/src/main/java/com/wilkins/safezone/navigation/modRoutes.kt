@@ -16,6 +16,7 @@ import com.wilkins.safezone.frontend.ui.Moderator.screens.News.NewsListScreen
 import com.wilkins.safezone.frontend.ui.Moderator.screens.News.NewsSaveScreen
 import com.wilkins.safezone.frontend.ui.Moderator.screens.ReviewReports.ReportsList.RewiewReportsListScreen
 import com.wilkins.safezone.frontend.ui.Moderator.screens.Statistics.ModeratorStatisticsScreen
+import com.wilkins.safezone.frontend.ui.Moderator.screens.Survey.SurveyCreateScreen
 import com.wilkins.safezone.frontend.ui.Moderator.screens.Survey.SurveyResultsScreen
 
 /**
@@ -115,17 +116,42 @@ fun NavGraphBuilder.moderatorRoutes(
     // ════════════════════════════════════════════
     // Survery
     // ════════════════════════════════════════════
-//    composable("survery") {
-//        if (!hasActiveSession()) {
-//            Log.w("ModeratorRoutes", "⚠️ Intento de acceso sin sesión a DashboardMod")
-//            navController.navigate("login") {
-//                popUpTo(0) { inclusive = true }
-//            }
-//        } else {
-//
-//            SurveyResultsScreen(navController = navController)
-//        }
-//    }
+    composable("surveyResult") { backStackEntry ->
+
+        if (!hasActiveSession()) {
+            Log.w("ModeratorRoutes", "⚠️ Intento de acceso sin sesión a DashboardMod")
+            navController.navigate("login") {
+                popUpTo(0) { inclusive = true }
+            }
+            return@composable
+        }
+
+        val surveyId = backStackEntry.arguments?.getString("surveyId") ?: ""
+
+        SurveyResultsScreen(
+            navController = navController,
+            surveyId = surveyId
+        )
+    }
+
+
+    composable("surveyCreate") { backStackEntry ->
+
+        if (!hasActiveSession()) {
+            Log.w("ModeratorRoutes", "⚠️ Intento de acceso sin sesión a DashboardMod")
+            navController.navigate("login") {
+                popUpTo(0) { inclusive = true }
+            }
+            return@composable
+        }
+
+        SurveyCreateScreen(
+            navController = navController
+        )
+    }
+
+
+
 
     // ════════════════════════════════════════════
     // Moderator User

@@ -1,9 +1,16 @@
 package com.wilkins.safezone.frontend.ui.Moderator.screens.Survey
 
-
+import androidx.compose.animation.*
+import androidx.compose.animation.core.*
+import androidx.compose.foundation.BorderStroke
+import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.*
-import androidx.compose.foundation.rememberScrollState
-import androidx.compose.foundation.verticalScroll
+import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.itemsIndexed
+import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.*
@@ -11,15 +18,20 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.shadow
+import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.input.KeyboardType
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.NavController
 import com.wilkins.safezone.backend.network.Moderator.Survery.CreateQuestionRequest
+import com.wilkins.safezone.backend.network.Moderator.Survery.SurveyViewModel
 import kotlinx.coroutines.launch
 import java.util.UUID
-import com.wilkins.safezone.backend.network.Moderator.Survery.SurveyViewModel
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -41,143 +53,180 @@ fun SurveyCreateScreen(
         viewModel.clearMessages()
     }
 
-    Scaffold(
-        topBar = {
-            TopAppBar(
-                title = { Text("Crear Encuesta") },
-                navigationIcon = {
-                    IconButton(onClick = { navController.popBackStack() }) {
-                        Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Volver")
-                    }
-                }
+    Box(
+        modifier = Modifier
+            .fillMaxSize()
+            .background(
+                Brush.verticalGradient(
+                    colors = listOf(
+                        MaterialTheme.colorScheme.primary.copy(alpha = 0.05f),
+                        MaterialTheme.colorScheme.surface,
+                        MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.1f)
+                    )
+                )
             )
-        },
-        floatingActionButton = {
-            FloatingActionButton(
-                onClick = {
-                    questionsList = questionsList + QuestionData(id = UUID.randomUUID().toString())
-                },
-                containerColor = MaterialTheme.colorScheme.primary
+    ) {
+        Column(modifier = Modifier.fillMaxSize()) {
+            // Modern Top Bar
+            ModernTopBar(
+                onBackClick = { navController.popBackStack() },
+                questionsCount = questionsList.size
+            )
+
+            LazyColumn(
+                modifier = Modifier
+                    .weight(1f)
+                    .fillMaxWidth(),
+                contentPadding = PaddingValues(16.dp),
+                verticalArrangement = Arrangement.spacedBy(20.dp)
             ) {
-                Icon(Icons.Default.Add, contentDescription = "Agregar Pregunta")
-            }
-        }
-    ) { padding ->
-        Column(
-            modifier = Modifier
-                .fillMaxSize()
-                .padding(padding)
-                .verticalScroll(rememberScrollState())
-                .padding(16.dp),
-            verticalArrangement = Arrangement.spacedBy(16.dp)
-        ) {
-            error?.let {
-                Card(
-                    modifier = Modifier.fillMaxWidth(),
-                    colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.errorContainer)
-                ) {
-                    Text(text = it, modifier = Modifier.padding(16.dp), color = MaterialTheme.colorScheme.onErrorContainer)
-                }
-            }
-
-            successMessage?.let {
-                Card(
-                    modifier = Modifier.fillMaxWidth(),
-                    colors = CardDefaults.cardColors(containerColor = Color(0xFF4CAF50))
-                ) {
-                    Text(text = it, modifier = Modifier.padding(16.dp), color = Color.White, fontWeight = FontWeight.Bold)
-                }
-            }
-
-            validationError?.let {
-                Card(
-                    modifier = Modifier.fillMaxWidth(),
-                    colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.errorContainer)
-                ) {
-                    Text(text = it, modifier = Modifier.padding(16.dp), color = MaterialTheme.colorScheme.onErrorContainer)
-                }
-            }
-
-            OutlinedTextField(
-                value = title,
-                onValueChange = { title = it },
-                label = { Text("Título de la Encuesta *") },
-                modifier = Modifier.fillMaxWidth(),
-                singleLine = true
-            )
-
-            OutlinedTextField(
-                value = description,
-                onValueChange = { description = it },
-                label = { Text("Descripción (opcional)") },
-                modifier = Modifier.fillMaxWidth().height(100.dp),
-                maxLines = 4
-            )
-
-            HorizontalDivider()
-
-            Text("Preguntas", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
-
-            if (questionsList.isEmpty()) {
-                Card(
-                    modifier = Modifier.fillMaxWidth(),
-                    colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant)
-                ) {
-                    Column(
-                        modifier = Modifier.padding(16.dp),
-                        horizontalAlignment = Alignment.CenterHorizontally,
-                        verticalArrangement = Arrangement.spacedBy(8.dp)
+                // Messages
+                item {
+                    AnimatedVisibility(
+                        visible = error != null || successMessage != null || validationError != null,
+                        enter = slideInVertically(initialOffsetY = { -it }) + fadeIn(),
+                        exit = slideOutVertically(targetOffsetY = { -it }) + fadeOut()
                     ) {
-                        Icon(Icons.Default.QuestionMark, contentDescription = "Sin preguntas", tint = MaterialTheme.colorScheme.onSurfaceVariant)
-                        Text("No hay preguntas agregadas", color = MaterialTheme.colorScheme.onSurfaceVariant)
-                        Text("Haz clic en el botón + para agregar", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.outline)
+                        Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                            error?.let {
+                                MessageCard(message = it, isError = true)
+                            }
+                            validationError?.let {
+                                MessageCard(message = it, isError = true)
+                            }
+                            successMessage?.let {
+                                MessageCard(message = it, isError = false)
+                            }
+                        }
                     }
                 }
-            } else {
-                questionsList.forEachIndexed { index, question ->
-                    key(question.id) {
-                        EditableQuestionItem(
-                            question = question,
-                            questionNumber = index + 1,
-                            onQuestionChange = { updatedQuestion ->
-                                questionsList = questionsList.toMutableList().apply {
-                                    set(index, updatedQuestion)
-                                }
+
+                // Survey Header Section
+                item {
+                    SurveyHeaderSection(
+                        title = title,
+                        description = description,
+                        onTitleChange = { title = it },
+                        onDescriptionChange = { description = it }
+                    )
+                }
+
+                // Questions Section Header
+                item {
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Row(
+                            horizontalArrangement = Arrangement.spacedBy(12.dp),
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            Box(
+                                modifier = Modifier
+                                    .size(40.dp)
+                                    .clip(CircleShape)
+                                    .background(MaterialTheme.colorScheme.primaryContainer),
+                                contentAlignment = Alignment.Center
+                            ) {
+                                Text(
+                                    questionsList.size.toString(),
+                                    style = MaterialTheme.typography.titleMedium,
+                                    fontWeight = FontWeight.Bold,
+                                    color = MaterialTheme.colorScheme.primary
+                                )
+                            }
+                            Text(
+                                "Preguntas",
+                                style = MaterialTheme.typography.titleLarge,
+                                fontWeight = FontWeight.Bold
+                            )
+                        }
+
+                        FilledTonalButton(
+                            onClick = {
+                                questionsList = questionsList + QuestionData(id = UUID.randomUUID().toString())
                             },
-                            onDelete = {
-                                questionsList = questionsList.toMutableList().apply {
-                                    removeAt(index)
-                                }
+                            shape = RoundedCornerShape(16.dp),
+                            contentPadding = PaddingValues(horizontal = 20.dp, vertical = 12.dp)
+                        ) {
+                            Icon(
+                                imageVector = Icons.Default.Add,
+                                contentDescription = null,
+                                modifier = Modifier.size(20.dp)
+                            )
+                            Spacer(modifier = Modifier.width(8.dp))
+                            Text("Nueva", fontWeight = FontWeight.SemiBold)
+                        }
+                    }
+                }
+
+                // Empty State or Questions List
+                if (questionsList.isEmpty()) {
+                    item {
+                        EmptyQuestionsState(
+                            onAddClick = {
+                                questionsList = questionsList + QuestionData(id = UUID.randomUUID().toString())
                             }
                         )
                     }
+                } else {
+                    itemsIndexed(
+                        items = questionsList,
+                        key = { _, question -> question.id }
+                    ) { index, question ->
+                        AnimatedVisibility(
+                            visible = true,
+                            enter = fadeIn() + expandVertically(),
+                            exit = fadeOut() + shrinkVertically()
+                        ) {
+                            EditableQuestionItem(
+                                question = question,
+                                questionNumber = index + 1,
+                                onQuestionChange = { updatedQuestion ->
+                                    questionsList = questionsList.toMutableList().apply {
+                                        set(index, updatedQuestion)
+                                    }
+                                },
+                                onDelete = {
+                                    questionsList = questionsList.toMutableList().apply {
+                                        removeAt(index)
+                                    }
+                                }
+                            )
+                        }
+                    }
+                }
+
+                item {
+                    Spacer(modifier = Modifier.height(100.dp))
                 }
             }
 
-            Spacer(modifier = Modifier.height(16.dp))
-
-            Button(
+            // Submit Button
+            CreateSurveyButton(
+                isLoading = isLoading,
                 onClick = {
                     validationError = null
                     if (title.isBlank()) {
                         validationError = "El título es obligatorio"
-                        return@Button
+                        return@CreateSurveyButton
                     }
                     if (questionsList.isEmpty()) {
                         validationError = "Debe agregar al menos una pregunta"
-                        return@Button
+                        return@CreateSurveyButton
                     }
 
                     questionsList.forEachIndexed { i, q ->
                         if (q.text.isBlank()) {
                             validationError = "La pregunta ${i + 1} no puede estar vacía"
-                            return@Button
+                            return@CreateSurveyButton
                         }
                         if (q.type == "multiple_choice") {
                             val validOpts = q.options.filter { it.isNotBlank() }
                             if (validOpts.isEmpty()) {
                                 validationError = "La pregunta ${i + 1} debe tener al menos una opción válida"
-                                return@Button
+                                return@CreateSurveyButton
                             }
                         }
                     }
@@ -205,18 +254,349 @@ fun SurveyCreateScreen(
                             navController.popBackStack()
                         }
                     }
-                },
-                modifier = Modifier.fillMaxWidth().height(56.dp),
-                enabled = !isLoading
+                }
+            )
+        }
+    }
+}
+
+@Composable
+private fun ModernTopBar(
+    onBackClick: () -> Unit,
+    questionsCount: Int
+) {
+    Surface(
+        modifier = Modifier.fillMaxWidth(),
+        color = Color.Transparent
+    ) {
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(horizontal = 8.dp, vertical = 12.dp),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.SpaceBetween
+        ) {
+            Row(
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(16.dp)
             ) {
-                if (isLoading) {
-                    CircularProgressIndicator(modifier = Modifier.size(24.dp), color = MaterialTheme.colorScheme.onPrimary)
-                } else {
-                    Text("Crear Encuesta", style = MaterialTheme.typography.titleMedium)
+                IconButton(
+                    onClick = onBackClick,
+                    modifier = Modifier
+                        .size(48.dp)
+                        .clip(CircleShape)
+                        .background(MaterialTheme.colorScheme.surface)
+                        .shadow(4.dp, CircleShape)
+                ) {
+                    Icon(
+                        imageVector = Icons.AutoMirrored.Filled.ArrowBack,
+                        contentDescription = "Volver",
+                        tint = MaterialTheme.colorScheme.onSurface
+                    )
+                }
+                Column {
+                    Text(
+                        "Crear Encuesta",
+                        style = MaterialTheme.typography.headlineMedium,
+                        fontWeight = FontWeight.Bold,
+                        color = MaterialTheme.colorScheme.onSurface
+                    )
+                    if (questionsCount > 0) {
+                        Text(
+                            "$questionsCount pregunta${if (questionsCount != 1) "s" else ""}",
+                            style = MaterialTheme.typography.bodyMedium,
+                            color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.6f)
+                        )
+                    }
+                }
+            }
+        }
+    }
+}
+
+@Composable
+private fun MessageCard(message: String, isError: Boolean) {
+    Card(
+        modifier = Modifier.fillMaxWidth(),
+        colors = CardDefaults.cardColors(
+            containerColor = if (isError)
+                MaterialTheme.colorScheme.errorContainer.copy(alpha = 0.15f)
+            else
+                MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.3f)
+        ),
+        shape = RoundedCornerShape(16.dp),
+        border = BorderStroke(
+            2.dp,
+            if (isError)
+                MaterialTheme.colorScheme.error.copy(alpha = 0.3f)
+            else
+                MaterialTheme.colorScheme.primary.copy(alpha = 0.3f)
+        )
+    ) {
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(16.dp),
+            horizontalArrangement = Arrangement.spacedBy(12.dp),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Icon(
+                imageVector = if (isError) Icons.Default.Warning else Icons.Default.CheckCircle,
+                contentDescription = null,
+                tint = if (isError) MaterialTheme.colorScheme.error else MaterialTheme.colorScheme.primary,
+                modifier = Modifier.size(24.dp)
+            )
+            Text(
+                text = message,
+                style = MaterialTheme.typography.bodyMedium,
+                fontWeight = FontWeight.Medium,
+                color = if (isError)
+                    MaterialTheme.colorScheme.error
+                else
+                    MaterialTheme.colorScheme.primary
+            )
+        }
+    }
+}
+
+@Composable
+private fun SurveyHeaderSection(
+    title: String,
+    description: String,
+    onTitleChange: (String) -> Unit,
+    onDescriptionChange: (String) -> Unit
+) {
+    Card(
+        modifier = Modifier.fillMaxWidth(),
+        colors = CardDefaults.cardColors(
+            containerColor = MaterialTheme.colorScheme.surface
+        ),
+        shape = RoundedCornerShape(24.dp),
+        elevation = CardDefaults.cardElevation(4.dp)
+    ) {
+        Column(
+            modifier = Modifier.padding(24.dp),
+            verticalArrangement = Arrangement.spacedBy(20.dp)
+        ) {
+            Row(
+                horizontalArrangement = Arrangement.spacedBy(12.dp),
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Box(
+                    modifier = Modifier
+                        .size(56.dp)
+                        .clip(RoundedCornerShape(16.dp))
+                        .background(
+                            Brush.linearGradient(
+                                colors = listOf(
+                                    MaterialTheme.colorScheme.primary,
+                                    MaterialTheme.colorScheme.primary.copy(alpha = 0.7f)
+                                )
+                            )
+                        ),
+                    contentAlignment = Alignment.Center
+                ) {
+                    Icon(
+                        imageVector = Icons.Default.Edit,
+                        contentDescription = null,
+                        modifier = Modifier.size(28.dp),
+                        tint = Color.White
+                    )
+                }
+                Column {
+                    Text(
+                        "Información General",
+                        style = MaterialTheme.typography.titleLarge,
+                        fontWeight = FontWeight.Bold
+                    )
+                    Text(
+                        "Completa los datos básicos",
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.6f)
+                    )
                 }
             }
 
-            Spacer(modifier = Modifier.height(100.dp))
+            OutlinedTextField(
+                value = title,
+                onValueChange = onTitleChange,
+                label = { Text("Título de la Encuesta") },
+                placeholder = { Text("Ej: Encuesta de Satisfacción 2025") },
+                leadingIcon = {
+                    Icon(
+                        imageVector = Icons.Default.Title,
+                        contentDescription = null,
+                        tint = MaterialTheme.colorScheme.primary
+                    )
+                },
+                trailingIcon = {
+                    if (title.isNotBlank()) {
+                        IconButton(onClick = { onTitleChange("") }) {
+                            Icon(
+                                imageVector = Icons.Default.Clear,
+                                contentDescription = "Limpiar",
+                                modifier = Modifier.size(20.dp)
+                            )
+                        }
+                    }
+                },
+                modifier = Modifier.fillMaxWidth(),
+                singleLine = true,
+                shape = RoundedCornerShape(16.dp),
+                colors = OutlinedTextFieldDefaults.colors(
+                    focusedBorderColor = MaterialTheme.colorScheme.primary,
+                    unfocusedBorderColor = MaterialTheme.colorScheme.outline.copy(alpha = 0.5f)
+                )
+            )
+
+            OutlinedTextField(
+                value = description,
+                onValueChange = onDescriptionChange,
+                label = { Text("Descripción (opcional)") },
+                placeholder = { Text("Describe el propósito de la encuesta...") },
+                leadingIcon = {
+                    Icon(
+                        imageVector = Icons.Default.Description,
+                        contentDescription = null,
+                        tint = MaterialTheme.colorScheme.primary
+                    )
+                },
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .height(120.dp),
+                maxLines = 4,
+                shape = RoundedCornerShape(16.dp),
+                colors = OutlinedTextFieldDefaults.colors(
+                    focusedBorderColor = MaterialTheme.colorScheme.primary,
+                    unfocusedBorderColor = MaterialTheme.colorScheme.outline.copy(alpha = 0.5f)
+                )
+            )
+        }
+    }
+}
+
+@Composable
+private fun EmptyQuestionsState(onAddClick: () -> Unit) {
+    Card(
+        modifier = Modifier.fillMaxWidth(),
+        colors = CardDefaults.cardColors(
+            containerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f)
+        ),
+        shape = RoundedCornerShape(24.dp)
+    ) {
+        Column(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(48.dp),
+            horizontalAlignment = Alignment.CenterHorizontally,
+            verticalArrangement = Arrangement.spacedBy(20.dp)
+        ) {
+            Box(
+                modifier = Modifier
+                    .size(100.dp)
+                    .clip(CircleShape)
+                    .background(MaterialTheme.colorScheme.surface),
+                contentAlignment = Alignment.Center
+            ) {
+                Icon(
+                    imageVector = Icons.Default.QuestionMark,
+                    contentDescription = null,
+                    modifier = Modifier.size(48.dp),
+                    tint = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.4f)
+                )
+            }
+
+            Column(
+                horizontalAlignment = Alignment.CenterHorizontally,
+                verticalArrangement = Arrangement.spacedBy(8.dp)
+            ) {
+                Text(
+                    "No hay preguntas",
+                    style = MaterialTheme.typography.titleLarge,
+                    fontWeight = FontWeight.Bold,
+                    color = MaterialTheme.colorScheme.onSurface
+                )
+                Text(
+                    "Agrega preguntas para comenzar a crear tu encuesta",
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.6f),
+                    textAlign = TextAlign.Center
+                )
+            }
+
+            Button(
+                onClick = onAddClick,
+                shape = RoundedCornerShape(16.dp),
+                modifier = Modifier.height(48.dp),
+                contentPadding = PaddingValues(horizontal = 24.dp)
+            ) {
+                Icon(
+                    imageVector = Icons.Default.Add,
+                    contentDescription = null,
+                    modifier = Modifier.size(20.dp)
+                )
+                Spacer(modifier = Modifier.width(8.dp))
+                Text(
+                    "Agregar Primera Pregunta",
+                    fontWeight = FontWeight.SemiBold
+                )
+            }
+        }
+    }
+}
+
+@Composable
+private fun CreateSurveyButton(
+    isLoading: Boolean,
+    onClick: () -> Unit
+) {
+    Surface(
+        modifier = Modifier.fillMaxWidth(),
+        color = MaterialTheme.colorScheme.surface,
+        shadowElevation = 12.dp,
+        shape = RoundedCornerShape(topStart = 28.dp, topEnd = 28.dp)
+    ) {
+        Button(
+            onClick = onClick,
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(20.dp)
+                .height(64.dp),
+            shape = RoundedCornerShape(20.dp),
+            enabled = !isLoading,
+            colors = ButtonDefaults.buttonColors(
+                containerColor = MaterialTheme.colorScheme.primary,
+                disabledContainerColor = MaterialTheme.colorScheme.surfaceVariant
+            ),
+            elevation = ButtonDefaults.buttonElevation(
+                defaultElevation = 4.dp,
+                pressedElevation = 8.dp,
+                disabledElevation = 0.dp
+            )
+        ) {
+            if (isLoading) {
+                CircularProgressIndicator(
+                    modifier = Modifier.size(28.dp),
+                    color = Color.White,
+                    strokeWidth = 3.dp
+                )
+            } else {
+                Row(
+                    horizontalArrangement = Arrangement.spacedBy(12.dp),
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Icon(
+                        imageVector = Icons.Default.Send,
+                        contentDescription = null,
+                        modifier = Modifier.size(28.dp)
+                    )
+                    Text(
+                        "Crear Encuesta",
+                        style = MaterialTheme.typography.titleLarge,
+                        fontWeight = FontWeight.Bold
+                    )
+                }
+            }
         }
     }
 }
@@ -240,6 +620,7 @@ fun EditableQuestionItem(
     var localType by remember { mutableStateOf(question.type) }
     var localOptions by remember { mutableStateOf(question.options) }
     var localRequired by remember { mutableStateOf(question.required) }
+    var isExpanded by remember { mutableStateOf(true) }
 
     LaunchedEffect(localText, localType, localOptions, localRequired) {
         onQuestionChange(
@@ -254,129 +635,388 @@ fun EditableQuestionItem(
 
     Card(
         modifier = Modifier.fillMaxWidth(),
-        elevation = CardDefaults.cardElevation(4.dp)
+        colors = CardDefaults.cardColors(
+            containerColor = MaterialTheme.colorScheme.surface
+        ),
+        shape = RoundedCornerShape(20.dp),
+        elevation = CardDefaults.cardElevation(2.dp)
     ) {
         Column(
-            modifier = Modifier.padding(16.dp),
-            verticalArrangement = Arrangement.spacedBy(12.dp)
+            modifier = Modifier.padding(20.dp),
+            verticalArrangement = Arrangement.spacedBy(16.dp)
         ) {
+            // Header
             Row(
                 modifier = Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.SpaceBetween,
                 verticalAlignment = Alignment.CenterVertically
             ) {
-                Text("Pregunta $questionNumber", style = MaterialTheme.typography.titleSmall, fontWeight = FontWeight.Bold, modifier = Modifier.weight(1f))
-                IconButton(onClick = onDelete, modifier = Modifier.size(24.dp)) {
-                    Icon(Icons.Default.Delete, contentDescription = "Eliminar", tint = MaterialTheme.colorScheme.error)
+                Row(
+                    horizontalArrangement = Arrangement.spacedBy(12.dp),
+                    verticalAlignment = Alignment.CenterVertically,
+                    modifier = Modifier.weight(1f)
+                ) {
+                    Box(
+                        modifier = Modifier
+                            .size(40.dp)
+                            .clip(CircleShape)
+                            .background(
+                                Brush.linearGradient(
+                                    colors = listOf(
+                                        MaterialTheme.colorScheme.primary,
+                                        MaterialTheme.colorScheme.primary.copy(alpha = 0.8f)
+                                    )
+                                )
+                            ),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        Text(
+                            questionNumber.toString(),
+                            style = MaterialTheme.typography.titleSmall,
+                            fontWeight = FontWeight.Bold,
+                            color = Color.White
+                        )
+                    }
+                    Column {
+                        Text(
+                            "Pregunta $questionNumber",
+                            style = MaterialTheme.typography.titleMedium,
+                            fontWeight = FontWeight.Bold
+                        )
+                        Text(
+                            getQuestionTypeLabel(localType),
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.6f)
+                        )
+                    }
+                }
+
+                Row(horizontalArrangement = Arrangement.spacedBy(4.dp)) {
+                    IconButton(
+                        onClick = { isExpanded = !isExpanded },
+                        modifier = Modifier.size(36.dp)
+                    ) {
+                        Icon(
+                            imageVector = if (isExpanded) Icons.Default.ExpandLess else Icons.Default.ExpandMore,
+                            contentDescription = if (isExpanded) "Contraer" else "Expandir",
+                            tint = MaterialTheme.colorScheme.primary
+                        )
+                    }
+                    IconButton(
+                        onClick = onDelete,
+                        modifier = Modifier.size(36.dp)
+                    ) {
+                        Icon(
+                            imageVector = Icons.Default.Delete,
+                            contentDescription = "Eliminar",
+                            tint = MaterialTheme.colorScheme.error
+                        )
+                    }
                 }
             }
 
-            OutlinedTextField(
-                value = localText,
-                onValueChange = { localText = it },
-                label = { Text("Texto de la pregunta *") },
-                modifier = Modifier.fillMaxWidth(),
-                maxLines = 3
-            )
-
-            Text("Tipo de pregunta:", style = MaterialTheme.typography.bodyMedium, fontWeight = FontWeight.SemiBold)
-
-            Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                FilterChip(
-                    selected = localType == "text",
-                    onClick = { localType = "text" },
-                    label = { Text("Texto") },
-                    modifier = Modifier.weight(1f)
-                )
-                FilterChip(
-                    selected = localType == "multiple_choice",
-                    onClick = { localType = "multiple_choice" },
-                    label = { Text("Opciones") },
-                    modifier = Modifier.weight(1f)
-                )
-            }
-
-            Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                FilterChip(
-                    selected = localType == "number",
-                    onClick = { localType = "number" },
-                    label = { Text("Número") },
-                    modifier = Modifier.weight(1f)
-                )
-                FilterChip(
-                    selected = localType == "boolean",
-                    onClick = { localType = "boolean" },
-                    label = { Text("Sí/No") },
-                    modifier = Modifier.weight(1f)
-                )
-            }
-
-            if (localType == "multiple_choice") {
-                Text("Opciones:", style = MaterialTheme.typography.bodyMedium, fontWeight = FontWeight.SemiBold)
-
-                localOptions.forEachIndexed { index, option ->
-                    Row(
-                        verticalAlignment = Alignment.CenterVertically,
-                        horizontalArrangement = Arrangement.spacedBy(8.dp),
-                        modifier = Modifier.fillMaxWidth()
-                    ) {
-                        OutlinedTextField(
-                            value = option,
-                            onValueChange = { newValue ->
-                                localOptions = localOptions.toMutableList().apply {
-                                    set(index, newValue)
-                                }
-                            },
-                            label = { Text("Opción ${index + 1}") },
-                            modifier = Modifier.weight(1f),
-                            singleLine = true
+            AnimatedVisibility(
+                visible = isExpanded,
+                enter = expandVertically() + fadeIn(),
+                exit = shrinkVertically() + fadeOut()
+            ) {
+                Column(verticalArrangement = Arrangement.spacedBy(16.dp)) {
+                    // Question Text
+                    OutlinedTextField(
+                        value = localText,
+                        onValueChange = { localText = it },
+                        label = { Text("Texto de la pregunta") },
+                        placeholder = { Text("Escribe tu pregunta aquí...") },
+                        modifier = Modifier.fillMaxWidth(),
+                        maxLines = 3,
+                        shape = RoundedCornerShape(16.dp),
+                        colors = OutlinedTextFieldDefaults.colors(
+                            focusedBorderColor = MaterialTheme.colorScheme.primary,
+                            unfocusedBorderColor = MaterialTheme.colorScheme.outline.copy(alpha = 0.5f)
                         )
-                        IconButton(
-                            onClick = {
-                                if (localOptions.size > 2) {
-                                    localOptions = localOptions.toMutableList().apply {
-                                        removeAt(index)
+                    )
+
+                    // Question Type
+                    Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
+                        Text(
+                            "Tipo de respuesta",
+                            style = MaterialTheme.typography.titleSmall,
+                            fontWeight = FontWeight.SemiBold,
+                            color = MaterialTheme.colorScheme.onSurface
+                        )
+
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.spacedBy(8.dp)
+                        ) {
+                            QuestionTypeChip(
+                                label = "Texto",
+                                icon = Icons.Default.TextFields,
+                                selected = localType == "text",
+                                onClick = { localType = "text" },
+                                modifier = Modifier.weight(1f)
+                            )
+                            QuestionTypeChip(
+                                label = "Opciones",
+                                icon = Icons.Default.List,
+                                selected = localType == "multiple_choice",
+                                onClick = { localType = "multiple_choice" },
+                                modifier = Modifier.weight(1f)
+                            )
+                        }
+
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.spacedBy(8.dp)
+                        ) {
+                            QuestionTypeChip(
+                                label = "Número",
+                                icon = Icons.Default.Tag,
+                                selected = localType == "number",
+                                onClick = { localType = "number" },
+                                modifier = Modifier.weight(1f)
+                            )
+                            QuestionTypeChip(
+                                label = "Sí/No",
+                                icon = Icons.Default.ToggleOn,
+                                selected = localType == "boolean",
+                                onClick = { localType = "boolean" },
+                                modifier = Modifier.weight(1f)
+                            )
+                        }
+                    }
+
+                    // Multiple Choice Options
+                    if (localType == "multiple_choice") {
+                        Card(
+                            colors = CardDefaults.cardColors(
+                                containerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.3f)
+                            ),
+                            shape = RoundedCornerShape(16.dp)
+                        ) {
+                            Column(
+                                modifier = Modifier.padding(16.dp),
+                                verticalArrangement = Arrangement.spacedBy(12.dp)
+                            ) {
+                                Row(
+                                    horizontalArrangement = Arrangement.spacedBy(8.dp),
+                                    verticalAlignment = Alignment.CenterVertically
+                                ) {
+                                    Icon(
+                                        imageVector = Icons.Default.List,
+                                        contentDescription = null,
+                                        modifier = Modifier.size(20.dp),
+                                        tint = MaterialTheme.colorScheme.primary
+                                    )
+                                    Text(
+                                        "Opciones de respuesta",
+                                        style = MaterialTheme.typography.titleSmall,
+                                        fontWeight = FontWeight.SemiBold
+                                    )
+                                }
+
+                                localOptions.forEachIndexed { index, option ->
+                                    Row(
+                                        verticalAlignment = Alignment.CenterVertically,
+                                        horizontalArrangement = Arrangement.spacedBy(8.dp),
+                                        modifier = Modifier.fillMaxWidth()
+                                    ) {
+                                        Box(
+                                            modifier = Modifier
+                                                .size(24.dp)
+                                                .clip(CircleShape)
+                                                .background(MaterialTheme.colorScheme.primary.copy(alpha = 0.2f)),
+                                            contentAlignment = Alignment.Center
+                                        ) {
+                                            Text(
+                                                "${index + 1}",
+                                                style = MaterialTheme.typography.labelSmall,
+                                                fontWeight = FontWeight.Bold,
+                                                color = MaterialTheme.colorScheme.primary
+                                            )
+                                        }
+
+                                        OutlinedTextField(
+                                            value = option,
+                                            onValueChange = { newValue ->
+                                                localOptions = localOptions.toMutableList().apply {
+                                                    set(index, newValue)
+                                                }
+                                            },
+                                            placeholder = { Text("Opción ${index + 1}") },
+                                            modifier = Modifier.weight(1f),
+                                            singleLine = true,
+                                            shape = RoundedCornerShape(12.dp),
+                                            colors = OutlinedTextFieldDefaults.colors(
+                                                focusedBorderColor = MaterialTheme.colorScheme.primary,
+                                                unfocusedBorderColor = MaterialTheme.colorScheme.outline.copy(alpha = 0.3f)
+                                            )
+                                        )
+
+                                        IconButton(
+                                            onClick = {
+                                                if (localOptions.size > 2) {
+                                                    localOptions = localOptions.toMutableList().apply {
+                                                        removeAt(index)
+                                                    }
+                                                }
+                                            },
+                                            enabled = localOptions.size > 2,
+                                            modifier = Modifier.size(36.dp)
+                                        ) {
+                                            Icon(
+                                                Icons.Default.Close,
+                                                contentDescription = "Eliminar",
+                                                tint = if (localOptions.size > 2)
+                                                    MaterialTheme.colorScheme.error
+                                                else
+                                                    MaterialTheme.colorScheme.outline.copy(alpha = 0.3f),
+                                                modifier = Modifier.size(18.dp)
+                                            )
+                                        }
                                     }
                                 }
-                            },
-                            enabled = localOptions.size > 2
+
+                                OutlinedButton(
+                                    onClick = { localOptions = localOptions + "" },
+                                    modifier = Modifier.fillMaxWidth(),
+                                    shape = RoundedCornerShape(12.dp),
+                                    colors = ButtonDefaults.outlinedButtonColors(
+                                        contentColor = MaterialTheme.colorScheme.primary
+                                    ),
+                                    border = BorderStroke(2.dp, MaterialTheme.colorScheme.primary.copy(alpha = 0.5f))
+                                ) {
+                                    Icon(
+                                        Icons.Default.Add,
+                                        contentDescription = null,
+                                        modifier = Modifier.size(18.dp)
+                                    )
+                                    Spacer(modifier = Modifier.width(8.dp))
+                                    Text("Agregar opción", fontWeight = FontWeight.Medium)
+                                }
+                            }
+                        }
+                    }
+
+                    // Required Toggle
+                    Card(
+                        colors = CardDefaults.cardColors(
+                            containerColor = if (localRequired)
+                                MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.3f)
+                            else
+                                MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.3f)
+                        ),
+                        shape = RoundedCornerShape(16.dp)
+                    ) {
+                        Row(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .padding(16.dp),
+                            horizontalArrangement = Arrangement.SpaceBetween,
+                            verticalAlignment = Alignment.CenterVertically
                         ) {
-                            Icon(
-                                Icons.Default.Remove,
-                                contentDescription = "Eliminar",
-                                tint = if (localOptions.size > 2) MaterialTheme.colorScheme.error else MaterialTheme.colorScheme.outline
+                            Row(
+                                horizontalArrangement = Arrangement.spacedBy(12.dp),
+                                verticalAlignment = Alignment.CenterVertically
+                            ) {
+                                Icon(
+                                    imageVector = Icons.Default.StarRate,
+                                    contentDescription = null,
+                                    tint = if (localRequired)
+                                        MaterialTheme.colorScheme.primary
+                                    else
+                                        MaterialTheme.colorScheme.onSurface.copy(alpha = 0.5f),
+                                    modifier = Modifier.size(24.dp)
+                                )
+                                Column {
+                                    Text(
+                                        "Pregunta obligatoria",
+                                        style = MaterialTheme.typography.titleSmall,
+                                        fontWeight = FontWeight.SemiBold,
+                                        color = MaterialTheme.colorScheme.onSurface
+                                    )
+                                    Text(
+                                        if (localRequired) "Los usuarios deben responder" else "Respuesta opcional",
+                                        style = MaterialTheme.typography.bodySmall,
+                                        color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.6f)
+                                    )
+                                }
+                            }
+                            Switch(
+                                checked = localRequired,
+                                onCheckedChange = { localRequired = it }
                             )
                         }
                     }
                 }
-
-                Button(
-                    onClick = {
-                        localOptions = localOptions + ""
-                    },
-                    modifier = Modifier.fillMaxWidth(),
-                    colors = ButtonDefaults.buttonColors(
-                        containerColor = MaterialTheme.colorScheme.secondaryContainer,
-                        contentColor = MaterialTheme.colorScheme.onSecondaryContainer
-                    )
-                ) {
-                    Icon(Icons.Default.Add, contentDescription = null)
-                    Spacer(modifier = Modifier.width(8.dp))
-                    Text("Agregar opción")
-                }
             }
+        }
+    }
+}
 
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.SpaceBetween,
-                verticalAlignment = Alignment.CenterVertically
+@Composable
+private fun QuestionTypeChip(
+    label: String,
+    icon: androidx.compose.ui.graphics.vector.ImageVector,
+    selected: Boolean,
+    onClick: () -> Unit,
+    modifier: Modifier = Modifier
+) {
+    Card(
+        onClick = onClick,
+        modifier = modifier,
+        colors = CardDefaults.cardColors(
+            containerColor = if (selected)
+                MaterialTheme.colorScheme.primaryContainer
+            else
+                MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f)
+        ),
+        shape = RoundedCornerShape(12.dp),
+        border = if (selected)
+            BorderStroke(2.dp, MaterialTheme.colorScheme.primary)
+        else
+            null
+    ) {
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(12.dp),
+            horizontalArrangement = Arrangement.Center,
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Column(
+                horizontalAlignment = Alignment.CenterHorizontally,
+                verticalArrangement = Arrangement.spacedBy(4.dp)
             ) {
-                Text("Pregunta obligatoria", style = MaterialTheme.typography.bodyMedium)
-                Switch(
-                    checked = localRequired,
-                    onCheckedChange = { localRequired = it }
+                Icon(
+                    imageVector = icon,
+                    contentDescription = null,
+                    modifier = Modifier.size(24.dp),
+                    tint = if (selected)
+                        MaterialTheme.colorScheme.primary
+                    else
+                        MaterialTheme.colorScheme.onSurfaceVariant
+                )
+                Text(
+                    label,
+                    style = MaterialTheme.typography.labelMedium,
+                    fontWeight = if (selected) FontWeight.Bold else FontWeight.Medium,
+                    color = if (selected)
+                        MaterialTheme.colorScheme.onPrimaryContainer
+                    else
+                        MaterialTheme.colorScheme.onSurface
                 )
             }
         }
+    }
+}
+
+private fun getQuestionTypeLabel(type: String): String {
+    return when (type) {
+        "text" -> "Respuesta de texto"
+        "multiple_choice" -> "Selección múltiple"
+        "number" -> "Respuesta numérica"
+        "boolean" -> "Sí o No"
+        else -> "Tipo desconocido"
     }
 }

@@ -67,9 +67,9 @@ fun ModeratorSideMenu(
         MenuSection(
             title = "Gestión de Encuestas",
             items = listOf(
-                ModeratorMenuItem(Icons.Default.Newspaper, "Ver Encuestas", "NewsUser"),
-                ModeratorMenuItem(Icons.Default.Add, "Subir Encuestas", "newsSave"),
-                ModeratorMenuItem(Icons.Default.Edit, "Editar Encuestas", "newsList")
+                ModeratorMenuItem(Icons.Default.Newspaper, "Ver Encuestas", "SurveyUser"),
+                ModeratorMenuItem(Icons.Default.Add, "Subir Encuestas", "surveyCreate"),
+                ModeratorMenuItem(Icons.Default.Edit, "Editar Encuestas", "surveyList")
             )
         ),
         MenuSection(

@@ -1,12 +1,18 @@
 package com.wilkins.safezone.backend.network.User.ReportSystem
 
+import android.content.ContentValues.TAG
 import android.content.Intent
 import android.util.Log
 import com.wilkins.safezone.backend.network.SupabaseService
 import io.github.jan.supabase.postgrest.from
 import io.github.jan.supabase.postgrest.query.Columns
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.withContext
 import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
+import java.text.SimpleDateFormat
+import java.util.Date
+import java.util.Locale
 
 // ========================================
 // MODELOS DE DATOS
@@ -319,6 +325,43 @@ class ReportService {
             action = Intent.ACTION_SEND
             putExtra(Intent.EXTRA_TEXT, shareText)
             type = "text/plain"
+        }
+    }
+
+    // Agregar esta función al ReportService existente
+
+    /**
+     * Crear un reporte de comentario
+     */
+    suspend fun createCommentReport(
+        reporterId: String,
+        commentId: String,
+        reportTypeId: Int,
+        message: String
+    ): Result<Unit> = withContext(Dispatchers.IO) {
+        return@withContext try {
+
+            val report = mapOf(
+                "reporter_id" to reporterId,
+                "comment_id" to commentId,
+                "report_type_id" to reportTypeId,
+                "message" to message.ifBlank { null },
+                "status" to "pending",
+                "created_at" to SimpleDateFormat(
+                    "yyyy-MM-dd HH:mm:ss.SSSSSSXXX",
+                    Locale.getDefault()
+                ).format(Date())
+            )
+
+            supabase.from("comment_reports")
+                .insert(report)
+
+            Log.d(TAG, "✅ Reporte de comentario creado exitosamente")
+            Result.success(Unit)
+
+        } catch (e: Exception) {
+            Log.e(TAG, "❌ Error al crear reporte de comentario: ${e.message}", e)
+            Result.failure(e)
         }
     }
 }

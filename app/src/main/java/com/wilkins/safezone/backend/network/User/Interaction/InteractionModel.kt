@@ -47,6 +47,7 @@ enum class InteractionType {
  */
 @Serializable
 enum class EntityType {
+
     @SerialName("report")
     REPORT,
 
@@ -57,7 +58,10 @@ enum class EntityType {
     COMMENT,
 
     @SerialName("post")
-    POST
+    POST,
+
+    @SerialName("survey")
+    SURVEY
 }
 
 /**

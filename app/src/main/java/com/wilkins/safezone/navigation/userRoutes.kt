@@ -2,23 +2,32 @@ package com.wilkins.safezone.navigation
 
 import android.content.Context
 import android.util.Log
+import androidx.compose.runtime.remember
+import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.NavGraphBuilder
 import androidx.navigation.NavHostController
 import androidx.navigation.NavType
 import androidx.navigation.compose.composable
 import androidx.navigation.navArgument
 import com.wilkins.safezone.backend.network.AppUser
+import com.wilkins.safezone.backend.network.Moderator.News.NewsViewModel
 import com.wilkins.safezone.backend.network.SupabaseService
 import com.wilkins.safezone.frontend.ui.Map.GoogleMapScreen
+import com.wilkins.safezone.frontend.ui.Moderator.screens.Survey.SurveyCreateScreen
 import com.wilkins.safezone.frontend.ui.user.Screens.Form.FormScreen
 import com.wilkins.safezone.frontend.ui.user.Screens.Form.ReportResultScreen
 import com.wilkins.safezone.frontend.ui.user.Screens.Homepage.UserHomeScreen
 import com.wilkins.safezone.frontend.ui.user.Screens.NavigationDrawer.NavigationDrawer
 import com.wilkins.safezone.frontend.ui.user.Screens.NavigationDrawer.Profile
 import com.wilkins.safezone.frontend.ui.user.Screens.NavigationDrawer.SettingsScreen
+import com.wilkins.safezone.frontend.ui.user.Screens.News.NewsDetailScreen
 import com.wilkins.safezone.frontend.ui.user.Screens.News.NewsScreen
 import com.wilkins.safezone.frontend.ui.user.Screens.Notification.NotificationsScreen
 import com.wilkins.safezone.frontend.ui.user.Screens.RecordResports.ReportHistoryScreen
+import com.wilkins.safezone.frontend.ui.user.Screens.Survey.SurveyDetailScreen
+import com.wilkins.safezone.frontend.ui.user.Screens.Survey.SurveysScreen
+import com.wilkins.safezone.frontend.ui.user.Screens.Survey.UserSurveyAnswerScreen
+import com.wilkins.safezone.frontend.ui.user.Screens.Survey.UserSurveyListScreen
 import com.wilkins.safezone.frontend.ui.user.Screens.profile.ProfileScreenWithMenu
 import io.github.jan.supabase.gotrue.auth
 
@@ -190,9 +199,35 @@ fun NavGraphBuilder.userRoutes(
             val supabase = SupabaseService.getInstance()
             val userId = supabase.auth.currentUserOrNull()?.id ?: ""
             val supabaseClient = SupabaseService.getInstance()
-            NewsScreen(navController, userId = userId, context, supabaseClient)
+            val viewModel: NewsViewModel = viewModel()
+            NewsScreen(navController, userId = userId, context, supabaseClient, viewModel )
         }
     }
+
+    composable("news_detail/{newsId}") { backStackEntry ->
+        if (!hasActiveSession()) {
+            navController.navigate("login") {
+                popUpTo(0) { inclusive = true }
+            }
+        } else {
+            val newsId = backStackEntry.arguments?.getString("newsId") ?: return@composable
+
+            // ⚠️ IMPORTANTE: Obtener el ViewModel del backstack de "news"
+            val parentEntry = remember(backStackEntry) {
+                navController.getBackStackEntry("NewsUser")
+            }
+            val viewModel: NewsViewModel = viewModel(parentEntry)  // ✅ Compartir ViewModel
+
+            NewsDetailScreen(
+                navController = navController,
+                newsId = newsId,
+                viewModel = viewModel  // ✅ Mismo ViewModel que NewsScreen
+            )
+        }
+    }
+
+
+
 
     // ════════════════════════════════════════════
     // NOTIFICATIONS
@@ -287,4 +322,78 @@ fun NavGraphBuilder.userRoutes(
             )
         }
     }
+
+    // ════════════════════════════════════════════
+    // Survey
+    // ════════════════════════════════════════════
+    // 🔹 Ruta para la lista de encuestas
+    composable("SurveyUser") {
+        if (!hasActiveSession()) {
+            Log.w("UserRoutes", "⚠️ Intento de acceso sin sesión a surveys")
+            navController.navigate("login") {
+                popUpTo(0) { inclusive = true }
+            }
+        } else {
+            SurveysScreen(
+                navController = navController,
+                currentRoute = "SurveyUser"  // ✅ Nombre de la ruta actual
+            )
+        }
+    }
+
+// 🔹 Ruta para el detalle de encuesta (CON PARÁMETRO)
+    composable(
+        route = "SurveyDetail/{surveyId}",  // ✅ Definir parámetro en la ruta
+        arguments = listOf(
+            navArgument("surveyId") {
+                type = NavType.StringType
+            }
+        )
+    ) { backStackEntry ->
+        if (!hasActiveSession()) {
+            Log.w("UserRoutes", "⚠️ Intento de acceso sin sesión a survey detail")
+            navController.navigate("login") {
+                popUpTo(0) { inclusive = true }
+            }
+        } else {
+            val surveyId = backStackEntry.arguments?.getString("surveyId") ?: ""  // ✅ Extraer el parámetro
+            SurveyDetailScreen(
+                navController = navController,
+                surveyId = surveyId
+            )
+        }
+    }
+
+    composable("userSurveyList") {
+        if (!hasActiveSession()) {
+            Log.w("UserRoutes", "⚠️ Intento de acceso sin sesión a profile")
+            navController.navigate("login") {
+                popUpTo(0) { inclusive = true }
+            }
+        } else {
+            UserSurveyListScreen(navController)
+        }
+    }
+
+    composable("surveyAnswer") { backStackEntry ->
+
+        if (!hasActiveSession()) {
+            Log.w("ModeratorRoutes", "⚠️ Intento de acceso sin sesión a DashboardMod")
+            navController.navigate("login") {
+                popUpTo(0) { inclusive = true }
+            }
+            return@composable
+        }
+
+        val surveyId = backStackEntry.arguments?.getString("surveyId") ?: ""
+        val supabase = SupabaseService.getInstance()
+        val userId = supabase.auth.currentUserOrNull()?.id ?: ""
+
+        UserSurveyAnswerScreen(
+            navController = navController,
+            surveyId = surveyId,
+            userId = userId
+        )
+    }
+
 }

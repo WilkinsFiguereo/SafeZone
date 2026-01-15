@@ -8,6 +8,8 @@ import androidx.compose.foundation.pager.HorizontalPager
 import androidx.compose.foundation.pager.rememberPagerState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Image as ImageIcon
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -23,6 +25,7 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import coil.compose.SubcomposeAsyncImage
 import kotlinx.coroutines.delay
 import com.wilkins.safezone.R
 
@@ -30,14 +33,15 @@ data class NewsItem(
     val title: String,
     val date: String,
     val description: String,
-    val imageRes: Int
+    val imageUrl: String? = null,  // URL desde Supabase
+    val imageRes: Int? = null      // Fallback local
 )
 
 @OptIn(ExperimentalFoundationApi::class)
 @Composable
 fun NewsSlider(
-    newsItems: List<com.wilkins.safezone.frontend.ui.user.Screens.Homepage.Components.NewsItem> = emptyList(),
-    onNewsClick: (com.wilkins.safezone.frontend.ui.user.Screens.Homepage.Components.NewsItem) -> Unit = {}
+    newsItems: List<NewsItem> = emptyList(),
+    onNewsClick: (NewsItem) -> Unit = {}
 ) {
     val pagerState = rememberPagerState(
         pageCount = { newsItems.size }
@@ -71,6 +75,7 @@ fun NewsSlider(
                     title = newsItem.title,
                     date = newsItem.date,
                     description = newsItem.description,
+                    imageUrl = newsItem.imageUrl,
                     imageRes = newsItem.imageRes,
                     onCardClick = { onNewsClick(newsItem) },
                     modifier = Modifier
@@ -113,7 +118,8 @@ fun NewsCard(
     title: String,
     date: String,
     description: String,
-    imageRes: Int,
+    imageUrl: String? = null,
+    imageRes: Int? = null,
     onCardClick: () -> Unit = {},
     modifier: Modifier = Modifier
 ) {
@@ -135,13 +141,76 @@ fun NewsCard(
         Box(
             modifier = Modifier.fillMaxSize()
         ) {
-            // Imagen de fondo
-            Image(
-                painter = painterResource(id = imageRes),
-                contentDescription = "Imagen de la noticia: $title",
-                modifier = Modifier.fillMaxSize(),
-                contentScale = ContentScale.Crop
-            )
+            // Imagen de fondo - Prioriza URL sobre recurso local
+            if (!imageUrl.isNullOrBlank()) {
+                // Cargar desde URL de Supabase
+                SubcomposeAsyncImage(
+                    model = imageUrl,
+                    contentDescription = "Imagen de la noticia: $title",
+                    modifier = Modifier.fillMaxSize(),
+                    contentScale = ContentScale.Crop,
+                    loading = {
+                        Box(
+                            modifier = Modifier.fillMaxSize(),
+                            contentAlignment = Alignment.Center
+                        ) {
+                            CircularProgressIndicator(
+                                modifier = Modifier.size(40.dp),
+                                color = Color.White
+                            )
+                        }
+                    },
+                    error = {
+                        // Si falla, intentar cargar recurso local si existe
+                        if (imageRes != null) {
+                            Image(
+                                painter = painterResource(id = imageRes),
+                                contentDescription = "Imagen de la noticia: $title",
+                                modifier = Modifier.fillMaxSize(),
+                                contentScale = ContentScale.Crop
+                            )
+                        } else {
+                            // Mostrar icono de error
+                            Box(
+                                modifier = Modifier
+                                    .fillMaxSize()
+                                    .background(MaterialTheme.colorScheme.surfaceVariant),
+                                contentAlignment = Alignment.Center
+                            ) {
+                                Icon(
+                                    imageVector = Icons.Default.ImageIcon,
+                                    contentDescription = "Error al cargar imagen",
+                                    modifier = Modifier.size(60.dp),
+                                    tint = MaterialTheme.colorScheme.onSurfaceVariant
+                                )
+                            }
+                        }
+                    }
+                )
+            } else if (imageRes != null) {
+                // Cargar recurso local si no hay URL
+                Image(
+                    painter = painterResource(id = imageRes),
+                    contentDescription = "Imagen de la noticia: $title",
+                    modifier = Modifier.fillMaxSize(),
+                    contentScale = ContentScale.Crop
+                )
+            } else {
+                // Sin imagen disponible
+                Box(
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .background(MaterialTheme.colorScheme.surfaceVariant),
+                    contentAlignment = Alignment.Center
+                ) {
+                    Icon(
+                        imageVector = Icons.Default.ImageIcon,
+                        contentDescription = "Sin imagen",
+                        modifier = Modifier.size(60.dp),
+                        tint = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                }
+            }
 
             // Overlay mejorado con gradiente más profesional
             Box(
@@ -254,93 +323,6 @@ fun NewsCard(
     }
 }
 
-// Versión compacta para slider
-@Composable
-fun CompactNewsCard(
-    title: String,
-    date: String,
-    description: String,
-    imageRes: Int,
-    onCardClick: () -> Unit = {},
-    modifier: Modifier = Modifier
-) {
-    Card(
-        onClick = onCardClick,
-        modifier = modifier
-            .width(300.dp)
-            .height(160.dp)
-            .padding(horizontal = 8.dp)
-            .shadow(
-                elevation = 8.dp,
-                shape = RoundedCornerShape(16.dp),
-                clip = true
-            ),
-        shape = RoundedCornerShape(16.dp)
-    ) {
-        Box(
-            modifier = Modifier.fillMaxSize()
-        ) {
-            Image(
-                painter = painterResource(id = imageRes),
-                contentDescription = "Imagen de la noticia: $title",
-                modifier = Modifier.fillMaxSize(),
-                contentScale = ContentScale.Crop
-            )
-
-            Box(
-                modifier = Modifier
-                    .fillMaxSize()
-                    .background(
-                        brush = Brush.verticalGradient(
-                            colors = listOf(
-                                Color.Transparent,
-                                Color.Black.copy(alpha = 0.7f)
-                            )
-                        )
-                    )
-            )
-
-            Column(
-                modifier = Modifier
-                    .fillMaxSize()
-                    .padding(16.dp),
-                verticalArrangement = Arrangement.SpaceBetween
-            ) {
-                Text(
-                    text = date,
-                    color = Color.White.copy(alpha = 0.8f),
-                    fontSize = 11.sp,
-                    fontWeight = FontWeight.Medium,
-                    modifier = Modifier.align(Alignment.End)
-                )
-
-                Column {
-                    Text(
-                        text = title,
-                        color = Color.White,
-                        fontSize = 14.sp,
-                        fontWeight = FontWeight.Bold,
-                        maxLines = 1,
-                        overflow = TextOverflow.Ellipsis
-                    )
-
-                    Spacer(modifier = Modifier.height(6.dp))
-
-                    Text(
-                        text = description,
-                        color = Color.White.copy(alpha = 0.9f),
-                        fontSize = 12.sp,
-                        fontWeight = FontWeight.Normal,
-                        maxLines = 2,
-                        overflow = TextOverflow.Ellipsis,
-                        lineHeight = 14.sp
-                    )
-                }
-            }
-        }
-    }
-}
-
 @Preview(showBackground = true)
 @Composable
 fun NewsSliderPreview() {
@@ -357,12 +339,6 @@ fun NewsSliderPreview() {
                 date = "15/10/2024",
                 description = "Participa en la jornada de limpieza comunitaria en el parque central.",
                 imageRes = R.drawable.bandalismo
-            ),
-            NewsItem(
-                title = "Mejoras en alumbrado público",
-                date = "18/10/2024",
-                description = "Instalación de nuevas luminarias en zonas estratégicas de la ciudad.",
-                imageRes = R.drawable.baches
             )
         )
 

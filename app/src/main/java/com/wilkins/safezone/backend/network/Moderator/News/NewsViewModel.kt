@@ -9,16 +9,25 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.wilkins.safezone.backend.network.SupabaseService
 import io.github.jan.supabase.gotrue.auth
+import io.github.jan.supabase.gotrue.user.UserInfo
 import io.github.jan.supabase.postgrest.from
+import io.github.jan.supabase.postgrest.query.Columns
+import io.github.jan.supabase.postgrest.query.Order
 import io.github.jan.supabase.storage.storage
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.runBlocking
 import kotlinx.coroutines.withContext
 import java.io.File
 import java.io.FileOutputStream
+import java.text.SimpleDateFormat
+import java.util.Date
+import java.util.Locale
+import java.util.Locale.filter
+import java.util.Objects.isNull
 import java.util.UUID
 
 class NewsViewModel : ViewModel() {
@@ -34,6 +43,12 @@ class NewsViewModel : ViewModel() {
 
     private val _errorMessage = MutableStateFlow<String?>(null)
     val errorMessage: StateFlow<String?> = _errorMessage.asStateFlow()
+
+    private val _commentsMap = MutableStateFlow<Map<String, List<Comment>>>(emptyMap())
+    val commentsMap: StateFlow<Map<String, List<Comment>>> = _commentsMap.asStateFlow()
+
+    private val _isLoadingComments = MutableStateFlow(false)
+    val isLoadingComments: StateFlow<Boolean> = _isLoadingComments.asStateFlow()
 
     // 🔥 Cargar todas las noticias
     fun loadNews() {
@@ -462,5 +477,215 @@ class NewsViewModel : ViewModel() {
 
     fun clearError() {
         _errorMessage.value = null
+    }
+
+    // Reemplazar la función loadCommentsForNews en NewsViewModel con esta versión:
+
+    // REEMPLAZAR loadCommentsForNews en NewsViewModel con esta versión:
+
+    // REEMPLAZAR loadCommentsForNews en NewsViewModel con esta versión SIMPLE:
+
+    // REEMPLAZAR loadCommentsForNews en NewsViewModel:
+
+    // REEMPLAZAR loadCommentsForNews en NewsViewModel:
+
+    // REEMPLAZAR loadCommentsForNews en NewsViewModel:
+
+    fun loadCommentsForNews(newsId: String) {
+        viewModelScope.launch {
+            _isLoadingComments.value = true
+
+            try {
+                Log.d(TAG, "📥 Cargando comentarios para noticia: $newsId")
+
+                // Obtener comentarios básicos
+                val rawComments = supabase
+                    .from("comments")
+                    .select {
+                        filter {
+                            eq("news_id", newsId)
+                            isNull("parent_comment_id")
+                        }
+                        order("created_at", Order.DESCENDING)
+                    }
+                    .decodeList<Comment>()
+
+                Log.d(TAG, "📦 ${rawComments.size} comentarios RAW encontrados")
+
+                if (rawComments.isEmpty()) {
+                    Log.w(TAG, "⚠️ No se encontraron comentarios para news_id: $newsId")
+                    val currentMap = _commentsMap.value.toMutableMap()
+                    currentMap[newsId] = emptyList()
+                    _commentsMap.value = currentMap
+                    return@launch
+                }
+
+                // Para cada comentario, obtener datos del usuario
+                val commentsWithUserData = rawComments.mapIndexed { index, comment ->
+                    try {
+                        Log.d(TAG, "  🔍 [$index] Buscando usuario: ${comment.userId}")
+
+                        val userData = supabase
+                            .from("users")
+                            .select {
+                                filter {
+                                    eq("id", comment.userId)
+                                }
+                            }
+                            .decodeSingleOrNull<CommentUser>()
+
+                        if (userData != null) {
+                            Log.d(TAG, "  ✅ [$index] Usuario encontrado: ${userData.name}")
+                            Log.d(TAG, "  📸 [$index] Foto: ${userData.photoUrl ?: "sin foto"}")
+                        } else {
+                            Log.w(TAG, "  ⚠️ [$index] Usuario NO encontrado para: ${comment.userId}")
+                        }
+
+                        // Crear nuevo comentario con los datos del usuario
+                        Comment(
+                            id = comment.id,
+                            userId = comment.userId,
+                            message = comment.message,
+                            newsId = comment.newsId,
+                            createdAt = comment.createdAt,
+                            parentCommentId = comment.parentCommentId,
+                            authorName = userData?.name, // Asignar nombre del usuario
+                            authorPhotoUrl = userData?.photoUrl, // ✅ Asignar foto del usuario
+                            users = userData // Asignar objeto completo del usuario
+                        )
+                    } catch (e: Exception) {
+                        Log.e(TAG, "⚠️ [$index] Error obteniendo usuario ${comment.userId}: ${e.message}")
+                        comment // Retornar comentario original si falla
+                    }
+                }
+
+                // Actualizar el mapa
+                val currentMap = _commentsMap.value.toMutableMap()
+                currentMap[newsId] = commentsWithUserData
+                _commentsMap.value = currentMap
+
+                Log.d(TAG, "✅ ${commentsWithUserData.size} comentarios procesados")
+                commentsWithUserData.forEach { comment ->
+                    Log.d(TAG, "  💬 ${comment.displayName}: ${comment.message.take(30)}... | Foto: ${comment.displayPhotoUrl != null}")
+                }
+
+            } catch (e: Exception) {
+                Log.e(TAG, "❌ Error al cargar comentarios: ${e.message}", e)
+                e.printStackTrace()
+            } finally {
+                _isLoadingComments.value = false
+            }
+        }
+    }
+
+
+    // Agregar estas funciones al NewsViewModel existente
+
+    /**
+     * Publicar un comentario en una noticia
+     */
+    // REEMPLAZAR la función postComment en NewsViewModel con esta versión:
+
+    // REEMPLAZAR la función postComment en NewsViewModel con esta versión:
+
+    /**
+     * Publicar un comentario en una noticia
+     */
+    fun postComment(
+        newsId: String,
+        message: String,
+        userId: String,
+        onSuccess: () -> Unit,
+        onError: (String) -> Unit
+    ) {
+        viewModelScope.launch {
+            try {
+                Log.d(TAG, "📝 Publicando comentario en noticia $newsId")
+                Log.d(TAG, "🔹 Usuario: $userId")
+                Log.d(TAG, "🔹 Mensaje: $message")
+
+                // Crear el comentario
+                val comment = mapOf(
+                    "news_id" to newsId,
+                    "user_id" to userId,
+                    "message" to message
+                )
+
+                supabase.from("comments")
+                    .insert(comment)
+
+                Log.d(TAG, "✅ Comentario publicado exitosamente")
+
+                withContext(Dispatchers.Main) {
+                    onSuccess()
+                }
+
+            } catch (e: Exception) {
+                Log.e(TAG, "❌ Error al publicar comentario: ${e.message}", e)
+                e.printStackTrace()
+
+                withContext(Dispatchers.Main) {
+                    onError(e.message ?: "Error al publicar comentario")
+                }
+            }
+        }
+    }
+
+    /**
+     * Eliminar un comentario (solo moderadores)
+     */
+    fun deleteComment(commentId: String) {
+        viewModelScope.launch {
+            try {
+                Log.d(TAG, "🗑️ Eliminando comentario ID: $commentId")
+
+                supabase.from("comments")
+                    .delete {
+                        filter {
+                            eq("id", commentId)
+                        }
+                    }
+
+                Log.d(TAG, "✅ Comentario eliminado exitosamente")
+
+            } catch (e: Exception) {
+                Log.e(TAG, "❌ Error al eliminar comentario: ${e.message}", e)
+            }
+        }
+    }
+
+    /**
+     * Cargar comentarios para todas las noticias visibles
+     */
+    fun loadAllComments(newsIds: List<String>) {
+        newsIds.forEach { newsId ->
+            loadCommentsForNews(newsId)
+        }
+    }
+
+    /**
+     * Obtener comentarios de una noticia específica
+     */
+    fun getCommentsForNews(newsId: String): List<Comment> {
+        return _commentsMap.value[newsId] ?: emptyList()
+    }
+
+    fun formatNewsDate(dateString: String): String {
+        return try {
+            val inputFormat = SimpleDateFormat("yyyy-MM-dd HH:mm:ss.SSSSSSXXX", Locale.getDefault())
+            val outputFormat = SimpleDateFormat("dd MMM yyyy", Locale("es", "ES"))
+            val date = inputFormat.parse(dateString)
+            date?.let { outputFormat.format(it) } ?: "Fecha"
+        } catch (e: Exception) {
+            try {
+                // Intentar con formato ISO 8601 alternativo
+                val inputFormat = SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss.SSSSSSXXX", Locale.getDefault())
+                val outputFormat = SimpleDateFormat("dd MMM yyyy", Locale("es", "ES"))
+                val date = inputFormat.parse(dateString)
+                date?.let { outputFormat.format(it) } ?: "Fecha"
+            } catch (e: Exception) {
+                "Fecha"
+            }
+        }
     }
 }
