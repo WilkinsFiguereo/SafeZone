@@ -1,3 +1,650 @@
+<?xml version="1.0" encoding="utf-8"?>
 <resources>
+    <!-- ========================================== -->
+    <!-- 🏷️ 1. CONFIGURACIÓN GENERAL -->
+    <!-- ========================================== -->
     <string name="app_name">SafeZone</string>
+    <string name="default_web_client_id">927301912643-v37eqbc7p7epj0act3b7pcgk6o8q9ks5.apps.googleusercontent.com</string>
+
+    <!-- ========================================== -->
+    <!-- 🔐 2. AUTENTICACIÓN Y CUENTA -->
+    <!-- ========================================== -->
+    <string name="account_disabled_title">Cuenta Deshabilitada</string>
+    <string name="account_banned_title">Cuenta Baneada</string>
+    <string name="account_unavailable_title">Cuenta No Disponible</string>
+    <string name="back_to_login">Volver al Login</string>
+    <string name="technical_support">Soporte Técnico</string>
+    <string name="support_email">soporte@safezone.com</string>
+    <string name="status_id">ID de Estado: %s</string>
+    <string name="disabled_reasons">Tu cuenta ha sido temporalmente deshabilitada por un administrador.\n\nPosibles razones:\n• Violación de las normas de la comunidad\n• Actividad sospechosa detectada\n• Reportes de otros usuarios\n\nSi crees que esto es un error, por favor contacta a soporte técnico.</string>
+    <string name="banned_reasons">Tu cuenta ha sido permanentemente baneada.\n\nEsta decisión fue tomada debido a violaciones graves de nuestros términos de servicio.\n\nSi deseas apelar esta decisión, contacta a nuestro equipo de soporte.</string>
+    <string name="unavailable_reasons">Tu cuenta no está disponible en este momento.\n\nPor favor, contacta a soporte para más información.</string>
+
+    <!-- ========================================== -->
+    <!-- 🔑 3. PANTALLA DE LOGIN -->
+    <!-- ========================================== -->
+    <string name="login_title">Iniciar sesión en tu cuenta</string>
+    <string name="email_hint">Correo electrónico</string>
+    <string name="password_hint">Contraseña</string>
+    <string name="forgot_password">¿Olvidaste tu contraseña?</string>
+    <string name="login_button">Iniciar sesión</string>
+    <string name="logging_in">Iniciando sesión…</string>
+    <string name="or_continue_with">o continúa con</string>
+    <string name="google_button">Google</string>
+    <string name="create_account_button">Crear cuenta</string>
+    <string name="complete_fields">Por favor completa todos los campos</string>
+
+    <!-- ========================================== -->
+    <!-- 📝 4. PANTALLA DE REGISTRO -->
+    <!-- ========================================== -->
+    <string name="register_title">Crear nueva cuenta</string>
+    <string name="name_hint">Nombre completo</string>
+    <string name="confirm_password_hint">Confirmar contraseña</string>
+    <string name="register_button">Registrarse</string>
+    <string name="google_register_button">Continuar con Google</string>
+    <string name="have_account">¿Ya tienes cuenta? Inicia sesión</string>
+
+    <!-- ========================================== -->
+    <!-- ✅ 5. PANTALLA DE VERIFICACIÓN -->
+    <!-- ========================================== -->
+    <string name="verification_title">Por favor verifica tu correo electrónico</string>
+    <string name="verification_message">Hemos enviado un enlace de verificación a:\n%s\n\nPor favor revisa tu bandeja de entrada y sigue las instrucciones.\n\nEstado: %s</string>
+    <string name="verifying_status">Verificando estado del email… (%d/30)</string>
+    <string name="email_verified">✅ Correo verificado exitosamente!</string>
+    <string name="waiting_verification">⏳ Aún esperando verificación del email…</string>
+    <string name="verification_error">❌ Error en verificación</string>
+    <string name="timeout_verification">⛔ Tiempo de verificación agotado. Intenta nuevamente.</string>
+    <string name="login_success">✅ Inicio de sesión exitoso.</string>
+
+    <!-- ========================================== -->
+    <!-- 🏛️ 6. DASHBOARD GUBERNAMENTAL -->
+    <!-- ========================================== -->
+    <string name="dashboard_title">Dashboard</string>
+    <string name="dashboard_subtitle">Panel de Control Gubernamental</string>
+    <string name="recent_reports">Reportes Recientes</string>
+    <string name="loading_dashboard">Cargando dashboard…</string>
+    <string name="total_reports">Total</string>
+    <string name="pending_reports">Pendientes</string>
+    <string name="in_progress_reports">En Proceso</string>
+    <string name="completed_reports">Completados</string>
+    <string name="cancelled_reports">Cancelados</string>
+    <string name="retry">Reintentar</string>
+    <string name="error">Error</string>
+
+    <!-- ========================================== -->
+    <!-- 📄 7. DETALLE DE REPORTE -->
+    <!-- ========================================== -->
+    <string name="report_id">REPORTE #%s</string>
+    <string name="incident_type">Tipo de Incidente</string>
+    <string name="no_category">Sin categoría</string>
+    <string name="description">Descripción</string>
+    <string name="no_description">Sin descripción</string>
+    <string name="location">Ubicación</string>
+    <string name="reported_by">Reportado por</string>
+    <string name="change_status">CAMBIAR ESTADO</string>
+    <string name="in_process">En proceso</string>
+    <string name="finished">Finalizado</string>
+    <string name="cancelled">Cancelado</string>
+    <string name="current">(Actual)</string>
+    <string name="change_status_dialog">Cambiar Estado del Reporte</string>
+    <string name="confirm_status_change">¿Está seguro que desea marcar este reporte como \'%s\'?</string>
+    <string name="confirm">Confirmar</string>
+    <string name="status_updated">Estado actualizado correctamente</string>
+    <string name="image">Imagen</string>
+    <string name="video">Video</string>
+    <string name="anonymous_user">Usuario Anónimo</string>
+    <string name="go_back">Volver</string>
+    <string name="unknown_error">Error desconocido</string>
+
+    <!-- ========================================== -->
+    <!-- 📋 8. LISTA DE REPORTES ENVIADOS -->
+    <!-- ========================================== -->
+    <string name="reports_sent_title">Reportes Enviados</string>
+    <string name="total_reports_count">%d reportes totales</string>
+    <string name="advanced_filters">Filtros avanzados</string>
+    <string name="refresh">Refrescar</string>
+    <string name="search_reports_placeholder">Buscar reportes…</string>
+    <string name="clear_search">Limpiar búsqueda</string>
+    <string name="remove_filter">Quitar filtro</string>
+    <string name="sort_by">Ordenar por</string>
+    <string name="filters">Filtros</string>
+    <string name="showing_results">Mostrando %d de %d resultados</string>
+    <string name="page_indicator">Página %d de %d</string>
+    <string name="previous">Anterior</string>
+    <string name="next">Siguiente</string>
+    <string name="go_to_page">Ir a página:</string>
+    <string name="go">Ir</string>
+    <string name="loading_reports">Cargando reportes…</string>
+    <string name="loading_error">Error al cargar</string>
+    <string name="no_reports_found">No se encontraron reportes</string>
+    <string name="change_filters_hint">Intenta cambiar los filtros de búsqueda</string>
+
+    <!-- Estados de Reporte -->
+    <string name="status_pending">Pendiente</string>
+    <string name="status_in_progress">En Proceso</string>
+    <string name="status_completed">Finalizado</string>
+    <string name="status_cancelled">Cancelado</string>
+    <string name="status_under_review">En Revisión</string>
+
+    <!-- Opciones de Ordenamiento -->
+    <string name="sort_newest">Más recientes</string>
+    <string name="sort_oldest">Más antiguos</string>
+    <string name="sort_priority_high">Prioridad alta</string>
+    <string name="sort_priority_low">Prioridad baja</string>
+    <string name="sort_by_status">Por estado</string>
+
+    <!-- Prioridades -->
+    <string name="priority_low">Baja</string>
+    <string name="priority_medium">Media</string>
+    <string name="priority_high">Alta</string>
+    <string name="priority_critical">Crítica</string>
+
+    <!-- Tarjeta de Reporte -->
+    <string name="report_id_format">Reporte #%s</string>
+    <string name="incident_type_label">Tipo de incidente</string>
+    <string name="location_label">Ubicación</string>
+    <string name="reported_by_label">Reportado por</string>
+    <string name="date_label">Fecha</string>
+    <string name="time_label">Hora</string>
+
+    <!-- ========================================== -->
+    <!-- 🔍 9. PANTALLA DE REVISIÓN DE REPORTES - DETALLE -->
+    <!-- ========================================== -->
+    <string name="review_reports_title">Revisión de Reportes</string>
+    <string name="reports_to_review">Reportes a Revisar</string>
+    <string name="mark_as_reviewed">Marcar como Revisado</string>
+    <string name="needs_attention">Requiere Atención</string>
+    <string name="review_status">Estado de Revisión</string>
+    <string name="not_reviewed">No Revisado</string>
+    <string name="in_review">En Revisión</string>
+    <string name="reviewed">Revisado</string>
+    <string name="add_comment">Agregar Comentario</string>
+    <string name="review_comment">Comentario de Revisión</string>
+    <string name="save_review">Guardar Revisión</string>
+    <string name="review_saved">Revisión guardada</string>
+    <string name="review_updated">Revisión actualizada</string>
+    <string name="review_details">Detalles de la Revisión</string>
+    <string name="review_history">Historial de Revisiones</string>
+    <string name="assign_to_moderator">Asignar a Moderador</string>
+    <string name="assigned_to">Asignado a: %s</string>
+    <string name="unassigned">Sin asignar</string>
+    <string name="priority_review">Revisión Prioritaria</string>
+    <string name="normal_review">Revisión Normal</string>
+
+    <!-- ========================================== -->
+    <!-- 📋 10. LISTA DE REVISIÓN DE REPORTES -->
+    <!-- ========================================== -->
+    <string name="review_list_title">Lista de Reportes a Revisar</string>
+    <string name="filter_by_priority">Filtrar por Prioridad</string>
+    <string name="filter_by_status">Filtrar por Estado</string>
+    <string name="filter_by_date">Filtrar por Fecha</string>
+    <string name="today">Hoy</string>
+    <string name="yesterday">Ayer</string>
+    <string name="last_7_days">Últimos 7 días</string>
+    <string name="last_30_days">Últimos 30 días</string>
+    <string name="all_dates">Todas las fechas</string>
+    <string name="review_count">%d reportes para revisar</string>
+    <string name="review_progress">Progreso: %d/%d</string>
+    <string name="bulk_actions">Acciones Masivas</string>
+    <string name="select_all">Seleccionar todos</string>
+    <string name="deselect_all">Deseleccionar todos</string>
+    <string name="mark_selected_reviewed">Marcar seleccionados como revisados</string>
+    <string name="export_reviews">Exportar Revisiones</string>
+    <string name="import_reviews">Importar Revisiones</string>
+
+    <!-- ========================================== -->
+    <!-- 📊 11. ESTADÍSTICAS DEL MODERADOR -->
+    <!-- ========================================== -->
+    <string name="moderator_statistics">Estadísticas de Moderador</string>
+    <string name="stat_active_reports">Reportes Activos</string>
+    <string name="stat_published_news">Noticias Publicadas</string>
+    <string name="stat_active_users">Usuarios Activos</string>
+    <string name="stat_polls">Encuestas</string>
+    <string name="total_moderator_actions">Acciones Totales</string>
+    <string name="reports_reviewed_today">Reportes revisados hoy</string>
+    <string name="average_review_time">Tiempo promedio de revisión</string>
+    <string name="reports_per_moderator">Reportes por moderador</string>
+    <string name="moderator_performance">Rendimiento del Moderador</string>
+    <string name="efficiency_rate">Tasa de Eficiencia</string>
+    <string name="accuracy_rate">Tasa de Precisión</string>
+    <string name="moderator_leaderboard">Tabla de Líderes</string>
+
+    <!-- ========================================== -->
+    <!-- 📈 12. COMPONENTES DE ESTADÍSTICAS -->
+    <!-- ========================================== -->
+
+    <!-- Summary Card -->
+    <string name="system_summary">Resumen del Sistema</string>
+    <string name="resolution_rate">Tasa de Resolución</string>
+    <string name="system_functioning">El sistema está funcionando correctamente</string>
+
+    <!-- Period Selector -->
+    <string name="period_analysis">Período de Análisis</string>
+    <string name="period_day">Día</string>
+    <string name="period_week">Semana</string>
+    <string name="period_month">Mes</string>
+    <string name="period_year">Año</string>
+
+    <!-- General Stats -->
+    <string name="total_reports_stat">Total Reportes</string>
+    <string name="total_news_stat">Noticias Totales</string>
+    <string name="total_users_stat">Usuarios Totales</string>
+    <string name="active_users_stat">Usuarios Activos</string>
+
+    <!-- Reports Distribution -->
+    <string name="reports_distribution">Distribución de Reportes</string>
+    <string name="pending_stat">Pendientes</string>
+    <string name="in_progress_stat">En Proceso</string>
+    <string name="resolved_stat">Resueltos</string>
+    <string name="cancelled_stat">Cancelados</string>
+
+    <!-- News Statistics -->
+    <string name="news_statistics">Estadísticas de Noticias</string>
+    <string name="featured_news">Noticias Destacadas</string>
+    <string name="normal_news">Noticias Normales</string>
+    <string name="news_with_video">Noticias con Video</string>
+    <string name="news_with_image">Noticias con Imagen</string>
+    <string name="news_views_total">Vistas Totales</string>
+
+    <!-- Survey Statistics -->
+    <string name="survey_statistics">Estadísticas de Encuestas</string>
+    <string name="active_surveys">Encuestas Activas</string>
+    <string name="total_responses">Respuestas Totales</string>
+    <string name="participation_rate">Tasa de Participación</string>
+    <string name="average_score">Puntaje Promedio</string>
+    <string name="coming_soon">Próximamente</string>
+
+    <!-- ========================================== -->
+    <!-- 🗺️ 13. MAPA Y UBICACIONES -->
+    <!-- ========================================== -->
+    <string name="map_picker_title">Selecciona una ubicación</string>
+    <string name="map_cancel">Cancelar</string>
+    <string name="map_select">Seleccionar</string>
+    <string name="selected_location_marker">Ubicación seleccionada</string>
+    <string name="unknown_address">Dirección desconocida</string>
+    <string name="your_location_marker">Tu ubicación</string>
+    <string name="your_location_description">Estás aquí</string>
+    <string name="default_city">Santo Domingo</string>
+    <string name="default_city_description">Capital RD</string>
+    <string name="no_location_selected">No se seleccionó ubicación</string>
+    <string name="map_reports_screen_title">Mapa de Incidentes</string>
+    <string name="map_back_button">Volver</string>
+    <string name="pending_process_reports">Reportes filtrados (pendientes/en proceso)</string>
+    <string name="excluded_reports">Reportes excluidos (cancelados/completados)</string>
+
+    <!-- Report Detail Sheet -->
+    <string name="report_detail_title">Descripción del Reporte</string>
+    <string name="report_evidence">Evidencia del Reporte</string>
+    <string name="report_type">Tipo de Incidente</string>
+    <string name="report_share">Compartir</string>
+    <string name="report_close">Cerrar</string>
+    <string name="report_distance_near">Ubicación cercana</string>
+    <string name="report_distance_format">%s km</string>
+    <string name="report_video_related">Video relacionado al reporte</string>
+    <string name="report_image_related">Imagen relacionada al reporte</string>
+    <string name="report_high_priority">ALTA PRIORIDAD</string>
+
+    <!-- Formatos de Fecha/Hora -->
+    <string name="report_today">Hoy a las %s</string>
+    <string name="report_date_format">%s %s, %s</string>
+    <string name="unknown_date">Fecha desconocida</string>
+    <string name="last_updated">Última actualización</string>
+    <string name="last_updated_format">Hace %s minutos</string>
+
+    <!-- Compartir Reporte -->
+    <string name="share_report">Compartir reporte de SafeZone</string>
+    <string name="share_report_title">🚨 ALERTA DE SEGURIDAD - SAFEZONE</string>
+    <string name="share_incident_details">📋 DETALLES DEL INCIDENTE</string>
+    <string name="share_type_label">🏷️ Tipo</string>
+    <string name="share_description_label">📍 Descripción</string>
+    <string name="share_date_label">📅 Fecha</string>
+    <string name="share_distance_label">📏 Distancia</string>
+    <string name="share_distance_from_you">km de tu ubicación</string>
+    <string name="share_safety_warning">⚠️ Mantente seguro y alerta</string>
+    <string name="share_download_prompt">📱 Descarga SafeZone en Play Store</string>
+    <string name="share_hashtags">#SafeZone #SeguridadCiudadana #Alerta</string>
+
+    <!-- ========================================== -->
+    <!-- 🏛️ 14. PANEL DE MODERADOR -->
+    <!-- ========================================== -->
+    <string name="moderator_panel_title">Panel de Moderador</string>
+    <string name="moderator_welcome_back">¡Bienvenido de vuelta!</string>
+    <string name="moderator_today_summary">Aquí está el resumen de hoy</string>
+    <string name="statistics_system">Estadísticas del Sistema</string>
+    <string name="latest_news">Últimas Noticias</string>
+    <string name="view_all">Ver todas</string>
+    <string name="latest_reports">Últimos Reportes</string>
+    <string name="view_all_reports">Ver todos</string>
+    <string name="quick_actions">Acciones Rápidas</string>
+    <string name="news_published">Publicada</string>
+    <string name="news_draft">Borrador</string>
+    <string name="action_new_news">Nueva Noticia</string>
+    <string name="action_view_reports">Ver Reportes</string>
+    <string name="action_users">Usuarios</string>
+    <string name="action_statistics">Estadísticas</string>
+    <string name="action_manage_users">Gestionar Usuarios</string>
+    <string name="action_system_settings">Configuración del Sistema</string>
+
+    <!-- ========================================== -->
+    <!-- 🏢 15. MENÚ GUBERNAMENTAL -->
+    <!-- ========================================== -->
+    <string name="government_panel">Panel Gubernamental</string>
+    <string name="public_entity">Entidad Pública</string>
+    <string name="safezone_gov">SafeZone Gov</string>
+    <string name="version_number">Versión 1.0.0</string>
+
+    <!-- Menu Sections -->
+    <string name="menu_section_dashboard">DASHBOARD</string>
+    <string name="menu_section_reports">REPORTES</string>
+    <string name="menu_section_analysis">ANÁLISIS</string>
+    <string name="menu_section_management">GESTIÓN</string>
+    <string name="menu_section_account">CUENTA</string>
+
+    <!-- Menu Items -->
+    <string name="menu_dashboard">Dashboard</string>
+    <string name="menu_reports_sent">Reportes Enviados</string>
+    <string name="menu_pending_reports">Reportes Pendientes</string>
+    <string name="menu_in_progress_reports">Reportes en Proceso</string>
+    <string name="menu_completed_reports">Reportes Finalizados</string>
+    <string name="menu_cancelled_reports">Reportes Cancelados</string>
+    <string name="menu_statistics">Estadísticas</string>
+    <string name="menu_incident_map">Mapa de Incidentes</string>
+    <string name="menu_notifications">Notificaciones</string>
+    <string name="menu_settings">Configuración</string>
+    <string name="menu_profile">Mi Perfil</string>
+    <string name="menu_logout">Cerrar Sesión</string>
+
+    <!-- Badge Numbers -->
+    <string name="reports_sent_badge">25</string>
+    <string name="pending_reports_badge">12</string>
+    <string name="progress_reports_badge">8</string>
+    <string name="notifications_badge">5</string>
+
+    <!-- ========================================== -->
+    <!-- ❤️ 16. COMPONENTE: BOTÓN DE LIKE -->
+    <!-- ========================================== -->
+    <string name="like_remove">Quitar like</string>
+    <string name="like_add">Dar like</string>
+    <string name="you_like_this">Te gusta esto</string>
+    <string name="like">Me gusta</string>
+    <string name="person_singular">persona</string>
+    <string name="person_plural">personas</string>
+    <string name="like_count_format">%s %s</string>
+
+    <!-- ========================================== -->
+    <!-- 🔧 17. COMPONENTES REUTILIZABLES -->
+    <!-- ========================================== -->
+    <string name="system_statistics">Estadísticas del Sistema</string>
+    <string name="recent_activity">Actividad Reciente</string>
+    <string name="recent_incidents">Incidentes Recientes</string>
+    <string name="recent_activities">Actividades Recientes</string>
+    <string name="placeholder_no_description">Sin descripción</string>
+    <string name="placeholder_no_location">Sin ubicación</string>
+    <string name="placeholder_no_name">Sin nombre</string>
+    <string name="placeholder_anonymous">Anónimo</string>
+    <string name="placeholder_unknown_user">Usuario</string>
+    <string name="label_reported_by">Reportado por</string>
+    <string name="label_timestamp">Fecha</string>
+    <string name="label_location">Ubicación</string>
+    <string name="label_author">Autor</string>
+    <string name="label_views">Vistas</string>
+    <string name="label_summary">Resumen</string>
+    <string name="label_description">Descripción</string>
+    <string name="label_title">Título</string>
+    <string name="label_status">Estado</string>
+    <string name="label_priority">Prioridad</string>
+    <string name="label_category">Categoría</string>
+    <string name="label_actions">Acciones</string>
+    <string name="label_created_at">Creado el</string>
+    <string name="label_updated_at">Actualizado el</string>
+
+    <!-- ========================================== -->
+    <!-- 🎨 18. DESCRIPCIONES DE ACCESIBILIDAD -->
+    <!-- ========================================== -->
+    <string name="icon_share">Icono de compartir</string>
+    <string name="icon_arrow_back_alt">Icono de regresar/cerrar</string>
+    <string name="icon_access_time">Icono de tiempo</string>
+    <string name="icon_category">Icono de categoría</string>
+    <string name="icon_photo">Icono de foto</string>
+    <string name="icon_video_library">Icono de video</string>
+    <string name="icon_warning_alt">Icono de advertencia</string>
+    <string name="icon_favorite">Icono de favorito/corazón</string>
+    <string name="icon_favorite_border">Icono de favorito vacío</string>
+    <string name="icon_newspaper">Icono de periódico</string>
+    <string name="icon_report">Icono de reporte</string>
+    <string name="icon_flash_on">Icono de acción rápida</string>
+    <string name="icon_warning_stats">Icono de advertencia estadística</string>
+    <string name="icon_people">Icono de personas</string>
+    <string name="icon_poll">Icono de encuesta</string>
+    <string name="icon_bar_chart">Icono de gráfico de barras</string>
+    <string name="icon_notifications_bell">Icono de campana de notificaciones</string>
+    <string name="icon_account_circle_profile">Icono de perfil de cuenta</string>
+    <string name="icon_menu_hamburger">Icono de menú hamburguesa</string>
+    <string name="icon_add_new">Icono de agregar nuevo</string>
+    <string name="icon_arrow_upward">Icono de tendencia ascendente</string>
+    <string name="icon_arrow_downward">Icono de tendencia descendente</string>
+    <string name="icon_visibility">Icono de visibilidad/vistas</string>
+    <string name="icon_filter_alt">Icono de filtros</string>
+    <string name="icon_filter_list">Icono de lista de filtros</string>
+    <string name="icon_sort">Icono de ordenar</string>
+    <string name="icon_search">Icono de búsqueda</string>
+    <string name="icon_close">Icono de cerrar</string>
+    <string name="icon_calendar">Icono de calendario</string>
+    <string name="icon_arrow_down">Icono de flecha abajo</string>
+    <string name="icon_arrow_up">Icono de flecha arriba</string>
+    <string name="icon_warning">Icono de advertencia</string>
+    <string name="icon_low_priority">Icono de baja prioridad</string>
+    <string name="icon_send">Icono de enviar</string>
+    <string name="icon_error">Icono de error</string>
+    <string name="icon_search_off">Icono de búsqueda sin resultados</string>
+
+    <!-- ========================================== -->
+    <!-- 🔄 19. ESTADOS Y MENSAJES -->
+    <!-- ========================================== -->
+    <string name="loading_map">Cargando mapa…</string>
+    <string name="loading_location">Obteniendo ubicación…</string>
+    <string name="loading_reports_map">Cargando reportes en el mapa…</string>
+    <string name="loading_user_profiles">Cargando perfiles de usuarios…</string>
+    <string name="state_loading">Cargando…</string>
+    <string name="state_error">Error</string>
+    <string name="state_empty">Vacío</string>
+    <string name="state_success">Éxito</string>
+    <string name="error_location_permission">Permiso de ubicación denegado</string>
+    <string name="error_location_unavailable">Ubicación no disponible</string>
+    <string name="error_geocoding">Error al obtener dirección</string>
+    <string name="error_loading_profiles">Error cargando perfiles</string>
+    <string name="error_video_load">Error al cargar video</string>
+    <string name="error_image_load">Error al cargar imagen</string>
+    <string name="error_share_image">Error descargando imagen, compartiendo solo texto</string>
+    <string name="error_network">Error de conexión</string>
+    <string name="error_unknown">Error desconocido</string>
+    <string name="try_again">Intentar nuevamente</string>
+    <string name="error_loading_reports_status">Error al cargar reportes de %s: %s</string>
+    <string name="error_loading_reports_general">Error al cargar reportes: %s</string>
+    <string name="info_no_media">No hay evidencia multimedia</string>
+    <string name="info_no_user_photo">Sin foto de perfil</string>
+    <string name="info_video_prepared">Video preparado</string>
+    <string name="info_location_granted">Permiso de ubicación: OTORGADO</string>
+    <string name="info_location_denied">Permiso de ubicación: DENEGADO</string>
+    <string name="info_requesting_location">Solicitando permiso de ubicación</string>
+
+    <!-- ========================================== -->
+    <!-- 📱 20. NAVEGACIÓN Y RUTAS -->
+    <!-- ========================================== -->
+    <string name="route_news_save">newsSave</string>
+    <string name="route_report_review">ReportReviewList</string>
+    <string name="route_moderator_users">moderatorUser</string>
+    <string name="route_statistics">example_tar</string>
+    <string name="route_profile_user">profileUser/%s/%s</string>
+    <string name="route_report_detail">report_review_detail/%s</string>
+    <string name="route_review_list">reports_review_list</string>
+    <string name="route_moderator_stats">moderatorStatistics</string>
+
+    <!-- ========================================== -->
+    <!-- 🎛️ 21. DIÁLOGOS DE FILTROS -->
+    <!-- ========================================== -->
+    <string name="advanced_filters_title">Filtros Avanzados</string>
+    <string name="priority_filter">Prioridad</string>
+    <string name="status_filter">Estado</string>
+    <string name="date_filter">Fecha</string>
+    <string name="category_filter">Categoría</string>
+    <string name="moderator_filter">Moderador</string>
+    <string name="clear_filters">Limpiar filtros</string>
+    <string name="apply_filters">Aplicar filtros</string>
+    <string name="reset_filters">Restablecer filtros</string>
+    <string name="save_filter">Guardar Filtro</string>
+    <string name="load_filter">Cargar Filtro</string>
+    <string name="filter_preset">Preajuste de Filtro</string>
+
+    <!-- ========================================== -->
+    <!-- 📊 22. COMPONENTES DE GRÁFICOS -->
+    <!-- ========================================== -->
+    <string name="chart_monthly_bar_title">Reportes por Mes</string>
+    <string name="chart_status_pie_title">Distribución por Estado</string>
+    <string name="chart_trend_line_title">Tendencia Mensual</string>
+    <string name="chart_comparison_bar_title">Comparación por Categoría</string>
+    <string name="ranking_list_title">%s</string>
+    <string name="empty_chart_message">%s</string>
+    <string name="chart_loading">Cargando gráfico…</string>
+    <string name="chart_no_data">No hay datos para mostrar</string>
+    <string name="chart_legend">Leyenda</string>
+    <string name="chart_export">Exportar Gráfico</string>
+    <string name="chart_fullscreen">Pantalla Completa</string>
+
+    <!-- ========================================== -->
+    <!-- 📊 23. COMPONENTES DE ESTADÍSTICAS -->
+    <!-- ========================================== -->
+    <string name="metric_card_title">%s</string>
+    <string name="compact_metric_label">%s</string>
+    <string name="top_item_card_title">%s</string>
+    <string name="stat_card_value">%s</string>
+    <string name="stat_card_label">%s</string>
+    <string name="stat_card_trend">Tendencia: %s</string>
+    <string name="stat_card_icon">Icono de %s</string>
+
+    <!-- ========================================== -->
+    <!-- 📋 24. COMPONENTES DE TABLAS -->
+    <!-- ========================================== -->
+    <string name="monthly_detail_table_title">Detalle por Mes</string>
+    <string name="location_comparison_table_title">Comparación de Ubicaciones</string>
+    <string name="status_summary_table_title">Resumen de Estados</string>
+    <string name="table_sort_asc">Orden ascendente</string>
+    <string name="table_sort_desc">Orden descendente</string>
+    <string name="table_filter">Filtrar tabla</string>
+    <string name="table_export">Exportar tabla</string>
+    <string name="table_select_all">Seleccionar toda la tabla</string>
+
+    <!-- ========================================== -->
+    <!-- 📊 25. ERRORES Y ESTADOS VACÍOS -->
+    <!-- ========================================== -->
+    <string name="no_data_available">No hay datos disponibles</string>
+    <string name="no_monthly_stats">No hay datos mensuales disponibles</string>
+    <string name="no_status_stats">No hay datos de estados disponibles</string>
+    <string name="no_location_stats">No hay datos de ubicaciones disponibles</string>
+    <string name="no_category_stats">No hay datos de categorías disponibles</string>
+    <string name="no_user_stats">No hay datos de usuarios disponibles</string>
+    <string name="no_review_stats">No hay datos de revisiones disponibles</string>
+    <string name="loading_data">Cargando datos…</string>
+    <string name="data_loaded">Datos cargados correctamente</string>
+    <string name="data_updated">Datos actualizados</string>
+    <string name="data_saved">Datos guardados</string>
+    <string name="data_deleted">Datos eliminados</string>
+
+    <!-- ========================================== -->
+    <!-- 🔄 26. ACCIONES Y BOTONES -->
+    <!-- ========================================== -->
+    <string name="action_save">Guardar</string>
+    <string name="action_cancel">Cancelar</string>
+    <string name="action_delete">Eliminar</string>
+    <string name="action_edit">Editar</string>
+    <string name="action_view">Ver</string>
+    <string name="action_download">Descargar</string>
+    <string name="action_upload">Subir</string>
+    <string name="action_print">Imprimir</string>
+    <string name="action_copy">Copiar</string>
+    <string name="action_paste">Pegar</string>
+    <string name="action_search">Buscar</string>
+    <string name="action_filter">Filtrar</string>
+    <string name="action_sort">Ordenar</string>
+    <string name="action_back">Atrás</string>
+    <string name="action_next">Siguiente</string>
+    <string name="action_finish">Finalizar</string>
+    <string name="action_submit">Enviar</string>
+    <string name="action_confirm">Confirmar</string>
+    <string name="action_discard">Descartar</string>
+
+    <!-- ========================================== -->
+    <!-- 🎯 27. VALIDACIONES Y MENSAJES DE ERROR -->
+    <!-- ========================================== -->
+    <string name="validation_required">Este campo es requerido</string>
+    <string name="validation_email">Ingrese un correo válido</string>
+    <string name="validation_password_length">La contraseña debe tener al menos 6 caracteres</string>
+    <string name="validation_password_match">Las contraseñas no coinciden</string>
+    <string name="validation_phone">Ingrese un número de teléfono válido</string>
+    <string name="validation_name">Ingrese un nombre válido</string>
+    <string name="validation_description">La descripción es muy corta</string>
+    <string name="validation_max_length">Máximo %d caracteres</string>
+    <string name="validation_min_length">Mínimo %d caracteres</string>
+    <string name="validation_numeric">Debe ser un número</string>
+    <string name="validation_date">Fecha inválida</string>
+    <string name="validation_time">Hora inválida</string>
+
+    <!-- ========================================== -->
+    <!-- 📅 28. FECHAS Y TIEMPOS -->
+    <!-- ========================================== -->
+    <string name="date_today">Hoy</string>
+    <string name="date_yesterday">Ayer</string>
+    <string name="date_tomorrow">Mañana</string>
+    <string name="date_this_week">Esta semana</string>
+    <string name="date_last_week">La semana pasada</string>
+    <string name="date_this_month">Este mes</string>
+    <string name="date_last_month">El mes pasado</string>
+    <string name="date_this_year">Este año</string>
+    <string name="date_last_year">El año pasado</string>
+    <string name="time_now">Ahora</string>
+    <string name="time_minutes_ago">Hace %d minutos</string>
+    <string name="time_hours_ago">Hace %d horas</string>
+    <string name="time_days_ago">Hace %d días</string>
+    <string name="time_weeks_ago">Hace %d semanas</string>
+    <string name="time_months_ago">Hace %d meses</string>
+    <string name="time_years_ago">Hace %d años</string>
+
+    <!-- ========================================== -->
+    <!-- 📁 29. ARCHIVOS Y MEDIA -->
+    <!-- ========================================== -->
+    <string name="file_choose">Elegir archivo</string>
+    <string name="file_image">Imagen</string>
+    <string name="file_video">Video</string>
+    <string name="file_audio">Audio</string>
+    <string name="file_document">Documento</string>
+    <string name="file_size_limit">Tamaño máximo: %s MB</string>
+    <string name="file_type_not_supported">Tipo de archivo no soportado</string>
+    <string name="file_uploading">Subiendo archivo…</string>
+    <string name="file_uploaded">Archivo subido</string>
+    <string name="file_downloading">Descargando archivo…</string>
+    <string name="file_downloaded">Archivo descargado</string>
+    <string name="file_deleted">Archivo eliminado</string>
+    <string name="media_preview">Vista previa</string>
+    <string name="media_play">Reproducir</string>
+    <string name="media_pause">Pausar</string>
+    <string name="media_stop">Detener</string>
+    <string name="media_mute">Silenciar</string>
+    <string name="media_unmute">Activar sonido</string>
+
+    <!-- ========================================== -->
+    <!-- 🔔 30. NOTIFICACIONES Y ALERTAS -->
+    <!-- ========================================== -->
+    <string name="notification_new_report">Nuevo reporte recibido</string>
+    <string name="notification_report_updated">Reporte actualizado</string>
+    <string name="notification_report_reviewed">Reporte revisado</string>
+    <string name="notification_new_news">Nueva noticia publicada</string>
+    <string name="notification_system_alert">Alerta del sistema</string>
+    <string name="notification_reminder">Recordatorio</string>
+    <string name="notification_message">Mensaje nuevo</string>
+    <string name="alert_important">Importante</string>
+    <string name="alert_warning">Advertencia</string>
+    <string name="alert_info">Información</string>
+    <string name="alert_success">Éxito</string>
+    <string name="alert_error">Error</string>
+
 </resources>
