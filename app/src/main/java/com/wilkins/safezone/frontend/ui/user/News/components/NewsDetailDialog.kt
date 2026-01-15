@@ -52,6 +52,12 @@ data class SupabaseComment(
     val author_name: String? = null
 )
 
+// Data class para obtener el UUID real desde la base de datos
+@Serializable
+data class NewsIdMapping(
+    val id: String  // El UUID real de la base de datos
+)
+
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun NewsDetailDialog(
@@ -67,29 +73,47 @@ fun NewsDetailDialog(
     var isAddingComment by remember { mutableStateOf(false) }
     var isFullScreen by remember { mutableStateOf(false) }
     var isLoading by remember { mutableStateOf(true) }
+    var realNewsUuid by remember { mutableStateOf<String?>(null) }
+    var errorMessage by remember { mutableStateOf<String?>(null) }
 
-    // Usar el ID real de la noticia (UUID)
-    val newsUuid = news.id.toString()
-
-    LaunchedEffect(newsUuid) {
+    // Obtener el UUID real de la noticia desde la base de datos
+    LaunchedEffect(news.id) {
         try {
-            val response = client.from("comments")
+            // Buscar la noticia por título (o cualquier otro campo único que tengas)
+            val newsResult = client.from("news")
                 .select {
-                    filter { eq("news_id", newsUuid) }
+                    filter {
+                        eq("title", news.title)
+                    }
                 }
-                .decodeList<SupabaseComment>()
+                .decodeSingleOrNull<NewsIdMapping>()
 
-            commentsList = response.map { db ->
-                Comment(
-                    id = db.id?.hashCode() ?: 0,
-                    author = db.author_name ?: "Anónimo",
-                    content = db.message,
-                    timestamp = "Reciente",
-                    likes = 0,
-                    replies = emptyList()
-                )
+            if (newsResult != null) {
+                realNewsUuid = newsResult.id
+                println("DEBUG: UUID real encontrado = ${realNewsUuid}")
+
+                // Ahora cargar los comentarios con el UUID correcto
+                val response = client.from("comments")
+                    .select {
+                        filter { eq("news_id", realNewsUuid!!) }
+                    }
+                    .decodeList<SupabaseComment>()
+
+                commentsList = response.map { db ->
+                    Comment(
+                        id = db.id?.hashCode() ?: 0,
+                        author = db.author_name ?: "Anónimo",
+                        content = db.message,
+                        timestamp = "Reciente",
+                        likes = 0,
+                        replies = emptyList()
+                    )
+                }
+            } else {
+                errorMessage = "No se encontró la noticia en la base de datos"
             }
         } catch (e: Exception) {
+            errorMessage = "Error al cargar la noticia: ${e.message}"
             e.printStackTrace()
         } finally {
             isLoading = false
@@ -151,6 +175,12 @@ fun NewsDetailDialog(
                         Box(Modifier.fillMaxWidth(), contentAlignment = Alignment.Center) {
                             CircularProgressIndicator()
                         }
+                    } else if (errorMessage != null) {
+                        Text(
+                            text = errorMessage!!,
+                            color = MaterialTheme.colorScheme.error,
+                            style = MaterialTheme.typography.bodyMedium
+                        )
                     } else {
                         CommentListUI(commentsList)
                     }
@@ -168,45 +198,59 @@ fun NewsDetailDialog(
                             onValueChange = { commentText = it },
                             modifier = Modifier.weight(1f),
                             placeholder = { Text("Escribe un comentario...") },
-                            enabled = !isAddingComment,
+                            enabled = !isAddingComment && realNewsUuid != null,
                             shape = RoundedCornerShape(12.dp)
                         )
 
                         IconButton(
                             onClick = {
-                                if (commentText.isNotBlank()) {
+                                if (commentText.isNotBlank() && realNewsUuid != null) {
                                     isAddingComment = true
                                     scope.launch {
                                         try {
                                             val user = client.auth.currentUserOrNull()
-                                            if (user != null) {
-                                                val dbComment = SupabaseComment(
-                                                    message = commentText.trim(),
-                                                    news_id = newsUuid,
-                                                    user_id = user.id,
-                                                    author_name = user.userMetadata?.get("full_name")?.toString()
-                                                        ?: user.userMetadata?.get("name")?.toString()
-                                                        ?: "Usuario"
-                                                )
-                                                client.from("comments").insert(dbComment)
-
-                                                val newUi = Comment(
-                                                    id = System.currentTimeMillis().toInt(),
-                                                    author = dbComment.author_name ?: "Tú",
-                                                    content = commentText,
-                                                    timestamp = "Ahora",
-                                                    likes = 0,
-                                                    replies = emptyList()
-                                                )
-                                                commentsList = commentsList + newUi
-                                                commentText = ""
+                                            if (user == null) {
                                                 withContext(Dispatchers.Main) {
-                                                    Toast.makeText(context, "Enviado", Toast.LENGTH_SHORT).show()
+                                                    Toast.makeText(
+                                                        context,
+                                                        "Error: Debes iniciar sesión",
+                                                        Toast.LENGTH_LONG
+                                                    ).show()
                                                 }
+                                                return@launch
+                                            }
+
+                                            val dbComment = SupabaseComment(
+                                                message = commentText.trim(),
+                                                news_id = realNewsUuid!!,  // Usar el UUID real
+                                                user_id = user.id,
+                                                author_name = user.userMetadata?.get("full_name")?.toString()
+                                                    ?: user.userMetadata?.get("name")?.toString()
+                                                    ?: "Usuario"
+                                            )
+
+                                            client.from("comments").insert(dbComment)
+
+                                            val newUi = Comment(
+                                                id = System.currentTimeMillis().toInt(),
+                                                author = dbComment.author_name ?: "Tú",
+                                                content = commentText,
+                                                timestamp = "Ahora",
+                                                likes = 0,
+                                                replies = emptyList()
+                                            )
+                                            commentsList = commentsList + newUi
+                                            commentText = ""
+                                            withContext(Dispatchers.Main) {
+                                                Toast.makeText(context, "Comentario enviado", Toast.LENGTH_SHORT).show()
                                             }
                                         } catch (e: Exception) {
                                             withContext(Dispatchers.Main) {
-                                                Toast.makeText(context, "Error: El ID no existe en la base de datos", Toast.LENGTH_LONG).show()
+                                                Toast.makeText(
+                                                    context,
+                                                    "Error al enviar: ${e.message}",
+                                                    Toast.LENGTH_LONG
+                                                ).show()
                                             }
                                             e.printStackTrace()
                                         } finally {
@@ -215,7 +259,7 @@ fun NewsDetailDialog(
                                     }
                                 }
                             },
-                            enabled = commentText.isNotBlank() && !isAddingComment
+                            enabled = commentText.isNotBlank() && !isAddingComment && realNewsUuid != null
                         ) {
                             if (isAddingComment) {
                                 CircularProgressIndicator(modifier = Modifier.size(24.dp), strokeWidth = 2.dp)

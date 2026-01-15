@@ -11,6 +11,7 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.NavController
@@ -33,8 +34,16 @@ fun UserSurveyAnswerScreen(
     val answers = remember { mutableStateMapOf<String, String>() }
     var showSuccessDialog by remember { mutableStateOf(false) }
     var validationError by remember { mutableStateOf<String?>(null) }
+    var hasAlreadyResponded by remember { mutableStateOf(false) }
+    var checkingResponse by remember { mutableStateOf(true) }
 
-    LaunchedEffect(surveyId) {
+    // Verificar si el usuario ya respondió esta encuesta
+    LaunchedEffect(surveyId, userId) {
+        checkingResponse = true
+        viewModel.hasUserResponded(surveyId, userId) { hasResponded ->
+            hasAlreadyResponded = hasResponded
+            checkingResponse = false
+        }
         viewModel.fetchSurveyById(surveyId)
     }
 
@@ -88,12 +97,55 @@ fun UserSurveyAnswerScreen(
                 }
             }
 
-            if (isLoading) {
+            if (checkingResponse || isLoading) {
                 Box(
                     modifier = Modifier.fillMaxSize(),
                     contentAlignment = Alignment.Center
                 ) {
                     CircularProgressIndicator()
+                }
+            } else if (hasAlreadyResponded) {
+                // Mostrar mensaje de que ya respondió
+                Card(
+                    modifier = Modifier.fillMaxWidth(),
+                    colors = CardDefaults.cardColors(
+                        containerColor = MaterialTheme.colorScheme.secondaryContainer
+                    )
+                ) {
+                    Column(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(32.dp),
+                        horizontalAlignment = Alignment.CenterHorizontally,
+                        verticalArrangement = Arrangement.spacedBy(16.dp)
+                    ) {
+                        Icon(
+                            Icons.Default.CheckCircle,
+                            contentDescription = "Completado",
+                            modifier = Modifier.size(80.dp),
+                            tint = MaterialTheme.colorScheme.onSecondaryContainer
+                        )
+                        Text(
+                            text = "Ya respondiste esta encuesta",
+                            style = MaterialTheme.typography.titleLarge,
+                            fontWeight = FontWeight.Bold,
+                            color = MaterialTheme.colorScheme.onSecondaryContainer,
+                            textAlign = TextAlign.Center
+                        )
+                        Text(
+                            text = "Gracias por tu participación. Solo puedes responder una vez por encuesta.",
+                            style = MaterialTheme.typography.bodyMedium,
+                            color = MaterialTheme.colorScheme.onSecondaryContainer,
+                            textAlign = TextAlign.Center
+                        )
+                        Spacer(modifier = Modifier.height(8.dp))
+                        Button(
+                            onClick = { navController.popBackStack() },
+                            modifier = Modifier.fillMaxWidth()
+                        ) {
+                            Text("Volver")
+                        }
+                    }
                 }
             } else {
                 selectedSurvey?.let { survey ->
@@ -119,6 +171,31 @@ fun UserSurveyAnswerScreen(
                                     style = MaterialTheme.typography.bodyMedium,
                                     color = MaterialTheme.colorScheme.onPrimaryContainer.copy(alpha = 0.8f)
                                 )
+                            }
+                            Spacer(modifier = Modifier.height(8.dp))
+                            Card(
+                                colors = CardDefaults.cardColors(
+                                    containerColor = MaterialTheme.colorScheme.tertiaryContainer
+                                )
+                            ) {
+                                Row(
+                                    modifier = Modifier.padding(12.dp),
+                                    verticalAlignment = Alignment.CenterVertically,
+                                    horizontalArrangement = Arrangement.spacedBy(8.dp)
+                                ) {
+                                    Icon(
+                                        Icons.Default.Info,
+                                        contentDescription = null,
+                                        tint = MaterialTheme.colorScheme.onTertiaryContainer,
+                                        modifier = Modifier.size(20.dp)
+                                    )
+                                    Text(
+                                        text = "Solo puedes responder una vez",
+                                        style = MaterialTheme.typography.bodySmall,
+                                        color = MaterialTheme.colorScheme.onTertiaryContainer,
+                                        fontWeight = FontWeight.Medium
+                                    )
+                                }
                             }
                         }
                     }
