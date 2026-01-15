@@ -16,8 +16,10 @@ import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.NavController
 import com.wilkins.safezone.backend.network.Admin.CrudUser.CrudUser
+import com.wilkins.safezone.backend.network.AppUser
 import com.wilkins.safezone.backend.network.GlobalAssociation.ReportsRepository
 import com.wilkins.safezone.backend.network.Moderator.News.NewsViewModel
+import com.wilkins.safezone.backend.network.auth.SessionManager.getUserProfile
 import com.wilkins.safezone.frontend.ui.Moderator.ModeratorSideMenu
 import com.wilkins.safezone.frontend.ui.Moderator.screens.Statistics.Components.*
 import com.wilkins.safezone.navigation.theme.PrimaryColor
@@ -324,10 +326,15 @@ fun ModeratorStatisticsScreen(
         }
 
         if (isMenuOpen) {
+            val userState = produceState<AppUser?>(initialValue = null) {
+                value = getUserProfile(context)
+            }
+            val user = userState.value
+
             ModeratorSideMenu(
                 navController = navController,
                 moderatorId = moderatorId,
-                moderatorName = "Nombre del Moderador",
+                moderatorName = user?.name ?: "Moderator",
                 currentRoute = "moderatorStatistics",
                 isMenuOpen = isMenuOpen,
                 onMenuToggle = { isMenuOpen = it },

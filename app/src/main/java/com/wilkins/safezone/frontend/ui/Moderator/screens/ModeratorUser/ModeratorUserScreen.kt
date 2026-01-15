@@ -26,7 +26,9 @@ import androidx.navigation.NavController
 import coil.compose.AsyncImage
 import com.wilkins.safezone.backend.network.Admin.CrudUser.CrudUser
 import com.wilkins.safezone.backend.network.Admin.CrudUser.Profile
+import com.wilkins.safezone.backend.network.AppUser
 import com.wilkins.safezone.backend.network.SupabaseService
+import com.wilkins.safezone.backend.network.auth.SessionManager.getUserProfile
 import com.wilkins.safezone.navigation.theme.PrimaryColor
 import io.github.jan.supabase.storage.storage
 import kotlinx.coroutines.launch
@@ -242,17 +244,22 @@ fun ModeratorUsersScreen(
             }
         }
 
-        // Menú lateral superpuesto
-        ModeratorSideMenu(
-            navController = navController,
-            moderatorId = moderatorId,
-            moderatorName = moderatorName,
-            currentRoute = "moderatorUsers",
-            isMenuOpen = isMenuOpen,
-            onMenuToggle = { isMenuOpen = it },
-            context = context,
-            supabaseClient = supabaseClient
-        )
+        val userState = produceState<AppUser?>(initialValue = null) {
+            value = getUserProfile(context)
+        }
+        val user = userState.value
+        if (isMenuOpen) {
+            ModeratorSideMenu(
+                navController = navController,
+                moderatorId = moderatorId,
+                moderatorName = user?.name ?: "Moderator",
+                currentRoute = "moderatorDashboard",
+                isMenuOpen = isMenuOpen,
+                onMenuToggle = { isMenuOpen = it },
+                context = context,
+                supabaseClient = supabaseClient
+            )
+        }
     }
 }
 

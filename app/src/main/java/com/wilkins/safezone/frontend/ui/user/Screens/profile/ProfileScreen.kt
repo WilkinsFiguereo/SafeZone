@@ -25,6 +25,7 @@ import com.wilkins.safezone.backend.network.User.Profile.ProfileViewModel
 import com.wilkins.safezone.backend.network.User.Profile.ReportWithAffair
 import com.wilkins.safezone.backend.network.User.Profile.getUserReports
 import com.wilkins.safezone.backend.network.auth.SessionManager
+import com.wilkins.safezone.backend.network.auth.SessionManager.getUserProfile
 import com.wilkins.safezone.frontend.ui.GlobalAssociation.GovernmentMenu
 import com.wilkins.safezone.frontend.ui.Moderator.ModeratorSideMenu
 import com.wilkins.safezone.frontend.ui.user.Screens.profile.Components.EditProfileContent
@@ -282,10 +283,14 @@ fun RoleBasedMenu(
 
         // 🛡️ MODERADOR
         3 -> {
+            val userState = produceState<AppUser?>(initialValue = null) {
+                value = getUserProfile(context)
+            }
+            val user = userState.value
             ModeratorSideMenu(
                 navController = navController,
                 moderatorId = SessionManager.loadSession(context)?.user?.id ?: "",
-                moderatorName = "Moderador",
+                moderatorName = user?.name ?: "Moderator",
                 currentRoute = currentRoute,
                 modifier = modifier,
                 isMenuOpen = isMenuOpen,
