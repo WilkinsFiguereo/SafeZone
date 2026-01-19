@@ -422,7 +422,7 @@ private fun SurveyContent(
                         totalQuestions = totalQuestions,
                         answer = answers[question.id] ?: "",
                         onAnswerChange = { answer ->
-                            onAnswerChange(question.id, answer)
+                            onAnswerChange(question.id?:"", answer)
                         }
                     )
                 }

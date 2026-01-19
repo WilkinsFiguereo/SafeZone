@@ -37,11 +37,14 @@ import java.util.UUID
 @Composable
 fun SurveyCreateScreen(
     navController: NavController,
+    surveyId: String? = null, // ID para modo edición
     viewModel: SurveyViewModel = viewModel()
 ) {
     var title by remember { mutableStateOf("") }
     var description by remember { mutableStateOf("") }
     var questionsList by remember { mutableStateOf(listOf<QuestionData>()) }
+    var isEditMode by remember { mutableStateOf(false) }
+    var isLoadingData by remember { mutableStateOf(false) }
 
     val error by viewModel.error.collectAsState()
     val successMessage by viewModel.successMessage.collectAsState()
@@ -49,8 +52,33 @@ fun SurveyCreateScreen(
     val scope = rememberCoroutineScope()
     var validationError by remember { mutableStateOf<String?>(null) }
 
-    LaunchedEffect(Unit) {
+    // Cargar datos de la encuesta si estamos en modo edición
+    LaunchedEffect(surveyId) {
         viewModel.clearMessages()
+
+        if (surveyId != null) {
+            isEditMode = true
+            isLoadingData = true
+
+            // Aquí debes llamar a tu ViewModel para obtener los datos de la encuesta
+            viewModel.getSurveyById(surveyId) { survey ->
+                title = survey.title
+                description = survey.description ?: ""
+
+                // Convertir las preguntas de la encuesta al formato QuestionData
+                questionsList = survey.questions.map { q ->
+                    QuestionData(
+                        id = q.id ?: UUID.randomUUID().toString(),
+                        text = q.question_text,
+                        type = q.question_type,
+                        options = q.options ?: listOf("", ""),
+                        required = q.required
+                    )
+                }
+
+                isLoadingData = false
+            }
+        }
     }
 
     Box(
@@ -66,196 +94,337 @@ fun SurveyCreateScreen(
                 )
             )
     ) {
-        Column(modifier = Modifier.fillMaxSize()) {
-            // Modern Top Bar
-            ModernTopBar(
-                onBackClick = { navController.popBackStack() },
-                questionsCount = questionsList.size
-            )
-
-            LazyColumn(
-                modifier = Modifier
-                    .weight(1f)
-                    .fillMaxWidth(),
-                contentPadding = PaddingValues(16.dp),
-                verticalArrangement = Arrangement.spacedBy(20.dp)
+        if (isLoadingData) {
+            // Mostrar loading mientras se cargan los datos
+            Box(
+                modifier = Modifier.fillMaxSize(),
+                contentAlignment = Alignment.Center
             ) {
-                // Messages
-                item {
-                    AnimatedVisibility(
-                        visible = error != null || successMessage != null || validationError != null,
-                        enter = slideInVertically(initialOffsetY = { -it }) + fadeIn(),
-                        exit = slideOutVertically(targetOffsetY = { -it }) + fadeOut()
-                    ) {
-                        Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                            error?.let {
-                                MessageCard(message = it, isError = true)
-                            }
-                            validationError?.let {
-                                MessageCard(message = it, isError = true)
-                            }
-                            successMessage?.let {
-                                MessageCard(message = it, isError = false)
-                            }
-                        }
-                    }
+                Column(
+                    horizontalAlignment = Alignment.CenterHorizontally,
+                    verticalArrangement = Arrangement.spacedBy(16.dp)
+                ) {
+                    CircularProgressIndicator()
+                    Text("Cargando encuesta...")
                 }
+            }
+        } else {
+            Column(modifier = Modifier.fillMaxSize()) {
+                // Modern Top Bar
+                ModernTopBar(
+                    onBackClick = { navController.popBackStack() },
+                    questionsCount = questionsList.size,
+                    isEditMode = isEditMode
+                )
 
-                // Survey Header Section
-                item {
-                    SurveyHeaderSection(
-                        title = title,
-                        description = description,
-                        onTitleChange = { title = it },
-                        onDescriptionChange = { description = it }
-                    )
-                }
-
-                // Questions Section Header
-                item {
-                    Row(
-                        modifier = Modifier.fillMaxWidth(),
-                        horizontalArrangement = Arrangement.SpaceBetween,
-                        verticalAlignment = Alignment.CenterVertically
-                    ) {
-                        Row(
-                            horizontalArrangement = Arrangement.spacedBy(12.dp),
-                            verticalAlignment = Alignment.CenterVertically
-                        ) {
-                            Box(
-                                modifier = Modifier
-                                    .size(40.dp)
-                                    .clip(CircleShape)
-                                    .background(MaterialTheme.colorScheme.primaryContainer),
-                                contentAlignment = Alignment.Center
-                            ) {
-                                Text(
-                                    questionsList.size.toString(),
-                                    style = MaterialTheme.typography.titleMedium,
-                                    fontWeight = FontWeight.Bold,
-                                    color = MaterialTheme.colorScheme.primary
-                                )
-                            }
-                            Text(
-                                "Preguntas",
-                                style = MaterialTheme.typography.titleLarge,
-                                fontWeight = FontWeight.Bold
-                            )
-                        }
-
-                        FilledTonalButton(
-                            onClick = {
-                                questionsList = questionsList + QuestionData(id = UUID.randomUUID().toString())
-                            },
-                            shape = RoundedCornerShape(16.dp),
-                            contentPadding = PaddingValues(horizontal = 20.dp, vertical = 12.dp)
-                        ) {
-                            Icon(
-                                imageVector = Icons.Default.Add,
-                                contentDescription = null,
-                                modifier = Modifier.size(20.dp)
-                            )
-                            Spacer(modifier = Modifier.width(8.dp))
-                            Text("Nueva", fontWeight = FontWeight.SemiBold)
-                        }
-                    }
-                }
-
-                // Empty State or Questions List
-                if (questionsList.isEmpty()) {
+                LazyColumn(
+                    modifier = Modifier
+                        .weight(1f)
+                        .fillMaxWidth(),
+                    contentPadding = PaddingValues(16.dp),
+                    verticalArrangement = Arrangement.spacedBy(20.dp)
+                ) {
+                    // Messages
                     item {
-                        EmptyQuestionsState(
-                            onAddClick = {
-                                questionsList = questionsList + QuestionData(id = UUID.randomUUID().toString())
+                        AnimatedVisibility(
+                            visible = error != null || successMessage != null || validationError != null,
+                            enter = slideInVertically(initialOffsetY = { -it }) + fadeIn(),
+                            exit = slideOutVertically(targetOffsetY = { -it }) + fadeOut()
+                        ) {
+                            Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                                error?.let {
+                                    MessageCard(message = it, isError = true)
+                                }
+                                validationError?.let {
+                                    MessageCard(message = it, isError = true)
+                                }
+                                successMessage?.let {
+                                    MessageCard(message = it, isError = false)
+                                }
                             }
+                        }
+                    }
+
+                    // Survey Header Section
+                    item {
+                        SurveyHeaderSection(
+                            title = title,
+                            description = description,
+                            onTitleChange = { title = it },
+                            onDescriptionChange = { description = it }
                         )
                     }
-                } else {
-                    itemsIndexed(
-                        items = questionsList,
-                        key = { _, question -> question.id }
-                    ) { index, question ->
-                        AnimatedVisibility(
-                            visible = true,
-                            enter = fadeIn() + expandVertically(),
-                            exit = fadeOut() + shrinkVertically()
+
+                    // Questions Section Header
+                    item {
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.SpaceBetween,
+                            verticalAlignment = Alignment.CenterVertically
                         ) {
-                            EditableQuestionItem(
-                                question = question,
-                                questionNumber = index + 1,
-                                onQuestionChange = { updatedQuestion ->
-                                    questionsList = questionsList.toMutableList().apply {
-                                        set(index, updatedQuestion)
-                                    }
+                            Row(
+                                horizontalArrangement = Arrangement.spacedBy(12.dp),
+                                verticalAlignment = Alignment.CenterVertically
+                            ) {
+                                Box(
+                                    modifier = Modifier
+                                        .size(40.dp)
+                                        .clip(CircleShape)
+                                        .background(MaterialTheme.colorScheme.primaryContainer),
+                                    contentAlignment = Alignment.Center
+                                ) {
+                                    Text(
+                                        questionsList.size.toString(),
+                                        style = MaterialTheme.typography.titleMedium,
+                                        fontWeight = FontWeight.Bold,
+                                        color = MaterialTheme.colorScheme.primary
+                                    )
+                                }
+                                Text(
+                                    "Preguntas",
+                                    style = MaterialTheme.typography.titleLarge,
+                                    fontWeight = FontWeight.Bold
+                                )
+                            }
+
+                            FilledTonalButton(
+                                onClick = {
+                                    questionsList = questionsList + QuestionData(id = UUID.randomUUID().toString())
                                 },
-                                onDelete = {
-                                    questionsList = questionsList.toMutableList().apply {
-                                        removeAt(index)
-                                    }
+                                shape = RoundedCornerShape(16.dp),
+                                contentPadding = PaddingValues(horizontal = 20.dp, vertical = 12.dp)
+                            ) {
+                                Icon(
+                                    imageVector = Icons.Default.Add,
+                                    contentDescription = null,
+                                    modifier = Modifier.size(20.dp)
+                                )
+                                Spacer(modifier = Modifier.width(8.dp))
+                                Text("Nueva", fontWeight = FontWeight.SemiBold)
+                            }
+                        }
+                    }
+
+                    // Empty State or Questions List
+                    if (questionsList.isEmpty()) {
+                        item {
+                            EmptyQuestionsState(
+                                onAddClick = {
+                                    questionsList = questionsList + QuestionData(id = UUID.randomUUID().toString())
                                 }
                             )
                         }
-                    }
-                }
-
-                item {
-                    Spacer(modifier = Modifier.height(100.dp))
-                }
-            }
-
-            // Submit Button
-            CreateSurveyButton(
-                isLoading = isLoading,
-                onClick = {
-                    validationError = null
-                    if (title.isBlank()) {
-                        validationError = "El título es obligatorio"
-                        return@CreateSurveyButton
-                    }
-                    if (questionsList.isEmpty()) {
-                        validationError = "Debe agregar al menos una pregunta"
-                        return@CreateSurveyButton
-                    }
-
-                    questionsList.forEachIndexed { i, q ->
-                        if (q.text.isBlank()) {
-                            validationError = "La pregunta ${i + 1} no puede estar vacía"
-                            return@CreateSurveyButton
-                        }
-                        if (q.type == "multiple_choice") {
-                            val validOpts = q.options.filter { it.isNotBlank() }
-                            if (validOpts.isEmpty()) {
-                                validationError = "La pregunta ${i + 1} debe tener al menos una opción válida"
-                                return@CreateSurveyButton
+                    } else {
+                        itemsIndexed(
+                            items = questionsList,
+                            key = { _, question -> question.id }
+                        ) { index, question ->
+                            AnimatedVisibility(
+                                visible = true,
+                                enter = fadeIn() + expandVertically(),
+                                exit = fadeOut() + shrinkVertically()
+                            ) {
+                                EditableQuestionItem(
+                                    question = question,
+                                    questionNumber = index + 1,
+                                    onQuestionChange = { updatedQuestion ->
+                                        questionsList = questionsList.toMutableList().apply {
+                                            set(index, updatedQuestion)
+                                        }
+                                    },
+                                    onDelete = {
+                                        questionsList = questionsList.toMutableList().apply {
+                                            removeAt(index)
+                                        }
+                                    }
+                                )
                             }
                         }
                     }
 
-                    val surveyQuestions = questionsList.mapIndexed { i, q ->
-                        CreateQuestionRequest(
-                            question_text = q.text,
-                            question_type = q.type,
-                            options = if (q.type == "multiple_choice") {
-                                q.options.filter { it.isNotBlank() }
-                            } else {
-                                null
-                            },
-                            required = q.required,
-                            order = i + 1
-                        )
-                    }
-
-                    viewModel.createSurvey(title, description.ifBlank { null }, surveyQuestions) {
-                        scope.launch {
-                            title = ""
-                            description = ""
-                            questionsList = emptyList()
-                            kotlinx.coroutines.delay(2000)
-                            navController.popBackStack()
-                        }
+                    item {
+                        Spacer(modifier = Modifier.height(100.dp))
                     }
                 }
+
+                // Submit Button
+                CreateSurveyButton(
+                    isLoading = isLoading,
+                    isEditMode = isEditMode,
+                    onClick = {
+                        validationError = null
+                        if (title.isBlank()) {
+                            validationError = "El título es obligatorio"
+                            return@CreateSurveyButton
+                        }
+                        if (questionsList.isEmpty()) {
+                            validationError = "Debe agregar al menos una pregunta"
+                            return@CreateSurveyButton
+                        }
+
+                        questionsList.forEachIndexed { i, q ->
+                            if (q.text.isBlank()) {
+                                validationError = "La pregunta ${i + 1} no puede estar vacía"
+                                return@CreateSurveyButton
+                            }
+                            if (q.type == "multiple_choice") {
+                                val validOpts = q.options.filter { it.isNotBlank() }
+                                if (validOpts.isEmpty()) {
+                                    validationError = "La pregunta ${i + 1} debe tener al menos una opción válida"
+                                    return@CreateSurveyButton
+                                }
+                            }
+                        }
+
+                        val surveyQuestions = questionsList.mapIndexed { i, q ->
+                            CreateQuestionRequest(
+                                question_text = q.text,
+                                question_type = q.type,
+                                options = if (q.type == "multiple_choice") {
+                                    q.options.filter { it.isNotBlank() }
+                                } else {
+                                    null
+                                },
+                                required = q.required,
+                                order = i + 1
+                            )
+                        }
+
+                        if (isEditMode && surveyId != null) {
+                            // Actualizar encuesta existente
+                            viewModel.updateSurvey(surveyId, title, description.ifBlank { null }, surveyQuestions) {
+                                scope.launch {
+                                    kotlinx.coroutines.delay(2000)
+                                    navController.popBackStack()
+                                }
+                            }
+                        } else {
+                            // Crear nueva encuesta
+                            viewModel.createSurvey(title, description.ifBlank { null }, surveyQuestions) {
+                                scope.launch {
+                                    title = ""
+                                    description = ""
+                                    questionsList = emptyList()
+                                    kotlinx.coroutines.delay(2000)
+                                    navController.popBackStack()
+                                }
+                            }
+                        }
+                    }
+                )
+            }
+        }
+    }
+}
+
+@Composable
+private fun ModernTopBar(
+    onBackClick: () -> Unit,
+    questionsCount: Int,
+    isEditMode: Boolean = false
+) {
+    Surface(
+        modifier = Modifier.fillMaxWidth(),
+        color = Color.Transparent
+    ) {
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(horizontal = 8.dp, vertical = 12.dp),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.SpaceBetween
+        ) {
+            Row(
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(16.dp)
+            ) {
+                IconButton(
+                    onClick = onBackClick,
+                    modifier = Modifier
+                        .size(48.dp)
+                        .clip(CircleShape)
+                        .background(MaterialTheme.colorScheme.surface)
+                        .shadow(4.dp, CircleShape)
+                ) {
+                    Icon(
+                        imageVector = Icons.AutoMirrored.Filled.ArrowBack,
+                        contentDescription = "Volver",
+                        tint = MaterialTheme.colorScheme.onSurface
+                    )
+                }
+                Column {
+                    Text(
+                        if (isEditMode) "Editar Encuesta" else "Crear Encuesta",
+                        style = MaterialTheme.typography.headlineMedium,
+                        fontWeight = FontWeight.Bold,
+                        color = MaterialTheme.colorScheme.onSurface
+                    )
+                    if (questionsCount > 0) {
+                        Text(
+                            "$questionsCount pregunta${if (questionsCount != 1) "s" else ""}",
+                            style = MaterialTheme.typography.bodyMedium,
+                            color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.6f)
+                        )
+                    }
+                }
+            }
+        }
+    }
+}
+
+@Composable
+private fun CreateSurveyButton(
+    isLoading: Boolean,
+    isEditMode: Boolean = false,
+    onClick: () -> Unit
+) {
+    Surface(
+        modifier = Modifier.fillMaxWidth(),
+        color = MaterialTheme.colorScheme.surface,
+        shadowElevation = 12.dp,
+        shape = RoundedCornerShape(topStart = 28.dp, topEnd = 28.dp)
+    ) {
+        Button(
+            onClick = onClick,
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(20.dp)
+                .height(64.dp),
+            shape = RoundedCornerShape(20.dp),
+            enabled = !isLoading,
+            colors = ButtonDefaults.buttonColors(
+                containerColor = MaterialTheme.colorScheme.primary,
+                disabledContainerColor = MaterialTheme.colorScheme.surfaceVariant
+            ),
+            elevation = ButtonDefaults.buttonElevation(
+                defaultElevation = 4.dp,
+                pressedElevation = 8.dp,
+                disabledElevation = 0.dp
             )
+        ) {
+            if (isLoading) {
+                CircularProgressIndicator(
+                    modifier = Modifier.size(28.dp),
+                    color = Color.White,
+                    strokeWidth = 3.dp
+                )
+            } else {
+                Row(
+                    horizontalArrangement = Arrangement.spacedBy(12.dp),
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Icon(
+                        imageVector = if (isEditMode) Icons.Default.Save else Icons.Default.Send,
+                        contentDescription = null,
+                        modifier = Modifier.size(28.dp)
+                    )
+                    Text(
+                        if (isEditMode) "Guardar Cambios" else "Crear Encuesta",
+                        style = MaterialTheme.typography.titleLarge,
+                        fontWeight = FontWeight.Bold
+                    )
+                }
+            }
         }
     }
 }

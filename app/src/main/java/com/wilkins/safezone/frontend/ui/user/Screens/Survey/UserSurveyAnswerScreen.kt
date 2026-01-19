@@ -210,7 +210,7 @@ fun UserSurveyAnswerScreen(
                                     question = question,
                                     answer = answers[question.id] ?: "",
                                     onAnswerChange = { newAnswer ->
-                                        answers[question.id] = newAnswer
+                                        answers[question.id?:""] = newAnswer
                                     }
                                 )
                             }

@@ -17,19 +17,20 @@ data class Survey(
     val id: String,
     val title: String,
     val description: String?,
-    val created_at: String
+    val created_at: String,
+    val questions: List<SurveyQuestion> = emptyList() // Para cargar con preguntas
 )
 
 @Serializable
 data class SurveyQuestion(
-    val id: String,
-    val survey_id: String,
+    val id: String? = null,
+    val survey_id: String? = null,
     val question_text: String,
     val question_type: String,
     val options: List<String> = emptyList(),
     val required: Boolean,
-    val order: Int,
-    val created_at: String
+    val order: Int? = null,
+    val created_at: String? = null
 )
 
 @Serializable
@@ -174,6 +175,50 @@ class SurveyViewModel : ViewModel() {
         }
     }
 
+    /**
+     * Obtiene una encuesta por ID con sus preguntas (para edición)
+     */
+    fun getSurveyById(surveyId: String, onSuccess: (Survey) -> Unit) {
+        viewModelScope.launch {
+            try {
+                _isLoading.value = true
+                _error.value = null
+
+                // Obtener la encuesta
+                val survey = supabase
+                    .from("surveys")
+                    .select {
+                        filter {
+                            eq("id", surveyId)
+                        }
+                    }
+                    .decodeSingle<Survey>()
+
+                // Obtener las preguntas de la encuesta
+                val questions = supabase
+                    .from("survey_questions")
+                    .select {
+                        filter {
+                            eq("survey_id", surveyId)
+                        }
+                        order("order", Order.ASCENDING)
+                    }
+                    .decodeList<SurveyQuestion>()
+
+                val surveyWithQuestions = survey.copy(questions = questions)
+                Log.d("SurveyViewModel", "✅ Encuesta cargada para edición: ${survey.title} con ${questions.size} preguntas")
+
+                onSuccess(surveyWithQuestions)
+
+            } catch (e: Exception) {
+                _error.value = "Error al cargar la encuesta: ${e.message}"
+                Log.e("SurveyViewModel", "❌ Error getSurveyById", e)
+            } finally {
+                _isLoading.value = false
+            }
+        }
+    }
+
     fun createSurvey(
         title: String,
         description: String?,
@@ -275,6 +320,126 @@ class SurveyViewModel : ViewModel() {
             } catch (e: Exception) {
                 _error.value = "Error al crear encuesta: ${e.message}"
                 Log.e("SurveyViewModel", "Error al crear encuesta", e)
+            } finally {
+                _isLoading.value = false
+            }
+        }
+    }
+
+    /**
+     * Actualiza una encuesta existente
+     */
+    fun updateSurvey(
+        surveyId: String,
+        title: String,
+        description: String?,
+        questions: List<CreateQuestionRequest>,
+        onSuccess: () -> Unit
+    ) {
+        viewModelScope.launch {
+            try {
+                _isLoading.value = true
+                _error.value = null
+                _successMessage.value = null
+
+                // Validar preguntas
+                questions.forEachIndexed { index, question ->
+                    if (question.question_text.isBlank()) {
+                        _error.value = "La pregunta ${index + 1} no puede estar vacía"
+                        _isLoading.value = false
+                        return@launch
+                    }
+
+                    if (question.question_type == "multiple_choice") {
+                        val validOptions = question.options?.filter { it.isNotBlank() } ?: emptyList()
+                        if (validOptions.isEmpty()) {
+                            _error.value = "La pregunta ${index + 1} de tipo 'Opciones' debe tener al menos una opción válida"
+                            _isLoading.value = false
+                            return@launch
+                        }
+                    }
+                }
+
+                // 1. Actualizar la encuesta
+                supabase
+                    .from("surveys")
+                    .update({
+                        set("title", title)
+                        set("description", description)
+                    }) {
+                        filter {
+                            eq("id", surveyId)
+                        }
+                    }
+
+                Log.d("SurveyViewModel", "✅ Encuesta actualizada: $title")
+
+                // 2. Eliminar preguntas existentes
+                supabase
+                    .from("survey_questions")
+                    .delete {
+                        filter {
+                            eq("survey_id", surveyId)
+                        }
+                    }
+
+                Log.d("SurveyViewModel", "✅ Preguntas antiguas eliminadas")
+
+                // 3. Insertar nuevas preguntas
+                questions.forEach { question ->
+                    try {
+                        val questionRequest = when (question.question_type) {
+                            "multiple_choice" -> {
+                                val validOptions = question.options?.filter { it.isNotBlank() } ?: emptyList()
+                                InsertQuestionRequest(
+                                    survey_id = surveyId,
+                                    question_text = question.question_text,
+                                    question_type = question.question_type,
+                                    options = validOptions,
+                                    required = question.required,
+                                    order = question.order
+                                )
+                            }
+                            "boolean" -> {
+                                InsertQuestionRequest(
+                                    survey_id = surveyId,
+                                    question_text = question.question_text,
+                                    question_type = question.question_type,
+                                    options = listOf("Sí", "No"),
+                                    required = question.required,
+                                    order = question.order
+                                )
+                            }
+                            else -> {
+                                InsertQuestionRequest(
+                                    survey_id = surveyId,
+                                    question_text = question.question_text,
+                                    question_type = question.question_type,
+                                    options = emptyList(),
+                                    required = question.required,
+                                    order = question.order
+                                )
+                            }
+                        }
+
+                        supabase.from("survey_questions").insert(questionRequest)
+                        Log.d("SurveyViewModel", "✓ Nueva pregunta insertada: ${question.question_type}")
+
+                    } catch (e: Exception) {
+                        Log.e("SurveyViewModel", "✗ Error insertando pregunta: ${question.question_text}")
+                        throw e
+                    }
+                }
+
+                _successMessage.value = "✅ Encuesta actualizada exitosamente"
+                Log.d("SurveyViewModel", "✅ Encuesta actualizada completamente: $surveyId")
+
+                fetchSurveys() // Recargar la lista
+                onSuccess()
+
+            } catch (e: Exception) {
+                _error.value = "❌ Error al actualizar la encuesta: ${e.message}"
+                Log.e("SurveyViewModel", "❌ Error updateSurvey", e)
             } finally {
                 _isLoading.value = false
             }

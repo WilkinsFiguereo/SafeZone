@@ -143,12 +143,15 @@ fun SurveyListScreen(
                     LazyColumn(
                         verticalArrangement = Arrangement.spacedBy(12.dp)
                     ) {
+                        // En SurveyListScreen.kt, reemplaza el Card de la lista por esto:
+
                         items(surveys) { survey ->
                             Card(
                                 modifier = Modifier.fillMaxWidth(),
                                 elevation = CardDefaults.cardElevation(4.dp),
                                 onClick = {
-                                    navController.navigate("moderatorPollResults/${survey.id}")
+                                    // Navegar a edición al hacer clic en la tarjeta
+                                    navController.navigate("surveyEdit/${survey.id}")
                                 }
                             ) {
                                 Column(
@@ -165,11 +168,32 @@ fun SurveyListScreen(
                                             fontWeight = FontWeight.Bold,
                                             modifier = Modifier.weight(1f)
                                         )
-                                        Icon(
-                                            Icons.Default.ChevronRight,
-                                            contentDescription = "Ver resultados",
-                                            tint = MaterialTheme.colorScheme.primary
-                                        )
+                                        Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                                            // Botón para editar (ahora redundante pero lo dejamos por claridad)
+                                            IconButton(
+                                                onClick = {
+                                                    navController.navigate("surveyEdit/${survey.id}")
+                                                }
+                                            ) {
+                                                Icon(
+                                                    Icons.Default.Edit,
+                                                    contentDescription = "Editar",
+                                                    tint = MaterialTheme.colorScheme.primary
+                                                )
+                                            }
+                                            // Botón para ver resultados
+                                            IconButton(
+                                                onClick = {
+                                                    navController.navigate("surveyResult/${survey.id}")
+                                                }
+                                            ) {
+                                                Icon(
+                                                    Icons.Default.BarChart,
+                                                    contentDescription = "Ver resultados",
+                                                    tint = MaterialTheme.colorScheme.tertiary
+                                                )
+                                            }
+                                        }
                                     }
 
                                     Spacer(modifier = Modifier.height(8.dp))

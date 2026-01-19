@@ -150,7 +150,7 @@ fun SurveyResultsScreen(
                             verticalArrangement = Arrangement.spacedBy(16.dp)
                         ) {
                             questions.forEach { question ->
-                                val stats = viewModel.getQuestionStats(question.id, question.question_type)
+                                val stats = viewModel.getQuestionStats(question.id?: "", question.question_type)
 
                                 Card(
                                     modifier = Modifier.fillMaxWidth(),

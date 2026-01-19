@@ -166,6 +166,29 @@ fun NavGraphBuilder.moderatorRoutes(
         )
     }
 
+    // Ruta para editar encuesta (con ID)
+    composable("surveyEdit/{surveyId}") { backStackEntry ->
+        if (!hasActiveSession()) {
+            Log.w("ModeratorRoutes", "⚠️ Intento de acceso sin sesión a surveyEdit")
+            navController.navigate("login") {
+                popUpTo(0) { inclusive = true }
+            }
+            return@composable
+        }
+
+        val surveyId = backStackEntry.arguments?.getString("surveyId")
+
+        if (surveyId == null) {
+            Log.e("ModeratorRoutes", "❌ surveyId nulo en surveyEdit")
+            navController.popBackStack()
+            return@composable
+        }
+
+        SurveyCreateScreen(
+            navController = navController,
+            surveyId = surveyId // Modo edición
+        )
+    }
 
 
 
