@@ -142,7 +142,7 @@ ación de mapas
 1. Clonar el repositorio:
 
    ```bash
-   git clone https://github.com/tu-usuario/tu-repositorio.git
+   git clone git@github.com:WilkinsFiguereo/SafeZone.git
    ```
 
 2. Abrir el proyecto en **Android Studio**.
