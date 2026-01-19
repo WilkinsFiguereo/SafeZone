@@ -13,7 +13,7 @@ import com.wilkins.safezone.frontend.ui.Moderator.Dashboard.ModeratorDashboard
 import com.wilkins.safezone.frontend.ui.Moderator.ModeratorUsersScreen
 import com.wilkins.safezone.frontend.ui.Moderator.screens.ModeratorUser.ModeratorBlockedUsersScreen
 import com.wilkins.safezone.frontend.ui.Moderator.screens.News.NewsListScreen
-import com.wilkins.safezone.frontend.ui.Moderator.screens.News.NewsSaveScreen
+import com.wilkins.safezone.frontend.ui.moderator.screens.News.NewsSaveScreen
 import com.wilkins.safezone.frontend.ui.Moderator.screens.ReviewReports.ReportsList.RewiewReportsListScreen
 import com.wilkins.safezone.frontend.ui.Moderator.screens.Statistics.ModeratorStatisticsScreen
 import com.wilkins.safezone.frontend.ui.Moderator.screens.Survey.SurveyCreateScreen

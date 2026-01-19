@@ -1,4 +1,4 @@
-package com.wilkins.safezone.frontend.ui.Moderator.screens.News
+package com.wilkins.safezone.frontend.ui.moderator.screens.News
 
 import android.net.Uri
 import androidx.activity.compose.rememberLauncherForActivityResult
